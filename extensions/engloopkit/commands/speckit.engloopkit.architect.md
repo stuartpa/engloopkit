@@ -28,7 +28,8 @@ project's `<ARTIFACT_ROOT>/numbering-registry.md`, not the bundle's copy.
 
 - **Trigger:** bridging code exists and runs.
 - **Goal:** an explicit, governed architecture — architecture-guard constitutions plus
-  one or more human-readable `ARCxxx` decisions — that all later loops honor.
+  one or more human-readable `ARCxxx` decisions — that all later loops honor, **including
+  the component boundary** (vertical code vs reusable components).
 - **Actions:** run architecture-guard's brownfield mapping and workflow; capture
   boundaries, ownership, and contracts.
 - **Verification:** `architecture-review` runs clean, or only with accepted, tracked
@@ -46,6 +47,27 @@ assumptions:
 
 Read what it produces. Identify the natural boundaries the bridging code already hints
 at, the ownership of each module, and the contracts between them.
+
+## Step 1b — Establish the component boundary (MANDATORY)
+
+Enforce the **component pattern** — non-vertical code lives as components, the vertical
+composes them. See [../../docs/component-pattern.md](../../docs/component-pattern.md).
+
+1. **Classify** every module from Step 1 with the litmus test — *would this code be useful,
+   unchanged, in a repo solving a totally different problem?* Yes → **component**; No →
+   **vertical**.
+2. **Create the components folder** in the language's idiom (C# → `components/` with a
+   class-library project `<Repo>.Components.<Name>` per component; Go → `internal/<name>`;
+   see the doc's language table). The vertical stays in its own folder (e.g. `src/`).
+3. **Record the boundary as a governed `ARC` rule** (Step 3) that architecture-guard
+   enforces: *components carry no domain knowledge; dependencies point vertical →
+   components, never the reverse.*
+4. **File the gap as refactor tasks**: any non-vertical code still inside the vertical is a
+   violation to be resolved in Stage 3 and tightened by `refactor-scan`. Do not extract it
+   all now — record it as the target the refactor stages converge toward.
+
+This is what *causes a repo adopting EngLoopKit to adopt the component pattern*: it cannot
+pass its architecture stage without this boundary.
 
 ## Step 2 — Initialize constitutions (Act)
 
@@ -98,6 +120,8 @@ Next: refactor bridging code to final form via /speckit.architecture-guard.gover
 ## Done when
 
 - [ ] Brownfield mapping run
+- [ ] Component boundary established (language-appropriate `components/` folder + a governed
+      rule); non-vertical code still in the vertical filed as refactor tasks
 - [ ] Constitutions created/refined
 - [ ] Each significant decision recorded as an `ARCxxx` (registry incremented)
 - [ ] `architecture-workflow` run; violations captured as refactor tasks

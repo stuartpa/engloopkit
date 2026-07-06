@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Component: monotonic, never-reused counters keyed by string. A generic building block
+    (wraps the BCL) with no knowledge of any particular numbering scheme — the vertical
+    supplies the keys and policy. Not specific to the engineering-loop vertical.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>EngLoopKit.Components.Numbering</RootNamespace>
+    <AssemblyName>EngLoopKit.Components.Numbering</AssemblyName>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+</Project>

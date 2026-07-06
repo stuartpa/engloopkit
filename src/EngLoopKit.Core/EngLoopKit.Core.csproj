@@ -9,4 +9,10 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
 
+  <!-- The vertical composes the components it needs (the go-sqlcmd "internal/" shape). -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\components\EngLoopKit.Components.Numbering\EngLoopKit.Components.Numbering.csproj" />
+    <ProjectReference Include="..\..\components\EngLoopKit.Components.StateMachine\EngLoopKit.Components.StateMachine.csproj" />
+  </ItemGroup>
+
 </Project>

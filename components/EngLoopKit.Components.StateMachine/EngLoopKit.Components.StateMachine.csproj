@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Component: a generic guarded state machine over a caller-supplied transition graph.
+    Wraps no domain knowledge — the vertical supplies the state type and legal transitions.
+    Not specific to the engineering-loop vertical.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>EngLoopKit.Components.StateMachine</RootNamespace>
+    <AssemblyName>EngLoopKit.Components.StateMachine</AssemblyName>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+</Project>

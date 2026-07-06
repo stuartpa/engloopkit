@@ -1,9 +1,15 @@
+using EngLoopKit.Components.Numbering;
+
 namespace EngLoopKit.Core;
 
 /// <summary>
 /// The document-numbering discipline, as executable code. This is the enforceable form of
 /// the rules in <c>docs/standards.md</c>: fixed prefixes, monotonic and never-reused
 /// numbers, zero-padded three-digit ids, and increment-before-create.
+///
+/// The vertical here supplies only the domain knowledge — the set of valid EngLoopKit
+/// prefixes — and composes the generic counting machinery from the
+/// <c>EngLoopKit.Components.Numbering</c> component.
 /// </summary>
 public sealed class NumberingRegistry
 {
@@ -13,7 +19,8 @@ public sealed class NumberingRegistry
         "SEED", "SP", "BRG", "ARC", "MDL", "CRD", "COV", "IN", "PM", "REF", "MIT", "LRN", "RPI",
     };
 
-    private readonly Dictionary<string, int> _last = new(StringComparer.Ordinal);
+    // Generic monotonic-counter machinery (the component); the vertical supplies the keys.
+    private readonly MonotonicCounters _counters = new();
 
     /// <summary>True if <paramref name="prefix"/> is a recognized EngLoopKit prefix.</summary>
     public static bool IsKnownPrefix(string prefix) => KnownPrefixes.Contains(prefix);
@@ -29,23 +36,15 @@ public sealed class NumberingRegistry
             throw new ArgumentException($"unknown prefix '{prefix}'", nameof(prefix));
         }
 
-        if (n < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(n), "numbers start at 1");
-        }
-
-        return $"{prefix}{n:D3}";
+        // The zero-padding is generic; the component owns it.
+        return MonotonicCounters.Pad(prefix, n);
     }
 
     /// <summary>The last number used for <paramref name="prefix"/> (0 if none).</summary>
     public int LastUsed(string prefix)
     {
-        if (!IsKnownPrefix(prefix))
-        {
-            throw new ArgumentException($"unknown prefix '{prefix}'", nameof(prefix));
-        }
-
-        return _last.TryGetValue(prefix, out var n) ? n : 0;
+        RequireKnown(prefix);
+        return _counters.Peek(prefix);
     }
 
     /// <summary>
@@ -53,9 +52,8 @@ public sealed class NumberingRegistry
     /// </summary>
     public int Next(string prefix)
     {
-        var next = LastUsed(prefix) + 1;
-        _last[prefix] = next;
-        return next;
+        RequireKnown(prefix);
+        return _counters.Next(prefix);
     }
 
     /// <summary>Reserve and return the next id (e.g. <c>SEED001</c>).</summary>
@@ -67,17 +65,15 @@ public sealed class NumberingRegistry
     /// </summary>
     public void Record(string prefix, int n)
     {
-        if (n < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(n), "numbers start at 1");
-        }
+        RequireKnown(prefix);
+        _counters.Record(prefix, n);
+    }
 
-        if (n <= LastUsed(prefix))
+    private static void RequireKnown(string prefix)
+    {
+        if (!IsKnownPrefix(prefix))
         {
-            throw new InvalidOperationException(
-                $"{Format(prefix, n)} reuses or precedes the last used number for {prefix}");
+            throw new ArgumentException($"unknown prefix '{prefix}'", nameof(prefix));
         }
-
-        _last[prefix] = n;
     }
 }

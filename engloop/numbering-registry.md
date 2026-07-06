@@ -11,7 +11,7 @@ in the bundle's [../docs/standards.md](../docs/standards.md). Artifact root is `
 | `SEED` | Gathering docs | `SEED001` | SEED001 = EngLoopKit itself |
 | `SP` | Specs | `SP000` | bridging predates a recorded specify loop |
 | `BRG` | Bridging-stage records | `BRG000` | none (bridging = the markdown bundle) |
-| `ARC` | Architecture decisions | `ARC004` | bundle-composition, command-loop-contract, numbering-memory, executable-core |
+| `ARC` | Architecture decisions | `ARC005` | bundle-composition, command-loop-contract, numbering-memory, executable-core, component-pattern |
 | `MDL` | SEK models | `MDL001` | MDL001 = engineering-loop state machine |
 | `CRD` | CORD explorations | `CRD001` | CRD001 = loop conformance exploration |
 | `COV` | Coverage reports | `COV001` | COV001 = conformance/artifact coverage |

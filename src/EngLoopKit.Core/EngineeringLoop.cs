@@ -1,3 +1,5 @@
+using EngLoopKit.Components.StateMachine;
+
 namespace EngLoopKit.Core;
 
 /// <summary>
@@ -21,15 +23,18 @@ public enum Stage
 
 /// <summary>
 /// The engineering loop as a state machine: the single source of truth for which stage
-/// transitions are legal. This is the executable form of the loop diagram in
-/// <c>docs/engineering-loop.md</c>; the SEK model in <c>model/</c> mirrors it, and the
-/// SEK-generated tests replay legal sequences against it.
+/// transitions are legal. The vertical here supplies only the domain knowledge — the
+/// <see cref="Stage"/> values and the transition graph — and composes the generic
+/// guarded-machine machinery from the <c>EngLoopKit.Components.StateMachine</c> component.
+/// This is the executable form of the loop diagram in <c>docs/engineering-loop.md</c>.
 /// </summary>
 public sealed class EngineeringLoop
 {
-    // The loop's directed transition graph. Each stage lists the stages that may legally
-    // follow it. Mirrors the nested Delivery/Verification/Operations/Evolution loops.
-    private static readonly IReadOnlyDictionary<Stage, Stage[]> Transitions =
+    // The loop's directed transition graph — the vertical's domain knowledge. Each stage
+    // lists the stages that may legally follow it. Mirrors the nested
+    // Delivery/Verification/Operations/Evolution loops. The generic graph + guarded-machine
+    // behaviour lives in the StateMachine component.
+    private static readonly TransitionGraph<Stage> Graph = new(
         new Dictionary<Stage, Stage[]>
         {
             [Stage.Seed] = [Stage.Bridge],
@@ -47,53 +52,31 @@ public sealed class EngineeringLoop
             [Stage.Repair] = [Stage.RefactorToFinal],
             // Evolution loop: the monthly scan emits a SEED, starting a fresh Delivery loop.
             [Stage.RefactorScan] = [Stage.Seed],
-        };
+        });
 
-    /// <summary>The stage the loop is currently in (once started).</summary>
-    public Stage Current { get; private set; }
+    private readonly GuardedMachine<Stage> _machine = new(Graph, Stage.Seed);
+
+    /// <summary>The stage the loop is currently in (equals <see cref="Stage.Seed"/> until started).</summary>
+    public Stage Current => _machine.Current;
 
     /// <summary>Whether <see cref="Begin"/> has been called.</summary>
-    public bool Started { get; private set; }
+    public bool Started => _machine.Started;
 
     /// <summary>Every stage the loop defines.</summary>
     public static IReadOnlyList<Stage> AllStages { get; } = Enum.GetValues<Stage>();
 
     /// <summary>True if <paramref name="to"/> may legally follow <paramref name="from"/>.</summary>
-    public static bool IsLegalTransition(Stage from, Stage to) =>
-        Transitions.TryGetValue(from, out var next) && Array.IndexOf(next, to) >= 0;
+    public static bool IsLegalTransition(Stage from, Stage to) => Graph.IsLegal(from, to);
 
     /// <summary>The stages that may legally follow <paramref name="from"/>.</summary>
-    public static IReadOnlyList<Stage> LegalNext(Stage from) =>
-        Transitions.TryGetValue(from, out var next) ? next : [];
+    public static IReadOnlyList<Stage> LegalNext(Stage from) => Graph.Next(from);
 
     /// <summary>Start the loop. A loop always begins at <see cref="Stage.Seed"/>.</summary>
-    public void Begin()
-    {
-        if (Started)
-        {
-            throw new InvalidOperationException("loop already started");
-        }
-
-        Current = Stage.Seed;
-        Started = true;
-    }
+    public void Begin() => _machine.Begin();
 
     /// <summary>
     /// Advance to <paramref name="to"/>. Throws if the loop has not started or the
     /// transition is not legal from <see cref="Current"/>.
     /// </summary>
-    public void Advance(Stage to)
-    {
-        if (!Started)
-        {
-            throw new InvalidOperationException("call Begin() before advancing");
-        }
-
-        if (!IsLegalTransition(Current, to))
-        {
-            throw new InvalidOperationException($"illegal transition {Current} -> {to}");
-        }
-
-        Current = to;
-    }
+    public void Advance(Stage to) => _machine.Advance(to);
 }

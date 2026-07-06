@@ -51,6 +51,10 @@ Collect the evidence the decision tree needs:
    test outliers, brittle areas.
 4. **Change hot spots.** Which files changed most this month (from git history)? Hot +
    complex = high refactor value.
+5. **Vertical/component leakage.** Scan the vertical for code that passes the component
+   litmus test (*would it be useful, unchanged, in a repo solving a different problem?*) but
+   still lives in the vertical instead of a `components/` component. See
+   [../../docs/component-pattern.md](../../docs/component-pattern.md).
 
 ## Step 2 — Walk the refactoring decision tree (Reason)
 
@@ -61,13 +65,17 @@ Evaluate in order; take the **first** branch that fires (highest leverage first)
    failures are recurring).
 2. **Architecture drift / boundary violations from the guard?**
    → Refactor to restore the boundary (protects the long-lived architecture).
-3. **Significant duplicated business logic (DRY)?**
+3. **Non-vertical code still living in the vertical (component leakage)?**
+   → Extract the generic, non-domain code into a `components/` component (the vertical
+   then composes it). This is the continuous convergence toward the component pattern; do
+   one component per cycle.
+4. **Significant duplicated business logic (DRY)?**
    → Consolidate the duplication into one owner.
-4. **Hot spot with low coverage or high complexity?**
+5. **Hot spot with low coverage or high complexity?**
    → Simplify/decompose the hot spot, then let the Verification loop cover it.
-5. **Test suite too slow (over budget) despite adequate coverage?**
+6. **Test suite too slow (over budget) despite adequate coverage?**
    → Refactor tests/model bounds for speed (tighter CORD explorations).
-6. **None of the above fire?**
+7. **None of the above fire?**
    → No refactor this cycle. Record that and stop — do not manufacture work (YAGNI).
 
 Pick exactly **one** refactor — the first branch that fired. Concentrating the token

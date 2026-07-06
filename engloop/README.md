@@ -32,8 +32,8 @@ docs here point at it. Spec Kit's own `specify` outputs (SPxxx) would live at `s
 |---|---|---|
 | 0 · Seed | ✅ | [SEED001](seeds/SEED001_engloopkit.md) |
 | 1 · Bridge | ✅ | the v1.0.0 bundle (manifests, 9 commands, templates, docs) |
-| 2 · Architect | ✅ | [ARC001](architecture/ARC001_bundle-composition.md), [ARC002](architecture/ARC002_command-loop-contract.md), [ARC003](architecture/ARC003_numbering-memory.md), [ARC004](architecture/ARC004_executable-core.md) |
-| 3 · Refactor to final | ✅ | configurable artifact root + BRG (v1.1.0); executable core added |
+| 2 · Architect | ✅ | [ARC001](architecture/ARC001_bundle-composition.md), [ARC002](architecture/ARC002_command-loop-contract.md), [ARC003](architecture/ARC003_numbering-memory.md), [ARC004](architecture/ARC004_executable-core.md), [ARC005](architecture/ARC005_component-pattern.md) |
+| 3 · Refactor to final | ✅ | configurable artifact root + BRG (v1.1.0); executable core; **component pattern** (`components/` extracted, vertical composes) |
 | 4 · Model | ✅ | [MDL001](models/MDL001_engineering-loop.md) — SEK model of the loop |
 | 5 · Explore / Coverage | ✅ | [CRD001](cord/CRD001_loop-conformance.md), [COV001](coverage/COV001_conformance.md) — 40 tests green |
 | 6 · Operate | ⏭ next | incidents/post-mortems (this is why the loop was completed) |

@@ -146,4 +146,33 @@ public sealed class BundleConformanceTests
             Assert.Contains($"`{prefix}`", standards);
         }
     }
+
+    [Fact]
+    public void ArchitectAndRefactorScan_enforceTheComponentPattern()
+    {
+        // The methodology must keep propagating the component pattern to governed repos:
+        // the architect command establishes it, and refactor-scan converges toward it.
+        Assert.True(File.Exists(Path.Combine(Root, "docs", "component-pattern.md")),
+            "the component-pattern principle doc must exist");
+
+        var architect = File.ReadAllText(Path.Combine(ExtDir, "commands", "speckit.engloopkit.architect.md"));
+        Assert.Contains("component-pattern.md", architect);
+        Assert.Contains("component boundary", architect);
+
+        var refactorScan = File.ReadAllText(Path.Combine(ExtDir, "commands", "speckit.engloopkit.refactor-scan.md"));
+        Assert.Contains("component", refactorScan);
+    }
+
+    [Fact]
+    public void Repo_followsTheComponentPattern()
+    {
+        // EngLoopKit eats its own dog food: a components/ folder of building blocks, composed
+        // by the vertical (src/EngLoopKit.Core), which references at least one of them.
+        var componentsDir = Path.Combine(Root, "components");
+        Assert.True(Directory.Exists(componentsDir), "components/ folder must exist");
+        Assert.NotEmpty(Directory.GetFiles(componentsDir, "*.csproj", SearchOption.AllDirectories));
+
+        var coreCsproj = File.ReadAllText(Path.Combine(Root, "src", "EngLoopKit.Core", "EngLoopKit.Core.csproj"));
+        Assert.Matches(new Regex(@"ProjectReference[^>]*components[\\/]EngLoopKit\.Components\."), coreCsproj);
+    }
 }

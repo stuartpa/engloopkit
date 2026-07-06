@@ -3,6 +3,24 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **The component pattern** as an enforced architectural principle
+  (`docs/component-pattern.md`): non-vertical code (generic building blocks that wrap the
+  language runtime/BCL) lives in a language-appropriate folder (C# `components/`, Go
+  `internal/`, …) as components; the vertical composes them. EngLoopKit applies it to itself
+  and *causes every governed repo to adopt it*.
+- `/speckit.engloopkit.architect` now **establishes and enforces** the vertical/component
+  boundary (mandatory step + governed rule); `/speckit.engloopkit.refactor-scan` gains a
+  decision-tree branch that **converges** toward it (extract one leaked component per cycle).
+- EngLoopKit's own core split into components: `EngLoopKit.Components.Numbering`
+  (monotonic counters) and `EngLoopKit.Components.StateMachine` (generic guarded machine);
+  `EngLoopKit.Core` (the vertical) composes them.
+- Conformance tests couple the principle to reality (commands must enforce it; the repo must
+  follow it). Suite now 42 tests.
+
 ## [1.1.0] - 2026-07-06
 
 ### Added

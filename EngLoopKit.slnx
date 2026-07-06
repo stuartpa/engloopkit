@@ -1,4 +1,8 @@
 <Solution>
+  <Folder Name="/components/">
+    <Project Path="components/EngLoopKit.Components.Numbering/EngLoopKit.Components.Numbering.csproj" />
+    <Project Path="components/EngLoopKit.Components.StateMachine/EngLoopKit.Components.StateMachine.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/EngLoopKit.Core/EngLoopKit.Core.csproj" />
   </Folder>
