@@ -104,6 +104,13 @@ To develop the `engloopkit` extension on its own:
 specify extension add --dev ./EngLoopKit/extensions/engloopkit
 ```
 
+Or install the released `engloopkit` extension directly from this repo's catalog:
+
+```bash
+specify extension add engloopkit --from \
+  https://github.com/stuartpa/engloopkit/releases/download/v1.0.0/engloopkit-extension-1.0.0.zip
+```
+
 ---
 
 ## The commands
