@@ -21,9 +21,16 @@ v0.1.1 and the in-repo samples.
 
 > **Readiness is a gate, not a claim (PM001).** Generating tests for a component does **not** make
 > a project "ready for incidents." A project is ready **iff** every module (each `components/*` and
-> the vertical) is modelled + explored + covered ≥95% line/branch + conformant + green — the verdict
-> of `/speckit.engloopkit.coverage`. Never narrate readiness from "I generated some tests" or "the
+> the vertical) is covered ≥95% line/branch + conformant + green — the verdict of
+> `/speckit.engloopkit.coverage`. Never narrate readiness from "I generated some tests" or "the
 > pilot passed"; if the whole-product gate has not PASSed, the status is NOT READY.
+>
+> **Model the domain, not pure components (PM002).** The verification *method* follows the module
+> *class*: pure, domain-free `components/*` are unit/property-tested (no model); the stateful
+> **domain vertical** is what you model with SEK and drive through `sek generate`. Don't write a
+> SEK model of a pure function — extract it to a component (ARC002) and unit-test it. A self-hosting
+> tool becomes self-validating precisely once its generics are factored out and the residual
+> vertical is pure domain behavior.
 
 ## Consuming SEK (no new dependencies beyond what SEK uses)
 

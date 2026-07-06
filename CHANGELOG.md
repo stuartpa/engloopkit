@@ -3,6 +3,31 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-07-06
+
+### Changed
+
+- **Readiness Gate now sets the verification method by module class** (refines v1.3.0). Every module
+  still requires **≥95% line & branch**, architecture conformance, and green suites, but *how* it is
+  verified follows the ARC002 litmus test:
+  - **Component** (`components/*`, domain-free) → **unit / property tests**; **no `MDL`/`CRD`** (a
+    model of pure code is tautological and inviting one is the PM001 failure in disguise).
+  - **Vertical** (`src/*`, domain behavior) → a SEK **`MDL`** + **`CRD`** that **generates**
+    conformance tests (SEK self-modelling).
+  - **Precondition:** generic/domain-free code still in the vertical is an **ARC002 violation & a
+    gate FAIL** — extract it to a component first. This is how a self-hosting tool becomes honestly
+    self-validating: factor the generics out, and the residual vertical is the real domain surface
+    to model.
+- The Readiness Inventory (`coverage` command + `COV` template) gains a **Class** column; PASS rules
+  branch on class. `model`/`explore` commands and the `using-sek-to-generate-tests` skill now say:
+  **don't model pure components — extract and unit-test them; model only the domain vertical.**
+
+### Why
+
+- Post-mortem **PM002** (incident **IN002**): the v1.3.0 gate demanded `MDL`+`CRD` for *every* module
+  including pure components, which is meaningless for domain-free code and invites fake models. The
+  fix keys the verification *method* to the module *class* without lowering the bar.
+
 ## [1.3.0] - 2026-07-06
 
 ### Added

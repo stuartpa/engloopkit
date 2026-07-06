@@ -243,19 +243,28 @@ incident/post-mortem before the incident can be closed.
 > guideline. (Ratified after `PM001`: a consumer was declared "ready for incidents" with almost
 > nothing modelled, explored, or covered, because readiness was narrated instead of proven.)
 
-The gate is computed by `/speckit.engloopkit.coverage` (Stage 5) over the **whole product**. It
-**PASSES** iff, for **every** module — each `components/*` component **and** the vertical — all of:
+The gate is computed by `/speckit.engloopkit.coverage` (Stage 5) over the **whole product**. Every
+module — each `components/*` component **and** the vertical — must be **≥95% line & branch covered**,
+**architecture-conformant**, and **green** (unit suite + any regression). *How* a module earns its
+coverage depends on its **class** (per the ARC002 litmus test — *is it generic, domain-free code
+useful unchanged in an unrelated repo?*):
 
-1. **Modelled** — the module has an `MDL` (a SEK model of its behavior).
-2. **Explored** — the module has a `CRD` (a CORD exploration driving its tests).
-3. **Covered** — **measured** line coverage ≥95% **and** branch coverage ≥95% (from real
-   coverage tooling, attached to the `COV`), or each shortfall line carries a written rationale.
-4. **Architecture-conformant** — the module honors every applicable `ARC` / architecture-guard
-   check (no boundary violations, no leaked components).
-5. **Green** — the full unit-test suite and any exploration-regression gate pass.
+- **Component** (`components/*`, passes the litmus test): verified by **unit / property tests** to
+  ≥95% line & branch. A component needs **no** `MDL`/`CRD` — it carries no domain behavior, so a
+  model of it would be tautological (and authoring one to tick a box is the PM001 failure in
+  disguise).
+- **Vertical** (`src/*`, domain-specific behavior): verified by **SEK self-modelling** — an `MDL`
+  (a SEK model of the module's behavior) **and** a `CRD` (a CORD exploration) that **generates** the
+  conformance tests — **plus** ≥95% line & branch.
 
-If **any** module fails **any** criterion the gate is **FAIL** and the honest, required status is
-**NOT READY** — the only statement allowed. The gate's evidence is a per-module **Readiness
-Inventory** table in the `COV` document; a module with no tests is `Line 0% / FAIL` and may not be
-omitted. No command, template, or agent may state readiness except by reporting a PASSing gate with
-its inventory attached.
+**Precondition (not an escape hatch):** the vertical must contain **only** domain-specific behavior.
+Any **generic / domain-free** code still living in the vertical is an **ARC002 violation and a gate
+FAIL** — it must be extracted into a `components/` component first (and then unit/property-tested).
+This is what makes a self-hosting/model-based tool honestly self-validating: *factor the generic code
+out, and the residual vertical is the real domain surface the tool can model and explore.*
+
+If **any** module fails **any** applicable criterion the gate is **FAIL** and the honest, required
+status is **NOT READY** — the only statement allowed. The gate's evidence is a per-module **Readiness
+Inventory** table (with a **Class** column) in the `COV` document; a module with no tests is
+`Line 0% / FAIL` and may not be omitted. No command, template, or agent may state readiness except by
+reporting a PASSing gate with its inventory attached.
