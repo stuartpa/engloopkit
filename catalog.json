@@ -1,0 +1,28 @@
+{
+  "catalog_version": "1.0",
+  "extensions": [
+    {
+      "name": "EngLoopKit",
+      "id": "engloopkit",
+      "description": "Loop-engineering stage commands: seed, architect, model, explore, coverage, incident, postmortem, repair, refactor-scan.",
+      "author": "stuartpa",
+      "version": "1.0.0",
+      "download_url": "https://github.com/stuartpa/engloopkit/archive/refs/tags/v1.0.0.zip",
+      "repository": "https://github.com/stuartpa/engloopkit",
+      "homepage": "https://github.com/stuartpa/engloopkit",
+      "documentation": "https://github.com/stuartpa/engloopkit/blob/main/README.md",
+      "changelog": "https://github.com/stuartpa/engloopkit/blob/main/CHANGELOG.md",
+      "license": "MIT",
+      "requires": {
+        "speckit_version": ">=0.12.0",
+        "tools": []
+      },
+      "provides": {
+        "commands": 9,
+        "hooks": 0
+      },
+      "tags": ["loop-engineering", "spec-driven", "model-checking", "operations", "refactoring"],
+      "verified": false
+    }
+  ]
+}

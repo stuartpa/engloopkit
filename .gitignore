@@ -1,0 +1,6 @@
+# Bundle build artifacts produced by `specify bundle build`
+*.zip
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db

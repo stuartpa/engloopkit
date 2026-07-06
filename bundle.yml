@@ -1,0 +1,45 @@
+schema_version: "1.0"
+
+bundle:
+  id: "engloopkit"
+  name: "EngLoopKit"
+  version: "1.0.0"
+  role: "loop-engineer"
+  description: "The engineering loop as a Spec Kit bundle: seed to bridging code, architecture, model-checked test generation, and incident-driven operations — designed to be token-efficient."
+  author: "stuartpa"
+  license: "MIT"
+
+requires:
+  speckit_version: ">=0.12.0"
+
+# EngLoopKit uses no runtime tools of its own. SEK (the Z3 model explorer) is an
+# optional external tool invoked by the model/explore/coverage commands; it is not
+# required to install the bundle.
+tools: []
+mcp: []
+
+provides:
+  extensions:
+    # EngLoopKit's own loop-stage commands (seed, architect, model, explore,
+    # coverage, incident, postmortem, repair, refactor-scan).
+    - id: "engloopkit"
+      version: "1.0.0"
+
+    # Architecture governance for the post-bridging architecture stage and for
+    # honoring the long-lived architecture on every subsequent loop.
+    # Resolves from the architecture-guard catalog (see README > Install).
+    - id: "architecture-guard"
+      version: "1.11.0"
+
+    # Lightweight single-file flow for repair items that do not need the full
+    # specify -> plan -> tasks -> implement loop.
+    # Resolves from the tinyspec catalog (see README > Install).
+    - id: "tinyspec"
+      version: "1.0.0"
+
+tags:
+  - "loop-engineering"
+  - "spec-driven"
+  - "model-checking"
+  - "operations"
+  - "token-efficiency"
