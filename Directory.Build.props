@@ -1,0 +1,10 @@
+<Project>
+  <!--
+    EngLoopKit stays on the same dev platform as SEK: .NET 8, C#, xUnit, no extra deps.
+    Kept intentionally light so the SEK model project (Nullable/ImplicitUsings disabled)
+    and the auto-generated xUnit project can set their own conventions without conflict.
+  -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+</Project>

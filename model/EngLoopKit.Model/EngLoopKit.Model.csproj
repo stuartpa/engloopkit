@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    SEK model of the EngLoopKit engineering loop. Independent spec of the loop's legal
+    stage transitions; `sek explore` turns it into the loop graph and `sek generate`
+    emits an xUnit conformance suite that replays legal stage sequences against the SUT
+    (EngLoopKit.Core.Loop). Follows SEK's model-project conventions (Nullable/ImplicitUsings
+    disabled, AssemblyName Model, ProjectReference to Sek.Modeling).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>EngLoopKit.Model</RootNamespace>
+    <AssemblyName>Model</AssemblyName>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\SEK\src\Sek.Modeling\Sek.Modeling.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="*.cord" />
+  </ItemGroup>
+
+</Project>

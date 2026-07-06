@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/EngLoopKit.Core/EngLoopKit.Core.csproj" />
+  </Folder>
+  <Folder Name="/model/">
+    <Project Path="model/EngLoopKit.Model/EngLoopKit.Model.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/EngLoopKit.Tests/EngLoopKit.Tests.csproj" />
+    <Project Path="tests/EngLoopKit.Loop.Generated/ModelProgramTests.csproj" />
+  </Folder>
+</Solution>

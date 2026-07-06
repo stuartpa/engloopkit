@@ -1,6 +1,13 @@
 # Bundle build artifacts produced by `specify bundle build`
 *.zip
 
+# .NET build output
+[Bb]in/
+[Oo]bj/
+
+# SEK exploration output (regenerate with `sek explore`)
+.specexplorerkit/out/
+
 # OS / editor cruft
 .DS_Store
 Thumbs.db

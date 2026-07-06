@@ -1,0 +1,41 @@
+name: ci
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      # EngLoopKit and SEK are checked out as siblings so the model project's
+      # ProjectReference to Sek.Modeling (../../../SEK/src/Sek.Modeling) resolves.
+      - name: Checkout EngLoopKit
+        uses: actions/checkout@v4
+        with:
+          path: EngLoopKit
+
+      - name: Checkout SEK (for Sek.Modeling)
+        uses: actions/checkout@v4
+        with:
+          repository: stuartpa/sek
+          path: SEK
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build solution
+        working-directory: EngLoopKit
+        run: dotnet build EngLoopKit.slnx -c Debug
+
+      # The SEK-generated conformance test bakes in an absolute binding path; override it
+      # with SEK_BINDING so the tests find the freshly-built Core on the runner.
+      - name: Test
+        working-directory: EngLoopKit
+        env:
+          SEK_BINDING: ${{ github.workspace }}/EngLoopKit/src/EngLoopKit.Core/bin/Debug/EngLoopKit.Core.dll
+        run: dotnet test EngLoopKit.slnx -c Debug --no-build

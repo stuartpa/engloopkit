@@ -1,0 +1,6 @@
+{
+  "model":   { "assembly": "model/EngLoopKit.Model/bin/Debug/Model.dll", "type": "EngLoopKit.Model.LoopModel" },
+  "cord":    "model/EngLoopKit.Model",
+  "binding": { "assembly": "src/EngLoopKit.Core/bin/Debug/EngLoopKit.Core.dll", "namespace": "EngLoopKit.Core" },
+  "out":     ".specexplorerkit/out"
+}

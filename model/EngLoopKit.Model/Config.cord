@@ -1,0 +1,23 @@
+using EngLoopKit.Core;
+using Microsoft.Modeling;
+
+// SEK model of the EngLoopKit engineering loop. The `using` directives are parsed and
+// ignored by SEK (types resolve from the model assembly named in config.json); they are
+// kept for readability and parity with the Spec Explorer heritage.
+
+config Main
+{
+    action all Loop;
+
+    switch StateBound = 12800;
+    switch StepBound = 12800;
+    switch PathDepthBound = 12800;
+    switch TestEnabled = false;
+}
+
+// The explorable machine: the whole loop state machine. Its state space is finite (the
+// current stage), so exploration terminates and enumerates every legal stage transition.
+machine ModelProgram() : Main
+{
+    construct model program from Main
+}

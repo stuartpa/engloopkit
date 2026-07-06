@@ -183,7 +183,7 @@ decision tree, the rationale, and the SEED it emits.
 
 | Loop | Trigger | Produces | Verification |
 |---|---|---|---|
-| Delivery | `SEED` | `SP`, code, `ARC` | tests pass, architecture-verify clean |
+| Delivery | `SEED` | `SP`, `BRG`, code, `ARC` | tests pass, architecture-verify clean |
 | Verification | new/changed code | `MDL`, `CRD`, `COV` | 95%+ line coverage, then functional coverage |
 | Operations | bug / monitoring | `IN` + `MIT`, then `PM` + `LRN` + `RPI` | system stable; RPIs verified in target env |
 | Evolution | monthly token budget | `REF` → `SEED` | refactor lands via a Delivery loop |
