@@ -18,6 +18,13 @@ actually cover and decides whether to explore more. Together they are the inner
 CORD exploration → Evaluate new coverage → repeat). The exit condition is a real,
 verifiable number — not an LLM's opinion.
 
+## Artifact root
+
+Where a path below is written `docs/…`, read it as `<ARTIFACT_ROOT>/…` — the project's
+artifact root (**default `docs/`**; a project whose `docs/` is a published site overrides
+it, e.g. `engloop/`, in its local `standards.md`). The numbering registry is the
+project's `<ARTIFACT_ROOT>/numbering-registry.md`, not the bundle's copy.
+
 ## Loop definition
 
 - **Trigger:** generated tests exist (from one or more `CRDxxx`).

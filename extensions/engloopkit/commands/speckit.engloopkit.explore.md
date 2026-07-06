@@ -19,6 +19,13 @@ explore it with Z3** to enumerate behaviors and **generate** test cases from the
 explored paths. Coverage becomes a proof, not a guess, and it costs solver time — not
 tokens. Target tests that give **very good functional coverage but execute quickly**.
 
+## Artifact root
+
+Where a path below is written `docs/…`, read it as `<ARTIFACT_ROOT>/…` — the project's
+artifact root (**default `docs/`**; a project whose `docs/` is a published site overrides
+it, e.g. `engloop/`, in its local `standards.md`). The numbering registry is the
+project's `<ARTIFACT_ROOT>/numbering-registry.md`, not the bundle's copy.
+
 ## Loop definition
 
 - **Trigger:** a SEK model (`MDLxxx`) and, on later iterations, a coverage gap

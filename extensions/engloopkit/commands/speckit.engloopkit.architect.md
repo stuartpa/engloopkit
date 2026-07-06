@@ -17,6 +17,13 @@ The bridging code exists and runs (Stage 1 complete). The
 extension is installed (the `engloopkit` bundle pulls it in). This command
 **orchestrates** architecture-guard; it does not replace it.
 
+## Artifact root
+
+Where a path below is written `docs/…`, read it as `<ARTIFACT_ROOT>/…` — the project's
+artifact root (**default `docs/`**; a project whose `docs/` is a published site overrides
+it, e.g. `engloop/`, in its local `standards.md`). The numbering registry is the
+project's `<ARTIFACT_ROOT>/numbering-registry.md`, not the bundle's copy.
+
 ## Loop definition
 
 - **Trigger:** bridging code exists and runs.

@@ -8,12 +8,16 @@ Global counters run across the whole project. Local counters reset inside their 
 document (mitigations reset per incident; learnings and repair items reset per
 post-mortem).
 
+> Artifact root defaults to `docs/`; a project may override it (e.g. `engloop/`) — see
+> [standards.md](standards.md) › Artifact root.
+
 ## Global counters
 
 | Prefix | Scope | Last used | Notes |
 |---|---|---|---|
 | `SEED` | Gathering docs | `SEED000` | none yet |
 | `SP` | Specs | `SP000` | none yet |
+| `BRG` | Bridging-stage records | `BRG000` | none yet |
 | `ARC` | Architecture decisions | `ARC000` | none yet |
 | `MDL` | SEK models | `MDL000` | none yet |
 | `CRD` | CORD explorations | `CRD000` | none yet |

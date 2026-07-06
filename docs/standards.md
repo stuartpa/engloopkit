@@ -19,6 +19,24 @@ orchestrator, package manager, or deployment tool. Substitute your own stack whe
 
 ---
 
+## Artifact root
+
+All paths below are written relative to an **artifact root**, written `<ARTIFACT_ROOT>/`.
+
+- **Default:** `docs/`. In a project with no published documentation site, artifacts
+  live under `docs/seeds/`, `docs/models/`, and so on.
+- **Override:** a project whose `docs/` is already a *published documentation site*
+  (e.g. a DocFX/MkDocs build that globs `**/*.md`) should set the artifact root to a
+  dedicated top-level folder — `engloop/` is the recommended name — so process
+  artifacts never leak into the published site. Then `<ARTIFACT_ROOT>/seeds/` means
+  `engloop/seeds/`, etc.
+
+Record the chosen root once in the project's local `standards.md` (a copy of this file
+with the override noted). Every command resolves `<ARTIFACT_ROOT>` from that local file;
+if absent, it defaults to `docs/`.
+
+---
+
 ## Numbering rules
 
 1. **Prefixes are fixed** (below). Do not invent ad-hoc prefixes; propose additions
@@ -44,7 +62,7 @@ A gathering document. Everything currently known about a thing to be built —
 requirements, prior art, constraints, links, snippets — collected into one place so a
 `specify` loop can start from a single source of truth.
 
-- Path: `docs/seeds/SEEDxxx_<slug>.md`
+- Path: `<ARTIFACT_ROOT>/seeds/SEEDxxx_<slug>.md`
 - Produced by `/speckit.engloopkit.seed` and by `/speckit.engloopkit.refactor-scan`.
 - A SEED is the **Trigger** for a Delivery loop.
 
@@ -56,13 +74,23 @@ governed flow). One feature or repair per spec.
 - Path: Spec Kit's own `specs/SPxxx-<slug>/` (spec.md, plan.md, tasks.md).
 - The **Goal** and plan of a Delivery loop.
 
+#### BRG — `BRG001`, `BRG002`, … *(global)*
+
+A **bridging-stage record**: implementation-state, parity, or audit notes produced while
+getting the bridging code working (Stage 1), before the architecture stage formalizes
+things. Optional — use it when the bridging stage generates status/audit docs worth
+keeping as Memory rather than discarding.
+
+- Path: `<ARTIFACT_ROOT>/bridging/BRGxxx_<slug>.md`
+- Produced during Stage 1 (the bridging specify loop); not tied to a single command.
+
 #### ARC — `ARC001`, `ARC002`, … *(global)*
 
 A long-lived architecture decision or constitution article — boundaries, ownership,
 contracts. Derived from bridging code, then **governed** on every later loop by
 architecture-guard.
 
-- Path: `docs/architecture/ARCxxx_<slug>.md` (architecture-guard's constitutions may
+- Path: `<ARTIFACT_ROOT>/architecture/ARCxxx_<slug>.md` (architecture-guard's constitutions may
   also live in its own location; ARC docs are the human-readable decisions).
 - Produced by `/speckit.engloopkit.architect`.
 
@@ -73,7 +101,7 @@ architecture-guard.
 A SEK **model** definition: the state fields, actions, and invariants that describe
 the implementation's behavior as an explorable state space.
 
-- Path: `docs/models/MDLxxx_<slug>.md` (the human description) alongside the SEK model
+- Path: `<ARTIFACT_ROOT>/models/MDLxxx_<slug>.md` (the human description) alongside the SEK model
   source it points to.
 - Produced by `/speckit.engloopkit.model`.
 
@@ -82,7 +110,7 @@ the implementation's behavior as an explorable state space.
 A CORD exploration: the scenarios/constraints explored against a model to generate
 test cases and the coverage goal each targets.
 
-- Path: `docs/cord/CRDxxx_<slug>.md` alongside its `.cord` script.
+- Path: `<ARTIFACT_ROOT>/cord/CRDxxx_<slug>.md` alongside its `.cord` script.
 - Produced by `/speckit.engloopkit.explore`.
 
 #### COV — `COV001`, `COV002`, … *(global)*
@@ -90,7 +118,7 @@ test cases and the coverage goal each targets.
 A coverage report closing the SEK↔coverage loop: line/branch coverage achieved, gaps,
 and which CRD explorations to extend next.
 
-- Path: `docs/coverage/COVxxx_<slug>.md`
+- Path: `<ARTIFACT_ROOT>/coverage/COVxxx_<slug>.md`
 - Produced by `/speckit.engloopkit.coverage`.
 
 ### Operations loop
@@ -101,7 +129,7 @@ An unplanned disruption that required intervention. Contains symptom, timeline, 
 mitigations — **not** repair items (those belong to the post-mortem). Closed when the
 system is stable, **not** when the root cause is fixed.
 
-- Path: `docs/incidents/INxxx_<slug>.md`
+- Path: `<ARTIFACT_ROOT>/incidents/INxxx_<slug>.md`
 - Produced by `/speckit.engloopkit.incident`.
 
 #### MIT — `MIT001`, `MIT002`, … *(local to an incident)*
@@ -116,7 +144,7 @@ scale up). A mitigation is **not a fix**. Recorded in the incident timeline.
 A structured analysis of **one or more** incidents, written after the system is
 stable. Contains timeline, 5-whys, ONE-AND-DONE analysis, Learnings, and Repair Items.
 
-- Path: `docs/postmortems/PMxxx_<slug>.md`; indexed in `docs/postmortems/INDEX.md`.
+- Path: `<ARTIFACT_ROOT>/postmortems/PMxxx_<slug>.md`; indexed in `<ARTIFACT_ROOT>/postmortems/INDEX.md`.
 - Produced by `/speckit.engloopkit.postmortem`.
 
 #### LRN — `LRN001`, `LRN002`, … *(local to a post-mortem)*
@@ -138,7 +166,7 @@ passes verification in the target environment.
 A refactor decision from the monthly refactor scan: the strategy chosen from the
 decision tree, the rationale, and the SEED it emits.
 
-- Path: `docs/refactors/REFxxx_<slug>.md`
+- Path: `<ARTIFACT_ROOT>/refactors/REFxxx_<slug>.md`
 - Produced by `/speckit.engloopkit.refactor-scan`.
 
 ---
@@ -168,7 +196,7 @@ decision tree, the rationale, and the SEED it emits.
 ┌─────────────────────────────────────────────────────────────┐
 │  INCIDENT (INxxx)                                            │
 │  Something breaks. Apply Mitigations (MITxxx) to stabilize.  │
-│  Log docs/incidents/INxxx_<slug>.md. Close when stable.      │
+│  Log <ARTIFACT_ROOT>/incidents/INxxx.md. Close when stable.  │
 └───────────────────────────────┬─────────────────────────────┘
                                  │ system stable; a SET of incidents chosen
                                  ▼

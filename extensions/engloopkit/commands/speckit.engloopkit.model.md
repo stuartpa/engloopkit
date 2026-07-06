@@ -25,6 +25,13 @@ implementation's shape changes), while explorations change often as coverage gap
 found. See *Why model and explore are two commands, one loop* in
 [the engineering loop](../../docs/engineering-loop.md).
 
+## Artifact root
+
+Where a path below is written `docs/…`, read it as `<ARTIFACT_ROOT>/…` — the project's
+artifact root (**default `docs/`**; a project whose `docs/` is a published site overrides
+it, e.g. `engloop/`, in its local `standards.md`). The numbering registry is the
+project's `<ARTIFACT_ROOT>/numbering-registry.md`, not the bundle's copy.
+
 ## Loop definition
 
 - **Trigger:** final-form code exists (Stage 3), or code changed via a repair.

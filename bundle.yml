@@ -3,7 +3,7 @@ schema_version: "1.0"
 bundle:
   id: "engloopkit"
   name: "EngLoopKit"
-  version: "1.0.0"
+  version: "1.1.0"
   role: "loop-engineer"
   description: "The engineering loop as a Spec Kit bundle: seed to bridging code, architecture, model-checked test generation, and incident-driven operations — designed to be token-efficient."
   author: "stuartpa"
@@ -23,7 +23,7 @@ provides:
     # EngLoopKit's own loop-stage commands (seed, architect, model, explore,
     # coverage, incident, postmortem, repair, refactor-scan).
     - id: "engloopkit"
-      version: "1.0.0"
+      version: "1.1.0"
 
     # Architecture governance for the post-bridging architecture stage and for
     # honoring the long-lived architecture on every subsequent loop.

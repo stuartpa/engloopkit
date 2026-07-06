@@ -18,6 +18,13 @@ or lose**. After a month of incident → post-mortem → repair loops, the codeb
 accumulated pressure (drift, duplication, hot spots, recurring cause-classes). This is
 the slow **evolution loop** that keeps the product healthy for years.
 
+## Artifact root
+
+Where a path below is written `docs/…`, read it as `<ARTIFACT_ROOT>/…` — the project's
+artifact root (**default `docs/`**; a project whose `docs/` is a published site overrides
+it, e.g. `engloop/`, in its local `standards.md`). The numbering registry is the
+project's `<ARTIFACT_ROOT>/numbering-registry.md`, not the bundle's copy.
+
 ## Loop definition
 
 - **Trigger:** a schedule (month-end) and available token budget.
