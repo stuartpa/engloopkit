@@ -155,8 +155,12 @@ machine TestSuite() : Main where TestEnabled = true { construct test cases for S
   (`AssemblyLoadContext.LoadFromAssemblyPath`), then for each action label
   `"<Class>.<Method>"` resolves `bindingNamespace + "." + Class`, finds `Method`
   (public/nonpublic, static/instance), coerces string args (`string` as-is, enums via
-  `Enum.Parse`, else `Convert.ChangeType`), and invokes it. Instance methods get a fresh
-  `Activator.CreateInstance`.
+  `Enum.Parse`, else `Convert.ChangeType`), and invokes it. Instance methods use **one SUT
+  instance per test path** (the harness caches one instance per SUT type and reuses it across the
+  steps of a `[Fact]`; xUnit news a fresh test class per fact, so paths stay isolated). This means
+  a **stateful** SUT is driven correctly across a path — e.g. `Coin(); Push()` acts on the same
+  turnstile. (Fixed in SEK after the first binding sample; earlier builds new-ed a fresh instance
+  per step and could not drive stateful SUTs.)
 - The binding DLL **path is baked in** as `DefaultBinding`; override at runtime with the
   **`SEK_BINDING`** environment variable.
 - `call` actions → `Step` (driven); `event` actions → `Observe` (asserted).
@@ -169,9 +173,16 @@ under the binding namespace, with methods whose names/arities match. The generat
 
 - `generate`/`test` need a `binding`; `explore` does not.
 - The CLI DLL is `sek.dll`. Invoke via `dotnet <path>/sek.dll`.
-- No in-repo SEK sample wires a `binding` — a downstream consumer is the first to; get
-  the SUT class/method names to match the model rule names exactly, or the reflection in
-  the generated harness throws at run time (surfaced as failing asserts).
+- **Reference binding sample:** `SEK/samples/Turnstile` is the first in-repo sample that wires a
+  `binding` (a stateful SUT + model + cord). Copy its layout: `Sut/` (the SUT class-library),
+  `Model/` (`ModelProgram` + `.cord`), and `.specexplorerkit/config.json` with a `binding`. Its
+  generated tests pass and run in CI, so it is the known-good template.
+- Object-valued arguments and object-valued *return* state still cannot be threaded by the
+  generated harness (it coerces only string/enum/primitive args). Model such SUTs with
+  primitive-keyed actions, or use `sek test` / hand-written tests.
+- Get the SUT class/method names to match the model rule names exactly (`[Rule("Class.Method")]`
+  binds to `bindingNamespace + "." + Class` and method `Method`), or the reflection throws at run
+  time (surfaced as failing asserts).
 - Build the model project **before** `explore`/`generate` (the tool loads `Model.dll`),
   and build the SUT before running the generated tests (they load the binding DLL).
 - Don't pipe interactive tool commands through `Select-Object` — it hides prompts.
