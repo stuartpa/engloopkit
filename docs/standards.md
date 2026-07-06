@@ -232,3 +232,30 @@ decision tree, the rationale, and the SEED it emits.
 
 Every deployment to the target environment must pass all tests listed in the relevant
 incident/post-mortem before the incident can be closed.
+
+---
+
+## Readiness Gate — Definition of Ready-for-Incidents
+
+> **"Ready for incidents" / "ready to operate" is the OUTPUT of a gate, never an input an agent
+> asserts.** A project may NOT be described as ready, and MUST NOT be treated as being in Stage 6
+> (operate), until the Readiness Gate returns **PASS**. This is a hard precondition, not a
+> guideline. (Ratified after `PM001`: a consumer was declared "ready for incidents" with almost
+> nothing modelled, explored, or covered, because readiness was narrated instead of proven.)
+
+The gate is computed by `/speckit.engloopkit.coverage` (Stage 5) over the **whole product**. It
+**PASSES** iff, for **every** module — each `components/*` component **and** the vertical — all of:
+
+1. **Modelled** — the module has an `MDL` (a SEK model of its behavior).
+2. **Explored** — the module has a `CRD` (a CORD exploration driving its tests).
+3. **Covered** — **measured** line coverage ≥95% **and** branch coverage ≥95% (from real
+   coverage tooling, attached to the `COV`), or each shortfall line carries a written rationale.
+4. **Architecture-conformant** — the module honors every applicable `ARC` / architecture-guard
+   check (no boundary violations, no leaked components).
+5. **Green** — the full unit-test suite and any exploration-regression gate pass.
+
+If **any** module fails **any** criterion the gate is **FAIL** and the honest, required status is
+**NOT READY** — the only statement allowed. The gate's evidence is a per-module **Readiness
+Inventory** table in the `COV` document; a module with no tests is `Line 0% / FAIL` and may not be
+omitted. No command, template, or agent may state readiness except by reporting a PASSing gate with
+its inventory attached.

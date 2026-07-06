@@ -15,8 +15,8 @@ in the bundle's [../docs/standards.md](../docs/standards.md). Artifact root is `
 | `MDL` | SEK models | `MDL001` | MDL001 = engineering-loop state machine |
 | `CRD` | CORD explorations | `CRD001` | CRD001 = loop conformance exploration |
 | `COV` | Coverage reports | `COV001` | COV001 = conformance/artifact coverage |
-| `IN` | Incidents | `IN000` | none yet — Stage 6 is next |
-| `PM` | Post-mortems | `PM000` | none yet |
+| `IN` | Incidents | `IN001` | IN001 = a consumer (SEK) was declared "ready for incidents" with no readiness bar met |
+| `PM` | Post-mortems | `PM001` | PM001 = no enforced readiness gate (narrated readiness); RPI001-003 |
 | `REF` | Refactor decisions | `REF000` | none yet |
 
 ## Local counters

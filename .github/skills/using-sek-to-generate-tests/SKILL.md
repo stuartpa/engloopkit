@@ -19,6 +19,12 @@ explored action sequences against your real implementation (the **SUT / binding*
 This skill is the consumer's cheat-sheet — everything below was verified against SEK
 v0.1.1 and the in-repo samples.
 
+> **Readiness is a gate, not a claim (PM001).** Generating tests for a component does **not** make
+> a project "ready for incidents." A project is ready **iff** every module (each `components/*` and
+> the vertical) is modelled + explored + covered ≥95% line/branch + conformant + green — the verdict
+> of `/speckit.engloopkit.coverage`. Never narrate readiness from "I generated some tests" or "the
+> pilot passed"; if the whole-product gate has not PASSed, the status is NOT READY.
+
 ## Consuming SEK (no new dependencies beyond what SEK uses)
 
 - **The CLI** is a .NET global tool. Install from the release nupkg:
