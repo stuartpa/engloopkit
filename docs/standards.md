@@ -257,6 +257,17 @@ useful unchanged in an unrelated repo?*):
   (a SEK model of the module's behavior) **and** a `CRD` (a CORD exploration) that **generates** the
   conformance tests — **plus** ≥95% line & branch.
 
+**Self-model granularity is behavior-level (PM003).** A vertical is usually a **pipeline** whose
+assemblies are *stages*, not standalone products. The self-model criterion is satisfied by **at least
+one representative end-to-end self-model** (`MDL` + `CRD`) whose exploration/conformance exercises the
+vertical's **observable behavior against a real SUT**, together with the tool's conformance loops over
+its samples. Internal pipeline stages are then validated **transitively** by that end-to-end flow — a
+bespoke model *per assembly* is **not** required and is discouraged as tautological theatre (PM002). A
+**pure value-type** vertical module (no observable stateful behavior) is verified like a component
+(unit/property). **The ≥95% line & branch coverage requirement remains PER module** regardless —
+behavior-level self-modelling fixes only *where the "modelled + explored" evidence lives*, never the
+coverage bar.
+
 **Precondition (not an escape hatch):** the vertical must contain **only** domain-specific behavior.
 Any **generic / domain-free** code still living in the vertical is an **ARC002 violation and a gate
 FAIL** — it must be extracted into a `components/` component first (and then unit/property-tested).

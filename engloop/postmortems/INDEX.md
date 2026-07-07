@@ -4,3 +4,4 @@
 |---|---|---|---|---|
 | [PM001](PM001_no-readiness-gate.md) | No enforced readiness gate — "ready for incidents" was narrated, not proven | IN001 | process-gap, validation-gap | — |
 | [PM002](PM002_gate-verification-method-by-class.md) | Readiness Gate must set the verification method by module class | IN002 | validation-gap, process-gap | refines PM001 |
+| [PM003](PM003_selfmodel-behavior-granularity.md) | Self-model criterion is behavior-level, not per-internal-assembly | IN003 | validation-gap | refines PM002 |

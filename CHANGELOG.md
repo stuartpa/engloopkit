@@ -3,6 +3,25 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-07-06
+
+### Changed
+
+- **Readiness Gate: the vertical self-model criterion is now stated at behavior granularity**
+  (PM003/IN003). A vertical is usually a pipeline whose assemblies are *stages*; the self-model
+  criterion is satisfied by **one representative end-to-end self-model** (MDL + CRD) that exercises
+  the vertical's observable behavior against a real SUT, plus the tool's sample conformance loops —
+  internal stages are validated transitively. A bespoke model *per assembly* is **not** required and
+  is discouraged as theatre (per PM002). Pure value-type vertical modules are verified like
+  components. **The ≥95% line & branch coverage requirement stays per module** — this only fixes
+  *where the "modelled + explored" evidence lives*, never the coverage bar.
+
+### Why
+
+- Post-mortem **PM003** (incident **IN003**): applying v1.4.0 to a pipeline vertical (a compiler +
+  engine) read as "model each internal assembly," which would be tautological theatre. The fix states
+  the granularity so neither theatre nor under-verification is expressible.
+
 ## [1.4.0] - 2026-07-06
 
 ### Changed
