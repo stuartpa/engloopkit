@@ -61,6 +61,12 @@ that + 1, zero-padded. **Increment the registry first.** Derive a `<slug>`.
    - **Actions** — the operations that change state (public methods, message handlers,
      API endpoints), and for each: preconditions, effects, and result kind
      (call/return/event).
+   - **Expected error / rejection outcomes (PM004)** — for each action, what the SUT must do
+     when it is invoked **out of its legal order or with invalid input** (the error it returns /
+     exception it throws / non-zero exit). Capture these as **modelled outcomes**, not as
+     hand-coded asserts in the SUT — they are the substrate for the required **negative
+     conformance** tests. A guard says *when* an action is legal; the expected-error outcome says
+     *what happens when it is attempted illegally*.
    - **Invariants** — properties that must always hold (no negative balance, a closed
      handle is never read, etc.).
 2. Note where the honest abstraction boundary is: model behavior, not implementation
@@ -73,6 +79,15 @@ Author the SEK model source (the modeling constructs the SEK engine consumes —
 fields, actions with pre/effect, and invariants). Keep it minimal and faithful. Where
 the implementation uses collections, model them as state fields (containers), not as
 unbounded free variables, so exploration stays bounded.
+
+**Make the model adequate, not a toy (PM004).** For a **stateful vertical** the model must be
+**behaviorally rich enough to branch** — multiple interacting state fields / real ordering
+constraints so exploration yields *materially distinct* paths, not a single flat covering-tour —
+**and** must carry **expected-error outcomes** so the tool can generate **model-derived negative
+conformance** (tests that drive illegal sequences and assert the modelled error). Do **not** model
+an "error case" as an always-enabled positive action whose SUT body asserts a failure — that is
+hand-coded theatre and fails the Readiness Gate; let the model's guards + expected-error outcomes
+*derive* the negative test.
 
 ## Step 3 — Sanity-explore (Evaluate)
 

@@ -31,6 +31,15 @@ v0.1.1 and the in-repo samples.
 > SEK model of a pure function — extract it to a component (ARC002) and unit-test it. A self-hosting
 > tool becomes self-validating precisely once its generics are factored out and the residual
 > vertical is pure domain behavior.
+>
+> **A self-model must be adequate, not a toy (PM004).** For a stateful vertical the model must be
+> **behaviorally rich enough to branch** (multiple interacting state fields / real ordering
+> constraints — not a single boolean, which just yields flat covering-tours) **and** must prove
+> **negative conformance**: generated tests that drive **illegal** sequences (an action out of order
+> / with invalid input) and **assert the modelled error** outcome. Positive "every legal action ran"
+> conformance is **insufficient** for the gate. Model the **expected-error outcome** of each action
+> so the tool *derives* the negative test — do **not** fake it with an always-enabled positive action
+> whose SUT body hand-codes `assert failure` (that is theatre and a gate FAIL).
 
 ## Consuming SEK (no new dependencies beyond what SEK uses)
 

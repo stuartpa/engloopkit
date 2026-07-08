@@ -268,6 +268,36 @@ bespoke model *per assembly* is **not** required and is discouraged as tautologi
 behavior-level self-modelling fixes only *where the "modelled + explored" evidence lives*, never the
 coverage bar.
 
+**Self-model adequacy is graded, not assumed (PM004).** A self-model must be *worth something* — the
+gate grades its **behavioral adequacy**, not merely its existence and positive conformance. A vertical
+self-model MUST satisfy all three:
+
+1. **Model-derived negative conformance (required).** The model must express **expected outcomes**,
+   including **error / rejection outcomes** for actions attempted **out of their legal order or with
+   invalid input**, and the generated conformance MUST include **negative tests** that drive those
+   **illegal** sequences and **assert the modelled error**. Positive conformance alone ("every legal
+   action executed without throwing") is **insufficient** — it says nothing about whether the SUT
+   correctly *rejects* what it should. *(Positive and negative conformance are different guarantees;
+   the gate requires both.)*
+2. **No hand-coded error asserts (theatre = FAIL).** The negative test must be **derived by the tool
+   from the model** (guard/precondition + expected-error outcome). An "error case" implemented as an
+   always-enabled positive action whose SUT body simply asserts a failure is **hand-coded, not
+   model-derived** — it is the PM002 theatre class relocated to error-testing, and it is a **gate
+   FAIL**. If a human writes the error assertion, the human — not the model — is validating error
+   behavior.
+3. **Behavioral-richness floor.** The model must exercise **non-trivial behavioral state** (multiple
+   interacting state variables / real ordering constraints) such that exploration yields **materially
+   distinct paths**, not a single flat covering-tour. A self-model whose reachable graph is one
+   boolean is **not** an adequate behavior model of a stateful vertical (its generated suite is a
+   script, not a behavior space) and is a **gate FAIL**.
+
+The `COV` Readiness Inventory records, per vertical self-model, **Negative-conformance? (Y/N)** and
+**Branches? (Y/N)**; either `N` on a stateful vertical is a **FAIL**. *(Raising this bar can move a
+previously-"ready" project — including a self-hosting tool validating itself — back to **NOT READY**
+until it provides model-derived negative conformance and a richer model. That is intended: the gate
+must fail hollow self-validation, and this criterion also forces a model-based tool to grow the
+negative-conformance capability it assumes.)*
+
 **Precondition (not an escape hatch):** the vertical must contain **only** domain-specific behavior.
 Any **generic / domain-free** code still living in the vertical is an **ARC002 violation and a gate
 FAIL** — it must be extracted into a `components/` component first (and then unit/property-tested).

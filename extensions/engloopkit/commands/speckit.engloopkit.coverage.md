@@ -64,6 +64,14 @@ useful unchanged in an unrelated repo?*):
      real SUT (plus the sample conformance loops) satisfies this for *all* the pipeline's internal
      stages — do **not** author a bespoke model per assembly (theatre). Pure value-type vertical
      modules are verified like components. **≥95% coverage still applies per module.**
+     **Self-model adequacy (PM004) — all three or FAIL:** (a) the self-model proves **model-derived
+     negative conformance** — generated tests that drive **illegal** sequences (out-of-order / invalid
+     input) and **assert the modelled error**, not just positive "every legal action ran" paths;
+     (b) **no hand-coded error asserts** — an error case implemented as an always-enabled positive
+     action whose SUT body asserts a failure is theatre and a **FAIL** (the tool must derive the
+     negative test from the model's guards + expected-error outcomes); (c) a **behavioral-richness
+     floor** — non-trivial branching state so exploration yields materially distinct paths, not a
+     single flat covering-tour.
 3. **Domain-only vertical (precondition, not an escape hatch):** any generic/domain-free code still
    in the vertical is an **ARC002 violation and a FAIL** — extract it to a component first.
 4. **Architecture-conformant** — the module honors every applicable `ARC` / architecture-guard check.
@@ -86,17 +94,21 @@ is idiomatic for the stack). Do **not** estimate. Record, **per module** (each `
 the vertical) and overall:
 - line and branch coverage,
 - whether the module has an `MDL` and a `CRD`,
+- for a **vertical** self-model, whether it proves **negative conformance** (model-derived
+  illegal-sequence tests with asserted errors) and whether it has **non-trivial branching**,
 - total suite runtime (the "fast" constraint) and any slow outliers.
 
 Build the **Readiness Inventory** — one row per module of the product:
 
-| Module | Class | MDL? | CRD? | Line% | Branch% | Conformant? | PASS/FAIL |
-|---|---|---|---|---|---|---|---|
-| components/<Name> | component | n/a | n/a | | | | |
-| <vertical module> | vertical | | | | | | |
+| Module | Class | MDL? | CRD? | Neg-conf? | Branches? | Line% | Branch% | Conformant? | PASS/FAIL |
+|---|---|---|---|---|---|---|---|---|---|
+| components/<Name> | component | n/a | n/a | n/a | n/a | | | | |
+| <vertical module> | vertical | | | | | | | | |
 
-**Class** is decided by the ARC002 litmus test. For a **component**, `MDL?`/`CRD?` are `n/a`
-(unit/property-tested); for a **vertical** module they are required. A module with **no tests at
+**Class** is decided by the ARC002 litmus test. For a **component**, `MDL?`/`CRD?`/`Neg-conf?`/
+`Branches?` are `n/a` (unit/property-tested); for a **vertical** module `MDL?`+`CRD?` are required, and
+(PM004) **`Neg-conf?` and `Branches?` must both be `Y`** — an `N` on a stateful vertical is a `FAIL`
+(positive-only or single-bit self-model). A module with **no tests at
 all** is `Line 0% / FAIL` — it does not get to be absent from the table. If a **vertical** row is
 actually generic/domain-free code, that is an ARC002 violation → `FAIL` (extract it to a component
 first). The product's module list comes from the repo (every `components/*` project and every

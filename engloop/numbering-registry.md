@@ -15,8 +15,8 @@ in the bundle's [../docs/standards.md](../docs/standards.md). Artifact root is `
 | `MDL` | SEK models | `MDL001` | MDL001 = engineering-loop state machine |
 | `CRD` | CORD explorations | `CRD001` | CRD001 = loop conformance exploration |
 | `COV` | Coverage reports | `COV001` | COV001 = conformance/artifact coverage |
-| `IN` | Incidents | `IN003` | IN001 = consumer declared ready with no bar met; IN002 = gate conflates verification method with being verified; IN003 = self-model granularity ambiguous for a pipeline vertical |
-| `PM` | Post-mortems | `PM003` | PM001 = no readiness gate; PM002 = verification method by module class; PM003 = self-model criterion is behavior-level |
+| `IN` | Incidents | `IN004` | IN001 = consumer declared ready with no bar met; IN002 = gate conflates verification method with being verified; IN003 = self-model granularity ambiguous for a pipeline vertical; IN004 = gate accepts positive-only / thin self-models (no negative-path conformance, no behavioral-richness floor) |
+| `PM` | Post-mortems | `PM004` | PM001 = no readiness gate; PM002 = verification method by module class; PM003 = self-model criterion is behavior-level; PM004 = self-model must be behaviorally rich + prove negative conformance |
 | `REF` | Refactor decisions | `REF000` | none yet |
 
 ## Local counters

@@ -55,7 +55,14 @@ Given the target model and (if any) the coverage gap:
 2. Decide the scenarios worth exploring: the paths through the model that exercise the
    uncovered behavior. Prefer a **small number of high-coverage explorations** over
    many overlapping ones (the solver will find the minimal covering set).
-3. Set the exploration bounds (depth, scenario argument domains) so the run is
+3. **Cover negative behavior too (PM004).** For a stateful vertical, positive "happy-path"
+   scenarios are **not sufficient** for the Readiness Gate. Include scenarios that drive
+   **illegal sequences** (an action out of its legal order / with invalid input) so SEK
+   generates **negative conformance** tests that assert the modelled **error** outcome — the tool
+   derives these from the model's guards + expected-error outcomes; do not hand-write the
+   assertion. If the model can't express the illegal transition or its expected error, that is a
+   modelling/tool gap to fix, not a scenario to skip.
+4. Set the exploration bounds (depth, scenario argument domains) so the run is
    **bounded and fast**. A model that doesn't converge is a modeling bug — fix bounds,
    don't remove constraints.
 
