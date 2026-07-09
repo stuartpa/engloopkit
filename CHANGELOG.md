@@ -3,6 +3,25 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-07-09
+
+### Changed
+
+- **Readiness Gate now grades self-model *adequacy*, not just existence** (IN004/PM004). A vertical's
+  self-model must (1) derive **negative conformance** from the model — illegal action sequences are
+  driven against the SUT and must be **rejected** (not merely assert no-throw on happy paths); (2) use
+  **no hand-coded error assertions** (error transitions must come from the model's guards, not bespoke
+  test code — that is theatre per PM003); and (3) meet a **behavioral-richness floor** (more than a
+  trivial one-bit state). The coverage command's Readiness Inventory gained **Neg-conf?** and
+  **Branches?** columns, and the model/explore commands document the negative-conformance and
+  richness expectations.
+
+### Why
+
+- A self-model that only replays happy paths and asserts "it didn't throw" can pass while the SUT
+  silently accepts illegal behavior. Grading adequacy (negative conformance + richness, model-derived)
+  closes that gap so "modelled + explored" is real evidence, not a checkbox.
+
 ## [1.5.0] - 2026-07-06
 
 ### Changed
