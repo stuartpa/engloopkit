@@ -9,7 +9,7 @@ in the bundle's [../docs/standards.md](../docs/standards.md). Artifact root is `
 | Prefix | Scope | Last used | Notes |
 |---|---|---|---|
 | `SEED` | Gathering docs | `SEED001` | SEED001 = EngLoopKit itself |
-| `SP` | Specs | `SP000` | bridging predates a recorded specify loop |
+| `SP` | Specs | `SP001` | SP001 = ordered EngLoop v2 workflow |
 | `BRG` | Bridging-stage records | `BRG000` | none (bridging = the markdown bundle) |
 | `ARC` | Architecture decisions | `ARC005` | bundle-composition, command-loop-contract, numbering-memory, executable-core, component-pattern |
 | `MDL` | SEK models | `MDL001` | MDL001 = engineering-loop state machine |
@@ -17,7 +17,7 @@ in the bundle's [../docs/standards.md](../docs/standards.md). Artifact root is `
 | `COV` | Coverage reports | `COV001` | COV001 = conformance/artifact coverage |
 | `IN` | Incidents | `IN004` | IN001 = consumer declared ready with no bar met; IN002 = gate conflates verification method with being verified; IN003 = self-model granularity ambiguous for a pipeline vertical; IN004 = gate accepts positive-only / thin self-models (no negative-path conformance, no behavioral-richness floor) |
 | `PM` | Post-mortems | `PM004` | PM001 = no readiness gate; PM002 = verification method by module class; PM003 = self-model criterion is behavior-level; PM004 = self-model must be behaviorally rich + prove negative conformance |
-| `REF` | Refactor decisions | `REF000` | none yet |
+| `REF` | Refactor decisions | `REF001` | REF001 = ordered EngLoop v2 workflow, Northstar, verification split, and Learnings Pyramid |
 
 ## Local counters
 
