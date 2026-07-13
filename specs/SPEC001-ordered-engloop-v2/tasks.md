@@ -301,3 +301,5 @@ Recommended minimal high-value first slice for rapid confidence:
 
 This MVP aligns with the requested immediate deployment target while preserving strict stop/go gates and no-fallback semantics.
 
+<!-- End of ordered v2 task ledger. -->
+
