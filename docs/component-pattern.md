@@ -1,7 +1,7 @@
 # The Component Pattern
 
-**Status:** Architectural principle — enforced by `/speckit.engloopkit.architect`, converged
-toward by `/speckit.engloopkit.refactor-scan`.
+**Status:** Architectural principle — enforced by `/speckit.engloop.03-architect`, converged
+toward by `/speckit.engloop.30-refactor-scan`.
 
 EngLoopKit builds software in two kinds of code, and keeps them physically separate:
 
@@ -62,12 +62,12 @@ component is naturally its own **project/assembly** — the unit of reuse and de
 
 This is recursive — EngLoopKit applies it to **itself** and to **every repository it governs**:
 
-- **Stage 2 · Architect** (`/speckit.engloopkit.architect`) **establishes and enforces** the
+- **Stage 03 · Architect** (`/speckit.engloop.03-architect`) **establishes and enforces** the
   boundary: it classifies existing code into vertical vs components, creates the language-
   appropriate `components/` folder, records the boundary as a governed architecture rule
   (an `ARC` that architecture-guard enforces), and files any non-vertical code still sitting
   in the vertical as refactor tasks.
-- **Stage 3 · Refactor to final** and **Stage 7 · Evolve** (`/speckit.engloopkit.refactor-scan`)
+- **Stage 04 · Refactor** and **Stage 30 · Stewardship** (`/speckit.engloop.30-refactor-scan`)
   **converge** toward the ideal: every refactor cycle pulls a little more non-vertical code out
   of the vertical into a component, iterating toward perfection of the pattern.
 

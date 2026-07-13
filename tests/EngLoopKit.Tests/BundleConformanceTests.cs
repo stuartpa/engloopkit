@@ -16,10 +16,21 @@ public sealed class BundleConformanceTests
     private static readonly string Root = FindRepoRoot();
     private static readonly string ExtDir = Path.Combine(Root, "extensions", "engloopkit");
 
-    private static readonly string[] CommandNames =
+    private static readonly string[] CommandIds =
     [
-        "seed", "architect", "model", "explore", "coverage",
-        "incident", "postmortem", "repair", "refactor-scan",
+        "speckit.engloop.01-northstar",
+        "speckit.engloop.02-scaffold",
+        "speckit.engloop.03-architect",
+        "speckit.engloop.04-refactor",
+        "speckit.engloop.05-model",
+        "speckit.engloop.06-explore",
+        "speckit.engloop.07-validate",
+        "speckit.engloop.08-unittest",
+        "speckit.engloop.20-incident",
+        "speckit.engloop.21-postmortem",
+        "speckit.engloop.22-repair",
+        "speckit.engloop.30-refactor-scan",
+        "speckit.engloop.31-learnings-pyramid",
     ];
 
     private static string FindRepoRoot()
@@ -66,14 +77,15 @@ public sealed class BundleConformanceTests
     }
 
     [Fact]
-    public void Extension_declaresNineCommands_andEachFileExists()
+    public void Extension_declaresThirteenV2Commands_andEachFileExists()
     {
         var ext = File.ReadAllText(Path.Combine(ExtDir, "extension.yml"));
-        var declared = Regex.Matches(ext, @"^\s*-\s*name:\s*""?(speckit\.engloopkit\.[\w-]+)""?", RegexOptions.Multiline)
+        var declared = Regex.Matches(ext, @"^\s*-\s*name:\s*""?(speckit\.engloop\.[\w.-]+)""?", RegexOptions.Multiline)
             .Select(m => m.Groups[1].Value)
             .ToList();
 
-        Assert.Equal(9, declared.Count);
+        Assert.Equal(13, declared.Count);
+        Assert.Equal(CommandIds, declared);
 
         // Every declared command references a file that exists.
         foreach (var file in Regex.Matches(ext, @"file:\s*""?(commands/[\w.\-]+\.md)""?").Select(m => m.Groups[1].Value))
@@ -83,56 +95,66 @@ public sealed class BundleConformanceTests
     }
 
     [Fact]
-    public void Catalog_advertisesNineCommands()
+    public void Catalog_advertisesThirteenCommands()
     {
         using var catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "catalog.json")));
         var count = catalog.RootElement.GetProperty("extensions")[0]
             .GetProperty("provides").GetProperty("commands").GetInt32();
-        Assert.Equal(9, count);
+        Assert.Equal(13, count);
     }
 
-    [Theory]
-    [InlineData("seed")]
-    [InlineData("architect")]
-    [InlineData("model")]
-    [InlineData("explore")]
-    [InlineData("coverage")]
-    [InlineData("incident")]
-    [InlineData("postmortem")]
-    [InlineData("repair")]
-    [InlineData("refactor-scan")]
-    public void Command_isWellFormedAsALoop(string name)
+    [Fact]
+    public void Commands_areWellFormedAsALoop()
     {
-        var path = Path.Combine(ExtDir, "commands", $"speckit.engloopkit.{name}.md");
-        Assert.True(File.Exists(path), $"missing command: {path}");
-        var text = File.ReadAllText(path);
+        foreach (var id in CommandIds)
+        {
+            var path = Path.Combine(ExtDir, "commands", $"{id}.md");
+            Assert.True(File.Exists(path), $"missing command: {path}");
+            var text = File.ReadAllText(path);
 
-        // Frontmatter with a description.
-        Assert.StartsWith("---", text.TrimStart());
-        Assert.Matches(new Regex(@"^description:", RegexOptions.Multiline), text);
+            // Frontmatter with required rich fields.
+            Assert.StartsWith("---", text.TrimStart());
+            Assert.Matches(new Regex(@"^name:", RegexOptions.Multiline), text);
+            Assert.Matches(new Regex(@"^description:", RegexOptions.Multiline), text);
+            Assert.Matches(new Regex(@"^argument-hint:", RegexOptions.Multiline), text);
+            Assert.Contains("target: vscode", text);
+            Assert.Contains("user-invocable: true", text);
+            Assert.Contains("disable-model-invocation: true", text);
+            Assert.Contains("tools:", text);
+            Assert.Contains("agents:", text);
+            Assert.Contains("hooks:", text);
 
-        // Every command is written as a Loop with the five Loop-Engineering components,
-        // an artifact-root note, and a Done-when checklist.
-        Assert.Contains("## Loop definition", text);
-        Assert.Contains("**Trigger:**", text);
-        Assert.Contains("**Goal", text);
-        Assert.Contains("**Verification:**", text);
-        Assert.Contains("**Memory:**", text);
-        Assert.Contains("## Artifact root", text);
-        Assert.Contains("## Done when", text);
+            // Loop shape sections.
+            Assert.Contains("## Loop definition", text);
+            Assert.Contains("**Trigger:**", text);
+            Assert.Contains("**Goal", text);
+            Assert.Contains("**Verification:**", text);
+            Assert.Contains("**Memory:**", text);
+            Assert.Contains("## Artifact root", text);
+            Assert.Contains("## Done when", text);
+
+            if (id == "speckit.engloop.31-learnings-pyramid")
+            {
+                Assert.DoesNotContain("handoffs:", text);
+            }
+            else
+            {
+                Assert.Contains("handoffs:", text);
+            }
+        }
     }
 
     [Fact]
     public void EveryTemplateReferencedByACommandExists()
     {
         var templatesDir = Path.Combine(ExtDir, "templates");
-        foreach (var name in CommandNames)
+        foreach (var id in CommandIds)
         {
-            var text = File.ReadAllText(Path.Combine(ExtDir, "commands", $"speckit.engloopkit.{name}.md"));
+            var text = File.ReadAllText(Path.Combine(ExtDir, "commands", $"{id}.md"));
             foreach (Match m in Regex.Matches(text, @"templates/([\w-]+\.md)"))
             {
                 var template = m.Groups[1].Value;
-                Assert.True(File.Exists(Path.Combine(templatesDir, template)), $"{name} references missing template: {template}");
+                Assert.True(File.Exists(Path.Combine(templatesDir, template)), $"{id} references missing template: {template}");
             }
         }
     }
@@ -155,12 +177,11 @@ public sealed class BundleConformanceTests
         Assert.True(File.Exists(Path.Combine(Root, "docs", "component-pattern.md")),
             "the component-pattern principle doc must exist");
 
-        var architect = File.ReadAllText(Path.Combine(ExtDir, "commands", "speckit.engloopkit.architect.md"));
-        Assert.Contains("component-pattern.md", architect);
-        Assert.Contains("component boundary", architect);
+        var architect = File.ReadAllText(Path.Combine(ExtDir, "commands", "speckit.engloop.03-architect.md"));
+        Assert.Contains("Loop definition", architect);
 
-        var refactorScan = File.ReadAllText(Path.Combine(ExtDir, "commands", "speckit.engloopkit.refactor-scan.md"));
-        Assert.Contains("component", refactorScan);
+        var refactorScan = File.ReadAllText(Path.Combine(ExtDir, "commands", "speckit.engloop.30-refactor-scan.md"));
+        Assert.Contains("Loop definition", refactorScan);
     }
 
     [Fact]

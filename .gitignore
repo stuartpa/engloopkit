@@ -8,6 +8,12 @@
 # SEK exploration output (regenerate with `sek explore`)
 .specexplorerkit/out/
 
+# EngLoop transient evidence, generated artifacts, disposable install fixtures, and release staging
+/.engloop/out/
+
+# Local Spec Kit feature selection and fetched catalog cache; not release source.
+/.specify/
+
 # OS / editor cruft
 .DS_Store
 Thumbs.db

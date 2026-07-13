@@ -1,38 +1,32 @@
-# Numbering Registry
+# Ordered EngLoop numbering registry
 
-This is the single source of truth for EngLoopKit document counters. **Increment the
-"Last used" value here before creating a new document**, then create the file with the
-next number. See [standards.md](standards.md) for prefix definitions and rules.
+This is the public template for a governed repository’s tracked
+`.engloop/numbering-registry.md`. The selected repository root owns its own counters;
+no parent, sibling, or prior process root is consulted.
 
-Global counters run across the whole project. Local counters reset inside their parent
-document (mitigations reset per incident; learnings and repair items reset per
-post-mortem).
-
-> Artifact root defaults to `docs/`; a project may override it (e.g. `engloop/`) — see
-> [standards.md](standards.md) › Artifact root.
+Increment a global counter before creating its artifact. Local counters reset in the
+parent artifact and are tracked there.
 
 ## Global counters
 
-| Prefix | Scope | Last used | Notes |
-|---|---|---|---|
-| `SEED` | Gathering docs | `SEED000` | none yet |
-| `SP` | Specs | `SP000` | none yet |
-| `BRG` | Bridging-stage records | `BRG000` | none yet |
-| `ARC` | Architecture decisions | `ARC000` | none yet |
-| `MDL` | SEK models | `MDL000` | none yet |
-| `CRD` | CORD explorations | `CRD000` | none yet |
-| `COV` | Coverage reports | `COV000` | none yet |
-| `IN` | Incidents | `IN000` | none yet |
-| `PM` | Post-mortems | `PM000` | none yet |
-| `REF` | Refactor decisions | `REF000` | none yet |
+| Prefix | Last used | Notes |
+|---|---:|---|
+| `SPEC` | `SPEC000` | Governed specification/refactor records. |
+| `SCAF` | `SCAF000` | Scaffold/test-runway proof records. |
+| `ARCH` | `ARCH000` | Architecture decisions. |
+| `MODEL` | `MODEL000` | Independent behavior models. |
+| `CORD` | `CORD000` | Bounded exploration records. |
+| `COV` | `COV000` | Functional/readiness validation evidence. |
+| `IN` | `IN000` | Actual incidents only. |
+| `PM` | `PM000` | Selected stabilized incident-set postmortems. |
+| `REFACT` | `REFACT000` | Stewardship refactor decisions or no-work records. |
 
 ## Local counters
 
-These reset inside each parent. Track the highest used per parent in the parent
-document itself, not here.
-
 | Prefix | Resets per | Recorded in |
 |---|---|---|
-| `MIT` | Incident | the incident's timeline table |
-| `LRN` | Post-mortem | the post-mortem's Learnings section |
-| `RPI` | Post-mortem | the post-mortem's Repair Items section |
+| `MIT` | `IN` | Incident timeline. |
+| `LEARN` | `PM` | Postmortem learning section. |
+| `RPI` | `PM` | Postmortem repair-item section. |
+
+See [standards.md](standards.md) for the ordering, readiness, and operations rules.

@@ -11,10 +11,10 @@ namespace EngLoopKit.Tests;
 public sealed class NumberingRegistryTests
 {
     [Theory]
-    [InlineData("SEED", 1, "SEED001")]
-    [InlineData("ARC", 12, "ARC012")]
+    [InlineData("SPEC", 1, "SPEC001")]
+    [InlineData("ARCH", 12, "ARCH012")]
     [InlineData("PM", 7, "PM007")]
-    [InlineData("REF", 1000, "REF1000")]
+    [InlineData("REFACT", 1000, "REFACT1000")]
     public void Format_zeroPadsToThreeDigits(string prefix, int n, string expected)
     {
         Assert.Equal(expected, NumberingRegistry.Format(prefix, n));
@@ -29,13 +29,13 @@ public sealed class NumberingRegistryTests
     [Fact]
     public void Format_numberBelowOne_throws()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => NumberingRegistry.Format("SEED", 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => NumberingRegistry.Format("SPEC", 0));
     }
 
     [Fact]
-    public void KnownPrefixes_areTheThirteenStandardOnes()
+    public void KnownPrefixes_areTheTwelveStandardOnes()
     {
-        string[] expected = ["SEED", "SP", "BRG", "ARC", "MDL", "CRD", "COV", "IN", "PM", "REF", "MIT", "LRN", "RPI"];
+        string[] expected = ["SPEC", "SCAF", "ARCH", "MODEL", "CORD", "COV", "IN", "PM", "REFACT", "MIT", "LEARN", "RPI"];
         foreach (var p in expected)
         {
             Assert.True(NumberingRegistry.IsKnownPrefix(p), p);
@@ -49,27 +49,27 @@ public sealed class NumberingRegistryTests
     public void Next_incrementsFromZero()
     {
         var reg = new NumberingRegistry();
-        Assert.Equal(0, reg.LastUsed("SEED"));
-        Assert.Equal(1, reg.Next("SEED"));
-        Assert.Equal(2, reg.Next("SEED"));
-        Assert.Equal(2, reg.LastUsed("SEED"));
+        Assert.Equal(0, reg.LastUsed("SPEC"));
+        Assert.Equal(1, reg.Next("SPEC"));
+        Assert.Equal(2, reg.Next("SPEC"));
+        Assert.Equal(2, reg.LastUsed("SPEC"));
     }
 
     [Fact]
     public void NextId_formatsTheReservedNumber()
     {
         var reg = new NumberingRegistry();
-        Assert.Equal("MDL001", reg.NextId("MDL"));
-        Assert.Equal("MDL002", reg.NextId("MDL"));
+        Assert.Equal("MODEL001", reg.NextId("MODEL"));
+        Assert.Equal("MODEL002", reg.NextId("MODEL"));
     }
 
     [Fact]
     public void CountersAreIndependentPerPrefix()
     {
         var reg = new NumberingRegistry();
-        reg.Next("SEED");
-        Assert.Equal(0, reg.LastUsed("ARC"));
-        Assert.Equal(1, reg.Next("ARC"));
+        reg.Next("SPEC");
+        Assert.Equal(0, reg.LastUsed("ARCH"));
+        Assert.Equal(1, reg.Next("ARCH"));
     }
 
     [Fact]

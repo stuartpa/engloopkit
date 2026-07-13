@@ -15,8 +15,8 @@ config Main
     switch TestEnabled = false;
 }
 
-// The explorable machine: the whole loop state machine. Its state space is finite (the
-// current stage), so exploration terminates and enumerates every legal stage transition.
+// The explorable machine: the whole loop state machine, including boolean demand and
+// capacity values that generate both legal and model-derived rejection witnesses.
 machine ModelProgram() : Main
 {
     construct model program from Main

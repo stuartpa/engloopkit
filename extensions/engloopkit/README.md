@@ -1,49 +1,49 @@
-# engloopkit extension
+# EngLoopKit ordered workflow extension
 
-The command set for [EngLoopKit](../../README.md) — the stages of the engineering loop
-that core Spec Kit doesn't provide. Install this on its own, or (recommended) via the
-`engloopkit` bundle which also pulls in `architecture-guard` and `tinyspec`.
+This directory is the first-party **ordered command extension** for the EngLoopKit
+product. Its installed extension ID is **`engloop`**, producing the ordered
+`/speckit.engloop.*` picker surface; the product, bundle, repository, .NET tool, and
+release identity remain **`engloopkit`**.
 
-Every command is written as a Loop Engineering loop with an explicit **Trigger · Goal ·
-Actions · Verification · Memory**, and every command produces a numbered document per
-the [document standards](../../docs/standards.md).
+> **Versioning clarification:** “Ordered EngLoop v2” is the *workflow generation /
+> specification name*, not a SemVer major release. The product remains on the **1.x**
+> maturity runway: this package is **v1.7.0**; future additive work such as overlay is
+> planned for **v1.8.0**, not v2.0.
 
-## Commands
+## Ordered command lanes
 
-| Command | Stage | Produces |
+| Lane | Commands | Purpose |
 |---|---|---|
-| `/speckit.engloopkit.seed` | 0 · Seed | `SEEDxxx` |
-| `/speckit.engloopkit.architect` | 2 · Architect | `ARCxxx` (+ architecture-guard constitutions) |
-| `/speckit.engloopkit.model` | 4 · Model | `MDLxxx` |
-| `/speckit.engloopkit.explore` | 5 · Explore | `CRDxxx` + generated tests |
-| `/speckit.engloopkit.coverage` | 5 · Coverage | `COVxxx` |
-| `/speckit.engloopkit.incident` | 6 · Incident | `INxxx` (+ `MIT`) |
-| `/speckit.engloopkit.postmortem` | 6 · Post-mortem | `PMxxx` (+ `LRN`, `RPI`) |
-| `/speckit.engloopkit.repair` | 6 · Repair | routes to `tinyspec` / `specify` |
-| `/speckit.engloopkit.refactor-scan` | 7 · Evolve | `REFxxx` → `SEEDxxx` |
+| Delivery/readiness | `01-northstar` → `08-unittest` | Direction, runway, architecture, refactor, behavior model, exploration, functional validation, final readiness. |
+| Operations | `20-incident` → `22-repair` | Stabilize a real disruption, analyze stabilized incident sets, and route permanent repair back through delivery gates. |
+| Stewardship | `30-refactor-scan`, `31-learnings-pyramid` | Select one evidence-backed evolution decision or condense accepted source learnings when capacity exists. |
 
-Stages 1 (bridge) and 3 (refactor to final) use core Spec Kit commands directly; they
-have no engloopkit command of their own by design — see
-[the engineering loop](../../docs/engineering-loop.md).
+Every command is a Trigger · Goal · Actions · Verification · Memory loop with a
+versioned entry validator, exact least-privilege tools, and review-first handoffs.
 
-## The Readiness Gate (Stage 5 → Stage 6)
+## Install
 
-`coverage` computes a **Readiness Gate**: the hard precondition for entering the operate stage.
-A project is **"ready for incidents" iff** every module (each `components/*` component **and** the
-vertical) is modelled (`MDL`), explored (`CRD`), covered **≥95% line & branch** (measured, not
-estimated), architecture-conformant, and green. **"Ready" is the gate's verdict — never a claim an
-agent narrates from stage completion or a pilot** (see the EngLoopKit post-mortem `PM001`).
+Install the released extension archive through Spec Kit after installing the matching
+root-local `engloopkit` .NET tool manifest:
 
-## Install (dev)
-
-```bash
-specify extension add --dev ./EngLoopKit/extensions/engloopkit
+```powershell
+specify extension add engloop --from <release-dir>/engloop-extension-1.7.0.zip
 ```
 
-## Templates
+The selected root must have exactly one tracked `.engloop/` root, root `NORTHSTAR.md`,
+root `LEARNINGS.md`, and a valid `.engloop/config.json`. The entry hook and every command
+body validate that state before accepting durable work.
 
-Artifact templates live in [`templates/`](templates/) and are referenced by the
-commands. They exist so every produced document is consistent and greppable.
+## Readiness
+
+Stage 08 alone produces READY / NOT READY. A PASS requires every configured module to
+meet its artifact-appropriate verification method, current architecture/regression
+evidence, and measured **95% line + branch coverage**. The domain vertical additionally
+needs independent model-derived legal and rejection conformance.
+
+See the root [README](../../README.md) and
+[`SPEC001 Ordered EngLoop v2`](../../specs/SPEC001-ordered-engloop-v2/spec.md) for the
+complete contract.
 
 ## License
 

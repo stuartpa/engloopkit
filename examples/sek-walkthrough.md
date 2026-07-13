@@ -24,7 +24,7 @@ So Stages 0 and 1 are done. Begin at Stage 2.
 ## Stage 2 — Architect
 
 ```
-/speckit.engloopkit.architect  SEK: define the long-lived architecture from the bridging code
+/speckit.engloop.03-architect  SEK: define the long-lived architecture from the bridging code
 ```
 
 - `init-brownfield` maps the current SEK modules: `Sek.Cord` (parser/AST/constraint
@@ -55,7 +55,7 @@ Drive the bridging code to honor ARC001–ARC003 using the governed loop:
 ## Stage 4 — Model
 
 ```
-/speckit.engloopkit.model  Sek.Engine exploration state machine
+/speckit.engloop.05-model  Sek.Engine exploration state machine
 ```
 
 - State fields: current DFA/product-DFA node, binding environment, visited set.
@@ -67,8 +67,9 @@ Drive the bridging code to honor ARC001–ARC003 using the governed loop:
 ## Stage 5 — Explore & Coverage (the inner loop)
 
 ```
-/speckit.engloopkit.explore  CRD for Sek.Engine goal-then-accepting paths
-/speckit.engloopkit.coverage
+/speckit.engloop.06-explore  CORD for Sek.Engine goal-then-accepting paths
+/speckit.engloop.07-validate
+/speckit.engloop.08-unittest
 ```
 
 - **CRD001** explores the compiled-scenario stepping paths; SEK/Z3 generates the test
@@ -88,7 +89,7 @@ When a user hits a bug (e.g. a CORD model that hangs because an `id` is left unb
 by dropped comments):
 
 ```
-/speckit.engloopkit.incident  CORD model hangs: Z3 enumerates unbounded ints
+/speckit.engloop.20-incident  CORD model hangs: Z3 enumerates unbounded ints
 ```
 
 - Mitigate fast (MIT001: bound the domain in the affected model to unblock the user).
@@ -96,7 +97,7 @@ by dropped comments):
 - Once stable, and once a few such incidents accumulate:
 
 ```
-/speckit.engloopkit.postmortem  IN001 IN00x  comment/handling bugs in constraint extraction
+/speckit.engloop.21-postmortem  IN001 IN00x  comment/handling bugs in constraint extraction
 ```
 
 - 5-whys → **LRN001**: "constraint extraction can silently drop bindings, leaving Z3
@@ -104,7 +105,7 @@ by dropped comments):
   binding is lost" (this is exactly the real `StripComments` fix).
 
 ```
-/speckit.engloopkit.repair  PM001 RPI001
+/speckit.engloop.22-repair  PM001 RPI001
 ```
 
 - tinyspec-sized → `/speckit.tinyspec`. Then **mandatory**: update MDL, add a CRD that
@@ -114,7 +115,7 @@ by dropped comments):
 ## Stage 7 — Evolve (monthly)
 
 ```
-/speckit.engloopkit.refactor-scan  I have tokens left this month
+/speckit.engloop.30-refactor-scan  I have tokens left this month
 ```
 
 - Signals: recurring "constraint-extraction" cause-class (branch 1 fires) → REF001:

@@ -20,7 +20,7 @@ routes the *quality-determining* loops through engines instead of models:
 | Repair (small) | `tinyspec` single-file flow | a fraction of full SDD |
 
 The LLM's tokens are then concentrated where they actually add value: distilling a
-SEED, writing a spec, doing 5-whys root-cause analysis, and choosing the next refactor.
+the Northstar, writing a spec, doing 5-whys root-cause analysis, and choosing the next refactor.
 
 ## Mechanisms
 
@@ -47,7 +47,8 @@ generated scope means fewer tokens generating it and fewer tokens maintaining it
 
 ### 4. Numbered documents as durable Memory
 
-Every stage writes a numbered doc (SEED/SP/ARC/MDL/CRD/COV/IN/PM/REF). Because context
+Durable stages write final-vocabulary records (`SPEC/SCAF/ARCH/MODEL/CORD/COV/IN/PM/REFACT`),
+while root Northstar/Learnings stay living. Because context
 persists as greppable, cross-referenced Memory, later loops **re-load** decisions
 instead of **re-deriving** them. Re-derivation is the silent token sink loop
 engineering exists to remove.

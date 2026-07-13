@@ -13,10 +13,10 @@ namespace EngLoopKit.Core;
 /// </summary>
 public sealed class NumberingRegistry
 {
-    // The canonical EngLoopKit prefixes (docs/standards.md). BRG was added in v1.1.0.
+    // The canonical EngLoopKit v2 prefixes (docs/standards.md).
     private static readonly IReadOnlySet<string> KnownPrefixes = new HashSet<string>(StringComparer.Ordinal)
     {
-        "SEED", "SP", "BRG", "ARC", "MDL", "CRD", "COV", "IN", "PM", "REF", "MIT", "LRN", "RPI",
+        "SPEC", "SCAF", "ARCH", "MODEL", "CORD", "COV", "IN", "PM", "REFACT", "MIT", "LEARN", "RPI",
     };
 
     // Generic monotonic-counter machinery (the component); the vertical supplies the keys.
@@ -28,7 +28,7 @@ public sealed class NumberingRegistry
     /// <summary>Every recognized prefix.</summary>
     public static IReadOnlyCollection<string> Prefixes => (IReadOnlyCollection<string>)KnownPrefixes;
 
-    /// <summary>Format a prefix + number as a zero-padded id, e.g. <c>SEED001</c>.</summary>
+    /// <summary>Format a prefix + number as a zero-padded id, e.g. <c>SPEC001</c>.</summary>
     public static string Format(string prefix, int n)
     {
         if (!IsKnownPrefix(prefix))
@@ -56,7 +56,7 @@ public sealed class NumberingRegistry
         return _counters.Next(prefix);
     }
 
-    /// <summary>Reserve and return the next id (e.g. <c>SEED001</c>).</summary>
+    /// <summary>Reserve and return the next id (e.g. <c>SPEC001</c>).</summary>
     public string NextId(string prefix) => Format(prefix, Next(prefix));
 
     /// <summary>

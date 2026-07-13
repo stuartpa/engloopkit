@@ -26,11 +26,11 @@ prompt.
 
 | Component | Loop Engineering meaning | How EngLoopKit uses it |
 |---|---|---|
-| **Trigger** | What starts the loop — a schedule, an event, a human instruction, another agent finishing. | A `SEED` doc, a failing test, a coverage gap, an incident report, a monthly token budget. |
+| **Trigger** | What starts the loop — a schedule, an event, a human instruction, another agent finishing. | A Northstar, accepted specification, failing test, coverage gap, incident report, or explicit stewardship capacity. |
 | **Goal** | A *verifiable* end state — "all tests pass", "bundle < 200KB" — not "make it better". | "95%+ line coverage then functional coverage", "all P1 incidents mitigated", "zero architecture-drift violations". |
 | **Actions** | The tools the loop may use — read/write files, run commands, call MCP, spawn sub-agents. | Spec Kit commands, **SEK/Z3 exploration**, the test runner, coverage tooling, git, architecture-guard, tinyspec. |
 | **Verification** | How the loop knows to stop — tests + exit codes, a supervisor, a diff review, CI. | Deterministic gates: test pass/fail, coverage thresholds, **Z3 exhaustiveness**, CI, `architecture-verify`. |
-| **Memory** | What persists across iterations so work isn't repeated or lost. | The **numbered documents** (SEED/SP/ARC/MDL/CRD/COV/IN/PM/REF) — see [standards.md](standards.md). |
+| **Memory** | What persists across iterations so work isn't repeated or lost. | Root Northstar/Learnings plus numbered `SPEC/SCAF/ARCH/MODEL/CORD/COV/IN/PM/REFACT` records — see [standards.md](standards.md). |
 
 ## The agentic cycle
 
@@ -49,7 +49,7 @@ this directly and adds a fourth, slower **evolution loop** (a month):
 
 - **Inner agentic loop (minutes)** — `explore` / `coverage`: Z3 generates and re-checks
   tests in tight cycles with no human prompting.
-- **Delivery loop (hours)** — `seed` → bridge → `architect` → refactor → `model`: the
+- **Delivery loop (hours)** — Northstar → scaffold → `architect` → refactor → `model`: the
   developer's feedback clock across a feature.
 - **Operations loop (days)** — `incident` → `postmortem` → `repair`: the external
   feedback clock driven by real users and monitoring.

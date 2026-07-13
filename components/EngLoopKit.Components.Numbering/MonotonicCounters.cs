@@ -43,7 +43,7 @@ public sealed class MonotonicCounters
         _last[key] = n;
     }
 
-    /// <summary>Format a key + value as a zero-padded token, e.g. <c>Pad("SEED", 1) == "SEED001"</c>.</summary>
+    /// <summary>Format a key + value as a zero-padded token, e.g. <c>Pad("ITEM", 1) == "ITEM001"</c>.</summary>
     public static string Pad(string key, int n, int width = 3)
     {
         if (n < 1)

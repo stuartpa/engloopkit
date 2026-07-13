@@ -47,7 +47,7 @@ makes the class mechanically impossible.
 
 ## Repair Items
 
-> Each RPI must be specific enough to hand to `/speckit.engloopkit.repair`.
+> Each RPI must be specific enough to hand to `/speckit.engloop.22-repair`.
 
 | RPI | Description (ONE-AND-DONE) | Size (tiny/full) | Spec/tinyspec | Status |
 |---|---|---|---|---|
@@ -67,5 +67,5 @@ makes the class mechanically impossible.
 
 - [ ] ONE-AND-DONE fixes reviewed for structural soundness
 - [ ] Learnings accepted
-- [ ] Repair Items routed via `/speckit.engloopkit.repair`
+- [ ] Repair Items routed via `/speckit.engloop.22-repair`
 - [ ] Closed when all Repair Items verified in the target environment

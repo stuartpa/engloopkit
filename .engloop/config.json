@@ -1,0 +1,70 @@
+{
+  "schemaVersion": "2.0",
+  "productId": "engloopkit",
+  "artifactRoot": ".engloop",
+  "transientOutputRoot": ".engloop/out",
+  "northstarPath": "NORTHSTAR.md",
+  "validatorCommand": [
+    "dotnet",
+    "tool",
+    "run",
+    "engloopkit",
+    "--"
+  ],
+  "moduleDiscoveryCommand": [
+    "pwsh",
+    "-NoProfile",
+    "-File",
+    "scripts/discover-modules.ps1"
+  ],
+  "architectureCommand": [
+    "dotnet",
+    "tool",
+    "run",
+    "engloopkit",
+    "--",
+    "validate",
+    "root",
+    "--root",
+    "."
+  ],
+  "regressionCommand": [
+    "dotnet",
+    "test",
+    "tests/EngLoopKit.Tests/EngLoopKit.Tests.csproj",
+    "-c",
+    "Debug",
+    "--nologo"
+  ],
+  "coverageInputs": {
+    "functionalGenerated": "tests/EngLoopKit.Loop.Generated/ModelProgramTests.csproj",
+    "wholeProduct": "tests/EngLoopKit.Tests/EngLoopKit.Tests.csproj"
+  },
+  "moduleInventory": [
+    { "id": "components.numbering", "path": "components/EngLoopKit.Components.Numbering/EngLoopKit.Components.Numbering.csproj" },
+    { "id": "components.statemachine", "path": "components/EngLoopKit.Components.StateMachine/EngLoopKit.Components.StateMachine.csproj" },
+    { "id": "components.documentvalidation", "path": "components/EngLoopKit.Components.DocumentValidation/EngLoopKit.Components.DocumentValidation.csproj" },
+    { "id": "core", "path": "src/EngLoopKit.Core/EngLoopKit.Core.csproj" },
+    { "id": "tool", "path": "src/EngLoopKit.Tool/EngLoopKit.Tool.csproj" }
+  ],
+  "testRunway": {
+    "status": "proven",
+    "framework": "xUnit 2.9.2 / Microsoft.NET.Test.Sdk 17.11.1",
+    "terseCommand": [
+      "dotnet",
+      "test",
+      "tests/EngLoopKit.Tests/EngLoopKit.Tests.csproj",
+      "-c",
+      "Debug",
+      "--nologo",
+      "--logger",
+      "console;verbosity=detailed",
+      "--filter",
+      "FullyQualifiedName~EngLoopKit.Tests.RunwayBoundaryTests"
+    ],
+    "boundaryTest": "EngLoopKit.Tests.RunwayBoundaryTests.RunwayBoundaryTest",
+    "generatedDestination": "tests/EngLoopKit.Loop.Generated/",
+    "evidenceDigest": "ac294c081cc2ba0ac13d042beadd245af71543592bc5cf94f740b3ed58992919",
+    "provenAtRevision": "content:ac294c081cc2ba0ac13d042beadd245af71543592bc5cf94f740b3ed58992919"
+  }
+}

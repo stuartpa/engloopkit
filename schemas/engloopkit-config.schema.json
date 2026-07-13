@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://engloopkit.dev/schemas/engloopkit-config.schema.json",
+  "title": "EngLoopKit v2 configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "productId",
+    "artifactRoot",
+    "transientOutputRoot",
+    "northstarPath",
+    "moduleInventory",
+    "validatorCommand",
+    "moduleDiscoveryCommand",
+    "architectureCommand",
+    "regressionCommand",
+    "coverageInputs",
+    "testRunway"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "2.0" },
+    "productId": { "const": "engloopkit" },
+    "artifactRoot": { "const": ".engloop" },
+    "transientOutputRoot": { "const": ".engloop/out" },
+    "northstarPath": { "const": "NORTHSTAR.md" },
+    "moduleInventory": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "path"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "moduleDiscoveryCommand": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "validatorCommand": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "testRunway": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "framework", "terseCommand", "boundaryTest", "generatedDestination", "evidenceDigest", "provenAtRevision"],
+      "properties": {
+        "status": { "enum": ["unproven", "proving", "proven"] },
+        "framework": { "type": ["string", "null"] },
+        "terseCommand": {
+          "type": ["array", "null"],
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "boundaryTest": { "type": ["string", "null"] },
+        "generatedDestination": { "type": ["string", "null"] },
+        "evidenceDigest": { "type": ["string", "null"] },
+        "provenAtRevision": { "type": ["string", "null"] }
+      }
+    },
+    "coverageInputs": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "minLength": 1 },
+      "minProperties": 1
+    },
+    "architectureCommand": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "regressionCommand": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

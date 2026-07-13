@@ -38,8 +38,8 @@
 ## Readiness Gate verdict
 
 - [ ] **PASS** — every inventory row passes; product is READY FOR INCIDENTS.
-- [ ] **FAIL** — NOT READY. Failing rows: <module: reason>. Next: `/speckit.engloopkit.model` or
-  `/speckit.engloopkit.explore` on the largest gap.
+- [ ] **FAIL** — NOT READY. Failing rows: <module: reason>. Next: `/speckit.engloop.05-model` or
+  `/speckit.engloop.06-explore` on the largest gap.
 
 > "Ready for incidents" may be stated ONLY when this verdict is PASS (PM001 anti-narration rule).
 

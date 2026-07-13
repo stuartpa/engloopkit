@@ -1,0 +1,53 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v8.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v8.0": {
+      "EngLoopKit.Core/1.0.0": {
+        "dependencies": {
+          "EngLoopKit.Components.Numbering": "1.0.0",
+          "EngLoopKit.Components.StateMachine": "1.0.0"
+        },
+        "runtime": {
+          "EngLoopKit.Core.dll": {}
+        }
+      },
+      "EngLoopKit.Components.Numbering/1.0.0": {
+        "runtime": {
+          "EngLoopKit.Components.Numbering.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "EngLoopKit.Components.StateMachine/1.0.0": {
+        "runtime": {
+          "EngLoopKit.Components.StateMachine.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "EngLoopKit.Core/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "EngLoopKit.Components.Numbering/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "EngLoopKit.Components.StateMachine/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

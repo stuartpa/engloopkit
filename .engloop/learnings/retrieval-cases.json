@@ -1,0 +1,44 @@
+{
+  "cases": [
+    {
+      "id": "readiness-gate",
+      "question": "Can this product be declared ready because a few tests are green?",
+      "expectedCardIds": ["readiness-is-a-gate"],
+      "expectedSourceIds": ["PM001/LEARN001", "PM001/LEARN002", "PM001/LEARN003"],
+      "tags": ["readiness", "gate"],
+      "expectGap": false
+    },
+    {
+      "id": "artifact-class",
+      "question": "Should a generic component receive a SEK model or direct property tests?",
+      "expectedCardIds": ["verification-follows-artifact-class"],
+      "expectedSourceIds": ["PM002/LEARN001", "PM002/LEARN002", "PM002/LEARN003"],
+      "tags": ["component", "verification"],
+      "expectGap": false
+    },
+    {
+      "id": "model-granularity",
+      "question": "Must every internal pipeline assembly get a separate behavior model?",
+      "expectedCardIds": ["model-observable-behavior"],
+      "expectedSourceIds": ["PM002/LEARN002", "PM003/LEARN001", "PM003/LEARN002"],
+      "tags": ["model", "vertical"],
+      "expectGap": false
+    },
+    {
+      "id": "negative-conformance",
+      "question": "Does positive conformance alone prove that the SUT rejects illegal sequences?",
+      "expectedCardIds": ["adequate-models-prove-rejection"],
+      "expectedSourceIds": ["PM004/LEARN001", "PM004/LEARN002", "PM004/LEARN003"],
+      "tags": ["model", "negative"],
+      "expectGap": false
+    },
+    {
+      "id": "no-cue",
+      "question": "Which learning governs a visual color palette decision?",
+      "expectedCardIds": [],
+      "expectedSourceIds": [],
+      "tags": ["gap"],
+      "expectGap": true
+    }
+  ]
+}

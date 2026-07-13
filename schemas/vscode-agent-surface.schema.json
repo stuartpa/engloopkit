@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://engloopkit.dev/schemas/vscode-agent-surface.schema.json",
+  "title": "EngLoopKit VS Code custom-agent surface projection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "vscodeVersion",
+    "vscodeCommit",
+    "retrievedAt",
+    "agentRequiredFields",
+    "agentRequiredAbsences",
+    "promptRequiredFields",
+    "promptRequiredAbsences",
+    "handoffRequiredFields",
+    "handoffRequiredAbsences"
+  ],
+  "properties": {
+    "vscodeVersion": { "const": "1.129.0-insider" },
+    "vscodeCommit": { "const": "29d19ddd1af725baf537b6b328843bcdc2d29ba1" },
+    "retrievedAt": { "const": "2026-07-10" },
+    "agentRequiredFields": {
+      "const": [
+        "name",
+        "description",
+        "argument-hint",
+        "target",
+        "user-invocable",
+        "disable-model-invocation",
+        "tools",
+        "agents",
+        "hooks"
+      ]
+    },
+    "agentRequiredAbsences": { "const": ["infer", "model"] },
+    "promptRequiredFields": { "const": ["agent"] },
+    "promptRequiredAbsences": { "const": ["tools"] },
+    "handoffRequiredFields": { "const": ["label", "agent", "prompt", "send"] },
+    "handoffRequiredAbsences": { "const": ["model"] }
+  },
+  "x-engloopkit-provenance": {
+    "customAgents": "https://code.visualstudio.com/docs/agent-customization/custom-agents",
+    "promptFiles": "https://code.visualstudio.com/docs/agent-customization/prompt-files",
+    "subagents": "https://code.visualstudio.com/docs/agents/subagents",
+    "hooks": "https://code.visualstudio.com/docs/agent-customization/hooks",
+    "hooksReference": "https://code.visualstudio.com/docs/agents/reference/hooks-reference"
+  }
+}

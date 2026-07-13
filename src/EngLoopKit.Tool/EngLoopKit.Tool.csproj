@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>EngLoopKit.Tool</RootNamespace>
+    <AssemblyName>engloopkit</AssemblyName>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>engloopkit</ToolCommandName>
+    <PackageId>engloopkit</PackageId>
+    <Version>1.7.0</Version>
+    <Authors>stuartpa</Authors>
+    <Description>Deterministic validation gates for EngLoopKit repositories.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EngLoopKit.Core\EngLoopKit.Core.csproj" />
+    <ProjectReference Include="..\..\components\EngLoopKit.Components.DocumentValidation\EngLoopKit.Components.DocumentValidation.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="" Link="README.md" />
+  </ItemGroup>
+</Project>

@@ -2,9 +2,11 @@
   <Folder Name="/components/">
     <Project Path="components/EngLoopKit.Components.Numbering/EngLoopKit.Components.Numbering.csproj" />
     <Project Path="components/EngLoopKit.Components.StateMachine/EngLoopKit.Components.StateMachine.csproj" />
+    <Project Path="components/EngLoopKit.Components.DocumentValidation/EngLoopKit.Components.DocumentValidation.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/EngLoopKit.Core/EngLoopKit.Core.csproj" />
+    <Project Path="src/EngLoopKit.Tool/EngLoopKit.Tool.csproj" />
   </Folder>
   <Folder Name="/model/">
     <Project Path="model/EngLoopKit.Model/EngLoopKit.Model.csproj" />

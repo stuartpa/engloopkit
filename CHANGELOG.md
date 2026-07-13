@@ -3,24 +3,29 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.6.0] - 2026-07-09
+## [1.7.0] - 2026-07-13
+
+### Added
+
+- Ordered EngLoop workflow generation: thirteen exact `speckit.engloop.*` commands
+  spanning delivery/readiness (01–08), operations (20–22), and stewardship (30–31).
+  The product remains on the **1.x** SemVer maturity line; “v2” names the workflow
+  generation, not a v2.0 release.
+- One canonical tracked `.engloop/` process root, root `NORTHSTAR.md`, root
+  `LEARNINGS.md`, explicit v2 configuration, deterministic test-runway evidence, and
+  evidence-gated ordered transition state.
+- Independent stateful SEK model, bounded exploration, portable generated conformance
+  suite with legal and model-derived rejection paths, and whole-product measured 95/95
+  readiness inventory.
+- Deterministic, non-UI agent-surface validation: source/archive/disposable-install
+  semantic comparison, exact 13 command/agent/prompt identities, tool/subagent policy,
+  review-first handoffs, and local-tool entry rejection. ELK never launches, reads, or
+  automates an editor UI for validation.
 
 ### Changed
 
-- **Readiness Gate now grades self-model *adequacy*, not just existence** (IN004/PM004). A vertical's
-  self-model must (1) derive **negative conformance** from the model — illegal action sequences are
-  driven against the SUT and must be **rejected** (not merely assert no-throw on happy paths); (2) use
-  **no hand-coded error assertions** (error transitions must come from the model's guards, not bespoke
-  test code — that is theatre per PM003); and (3) meet a **behavioral-richness floor** (more than a
-  trivial one-bit state). The coverage command's Readiness Inventory gained **Neg-conf?** and
-  **Branches?** columns, and the model/explore commands document the negative-conformance and
-  richness expectations.
-
-### Why
-
-- A self-model that only replays happy paths and asserts "it didn't throw" can pass while the SUT
-  silently accepts illegal behavior. Grading adequacy (negative conformance + richness, model-derived)
-  closes that gap so "modelled + explored" is real evidence, not a checkbox.
+- Product/bundle/tool identity remains `engloopkit`; the installed ordered command
+  extension is `engloop`, yielding the `speckit.engloop.*` namespace.
 
 ## [1.5.0] - 2026-07-06
 

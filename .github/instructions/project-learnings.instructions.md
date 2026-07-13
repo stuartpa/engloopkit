@@ -9,7 +9,7 @@ Before making a consequential decision covered by this instruction:
 
 1. Read root [`LEARNINGS.md`](../../LEARNINGS.md).
 2. Follow only the subject card or cards relevant to the decision.
-3. Follow the card's `PMxxx/LRNxxx` links before applying, challenging, or changing a
+3. Follow the card's `PMxxx/LEARNxxx` links before applying, challenging, or changing a
    principle.
 4. Cite the consulted card and source learning in any new durable decision artifact.
 5. If the index has no relevant cue, or sources conflict, do not invent a consensus.
