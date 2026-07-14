@@ -77,7 +77,7 @@ public sealed class CoreNegativeContractTests : IDisposable
         var config = Evidence.LoadConfiguration(_root);
         var errors = Evidence.ValidateConfigurationSafety(config);
         Assert.Contains("unsupported-schema-version", errors);
-        Assert.Contains("unsupported-product-id", errors);
+        Assert.Contains("invalid-product-id", errors);
         Assert.Contains("invalid-artifact-root", errors);
         Assert.Contains("invalid-transient-output-root", errors);
         Assert.Contains("invalid-northstar-path", errors);

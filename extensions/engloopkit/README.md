@@ -7,14 +7,15 @@ release identity remain **`engloopkit`**.
 
 > **Versioning clarification:** “Ordered EngLoop v2” is the *workflow generation /
 > specification name*, not a SemVer major release. The product remains on the **1.x**
-> maturity runway: this package is **v1.7.0**; future additive work such as overlay is
-> planned for **v1.8.0**, not v2.0.
+> maturity runway: this package is **v1.8.0**; “v2” remains workflow terminology only,
+> not v2.0.
 
 ## Ordered command lanes
 
 | Lane | Commands | Purpose |
 |---|---|---|
 | Delivery/readiness | `01-northstar` → `08-unittest` | Direction, runway, architecture, refactor, behavior model, exploration, functional validation, final readiness. |
+| Local utility | `09-overlay-pack` | Packs verified private overlay state; install/unpack are CLI features for roots without agents. |
 | Operations | `20-incident` → `22-repair` | Stabilize a real disruption, analyze stabilized incident sets, and route permanent repair back through delivery gates. |
 | Stewardship | `30-refactor-scan`, `31-learnings-pyramid` | Select one evidence-backed evolution decision or condense accepted source learnings when capacity exists. |
 
@@ -27,7 +28,7 @@ Install the released extension archive through Spec Kit after installing the mat
 root-local `engloopkit` .NET tool manifest:
 
 ```powershell
-specify extension add engloop --from <release-dir>/engloop-extension-1.7.0.zip
+specify extension add engloop --from <release-dir>/engloopkit-extension-1.8.0.zip
 ```
 
 The selected root must have exactly one tracked `.engloop/` root, root `NORTHSTAR.md`,

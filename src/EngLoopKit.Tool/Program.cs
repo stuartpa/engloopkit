@@ -4,9 +4,14 @@ public static class Program
 {
     public static int Main(string[] args)
     {
+        if (args.Length >= 1 && string.Equals(args[0], "overlay", StringComparison.Ordinal))
+        {
+            return OverlayCommands.Execute(args[1..]);
+        }
+
         if (args.Length < 2 || !string.Equals(args[0], "validate", StringComparison.Ordinal))
         {
-            Console.Error.WriteLine("Usage: engloopkit validate <root|config|commands|reachability|learnings|installation|agent-entry|agent-surfaces> [--root <path>] [--stage <id>]");
+            Console.Error.WriteLine("Usage: engloopkit validate <root|config|commands|reachability|learnings|installation|agent-entry|agent-surfaces> [--root <path>] [--stage <id>] | engloopkit overlay <install|verify|pack|unpack|status>");
             return 1;
         }
 

@@ -10,9 +10,10 @@ explicit trigger, goal, actions, verification, and durable memory.
 > **SemVer policy:** The phrase **“Ordered EngLoop v2”** refers to the second
 > *workflow/specification generation*, not a product major version. EngLoopKit remains
 > on the **1.x** maturity runway for the foreseeable future: this ordered release is
-> **v1.7.0** and the planned overlay feature is **v1.8.0**. No v2.0 release is implied.
+> **v1.7.0**; private overlay mode ships as **v1.8.0**. No v2.0 release is implied.
 
-The v1.7 workflow separates delivery/readiness, operations, and stewardship into
+The v1.8 workflow separates delivery/readiness, operations, stewardship, and local
+overlay utility work into
 ordered command lanes. A command number is a picker identity—not an automatic scheduler.
 A handoff is review-first (`send: false`), not a state transition.
 
@@ -29,7 +30,7 @@ A handoff is review-first (`send: false`), not a state transition.
 - **Components are generic:** non-domain runtime/BCL helpers live under language-appropriate
   component boundaries; the vertical composes them.
 
-## The 13 commands
+## The 14 commands
 
 The released extension ID is **`engloop`**; product, bundle, and tool identity remain
 **`engloopkit`**. Lexical picker order is the normal workflow order.
@@ -44,6 +45,7 @@ The released extension ID is **`engloop`**; product, bundle, and tool identity r
 | Delivery | `/speckit.engloop.06-explore` | Explore bounded behavior and regenerate functional tests. |
 | Delivery | `/speckit.engloop.07-validate` | Run generated-only functional validation and reachability. |
 | Delivery | `/speckit.engloop.08-unittest` | Classify residue, add direct tests after disposition, compute sole readiness verdict. |
+| Local utility | `/speckit.engloop.09-overlay-pack` | Pack a verified private local ELK overlay; install/unpack use the tool CLI. |
 | Operations | `/speckit.engloop.20-incident` | Stabilize a real operating disruption using mitigations only. |
 | Operations | `/speckit.engloop.21-postmortem` | Turn selected stabilized incidents into PM/LEARN/RPI evidence. |
 | Operations | `/speckit.engloop.22-repair` | Route permanent repair through Stage 04 and applicable 05–08 gates. |
@@ -61,7 +63,7 @@ never authorizes operations.
 
 ## Install a release
 
-A released v1.7 artifact set contains three immutable pieces:
+A released v1.8 artifact set contains three immutable pieces:
 
 1. `engloopkit.<version>.nupkg` — the root-local .NET tool (`engloopkit`);
 2. `engloop-extension-<version>.zip` — the ordered Spec Kit extension (`engloop`);
@@ -73,10 +75,10 @@ not point agent hooks at a sibling build output:
 ```powershell
 # From the consumer root, after downloading the released nupkg to <release-dir>.
 dotnet new tool-manifest --force
-dotnet tool install engloopkit --version 1.7.0 --add-source <release-dir>
+dotnet tool install engloopkit --version 1.8.0 --add-source <release-dir>
 
 # Install the exact released ordered extension archive.
-specify extension add engloop --from <release-dir>/engloop-extension-1.7.0.zip
+specify extension add engloop --from <release-dir>/engloopkit-extension-1.8.0.zip
 ```
 
 The extension’s `SessionStart` hook and command body both run:
@@ -105,6 +107,57 @@ pwsh scripts/validate-package.ps1
 command/agent surface, package, and disposable install gates pass. See
 [`specs/SPEC001-ordered-engloop-v2/`](specs/SPEC001-ordered-engloop-v2/) for the v2
 contract and [`LEARNINGS.md`](LEARNINGS.md) for traceable operational lessons.
+
+## Private overlay mode
+
+Use overlay mode when ELK must remain local to an existing Git checkout. Overlay mode is
+explicit at install time and does **not** modify tracked `.gitignore` or product files:
+
+```powershell
+# Do this in a private bootstrap directory OUTSIDE <git-root>.
+$bootstrap = Join-Path $env:LOCALAPPDATA 'EngLoopKit\bootstrap\1.8.0'
+New-Item -ItemType Directory -Force $bootstrap | Out-Null
+Push-Location $bootstrap
+dotnet new tool-manifest --force
+dotnet tool install engloopkit --version 1.8.0 --add-source <release-dir>
+
+# <release-dir> contains the downloaded .nupkg and extension .zip.
+dotnet tool run engloopkit -- overlay install --mode overlay --root <git-root> `
+  --product-id <lowercase-product-id> --repository-id <stable-repository-id> `
+  --tool-version 1.8.0 --tool-nupkg <release-dir>\engloopkit.1.8.0.nupkg `
+  --extension-archive <release-dir>\engloopkit-extension-1.8.0.zip
+Pop-Location
+```
+
+Do **not** first install the tool into `<git-root>` with `dotnet new tool-manifest`:
+that would create `.config/dotnet-tools.json` before overlay mode can protect it. The
+overlay transaction creates that root-local manifest itself, adds it to local Git excludes,
+and installs the matching tool there. Reuse the same explicit `repository-id` for every
+checkout that will receive a packed overlay.
+
+The transaction preflights collisions, writes `.git/info/exclude` before ELK files exist,
+installs ELK-owned local `pre-commit`/`pre-push` hooks, and records every managed file in
+`.engloop-overlay/manifest.json`. A normal commit/push then contains no overlay file.
+
+Move local state between matching checkouts with:
+
+```powershell
+# After install, run these from <git-root>; its local tool is overlay-managed/ignored.
+dotnet tool run engloopkit -- overlay verify --root .
+dotnet tool run engloopkit -- overlay pack --root . --output <zip-outside-repository>
+
+# Before another checkout has an overlay tool, run unpack from $bootstrap.
+Push-Location $bootstrap
+dotnet tool run engloopkit -- overlay unpack --root <other-checkout> `
+  --input <zip-outside-repository> --repository-id <stable-repository-id>
+Pop-Location
+```
+
+Download the published extension archive explicitly before installation; overlay install
+does not fetch remote URLs. Archives are plain ZIPs by design and must not contain secrets. Pack/unpack reject
+secret-like paths, tracked/colliding files, ZIP-slip entries, hash mismatches, base-revision
+mismatches, and repository-origin mismatches. ELK manages ordinary Git-hook protection;
+deliberately bypassing Git hooks is outside a repository-local tool’s protection.
 
 ## License
 

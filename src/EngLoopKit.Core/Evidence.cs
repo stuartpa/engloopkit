@@ -114,18 +114,21 @@ public static class Evidence
         var json = JsonDocument.Parse(stream);
         var obj = json.RootElement;
 
-        var schemaVersion = obj.GetProperty("schemaVersion").GetString() ?? string.Empty;
-        var productId = obj.GetProperty("productId").GetString() ?? string.Empty;
-        var artifactRoot = obj.GetProperty("artifactRoot").GetString() ?? string.Empty;
-        var transientOutputRoot = obj.GetProperty("transientOutputRoot").GetString() ?? string.Empty;
-        var northstarPath = obj.GetProperty("northstarPath").GetString() ?? string.Empty;
+        static string StringOrEmpty(JsonElement value)
+            => value.ValueKind == JsonValueKind.String ? value.GetString() ?? string.Empty : string.Empty;
+
+        var schemaVersion = StringOrEmpty(obj.GetProperty("schemaVersion"));
+        var productId = StringOrEmpty(obj.GetProperty("productId"));
+        var artifactRoot = StringOrEmpty(obj.GetProperty("artifactRoot"));
+        var transientOutputRoot = StringOrEmpty(obj.GetProperty("transientOutputRoot"));
+        var northstarPath = StringOrEmpty(obj.GetProperty("northstarPath"));
 
         var modules = new List<ModuleInventoryItem>();
         foreach (var module in obj.GetProperty("moduleInventory").EnumerateArray())
         {
             modules.Add(new ModuleInventoryItem(
-                module.GetProperty("id").GetString() ?? string.Empty,
-                module.GetProperty("path").GetString() ?? string.Empty));
+                StringOrEmpty(module.GetProperty("id")),
+                StringOrEmpty(module.GetProperty("path"))));
         }
 
         IReadOnlyList<string>? ReadCommand(string property)
@@ -135,18 +138,18 @@ public static class Evidence
                 return null;
             }
 
-            return value.EnumerateArray().Select(item => item.GetString() ?? string.Empty).ToArray();
+            return value.EnumerateArray().Select(StringOrEmpty).ToArray();
         }
 
         TestRunwayConfiguration? runway = null;
         if (obj.TryGetProperty("testRunway", out var runwayValue) && runwayValue.ValueKind == JsonValueKind.Object)
         {
-            string? StringValue(string name) => runwayValue.TryGetProperty(name, out var value) && value.ValueKind != JsonValueKind.Null
+            string? StringValue(string name) => runwayValue.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
                 ? value.GetString()
                 : null;
 
             IReadOnlyList<string>? runwayCommand = runwayValue.TryGetProperty("terseCommand", out var commandValue) && commandValue.ValueKind == JsonValueKind.Array
-                ? commandValue.EnumerateArray().Select(item => item.GetString() ?? string.Empty).ToArray()
+                ? commandValue.EnumerateArray().Select(StringOrEmpty).ToArray()
                 : null;
 
             runway = new TestRunwayConfiguration(
@@ -164,7 +167,7 @@ public static class Evidence
         {
             foreach (var property in coverageValue.EnumerateObject())
             {
-                coverageInputs[property.Name] = property.Value.GetString() ?? string.Empty;
+                coverageInputs[property.Name] = StringOrEmpty(property.Value);
             }
         }
 
@@ -192,9 +195,9 @@ public static class Evidence
             errors.Add("unsupported-schema-version");
         }
 
-        if (!string.Equals(config.ProductId, "engloopkit", StringComparison.Ordinal))
+        if (!System.Text.RegularExpressions.Regex.IsMatch(config.ProductId, "^[a-z0-9][a-z0-9-]{0,63}$"))
         {
-            errors.Add("unsupported-product-id");
+            errors.Add("invalid-product-id");
         }
 
         if (!string.Equals(config.ArtifactRoot, ".engloop", StringComparison.Ordinal))
@@ -228,22 +231,25 @@ public static class Evidence
             errors.Add("duplicate-module-path");
         }
 
-        if (config.ValidatorCommand is null || config.ValidatorCommand.Count == 0)
+        static bool MissingOrInvalidCommand(IReadOnlyList<string>? command)
+            => command is null || command.Count == 0 || command.Any(string.IsNullOrWhiteSpace);
+
+        if (MissingOrInvalidCommand(config.ValidatorCommand))
         {
             errors.Add("missing-validator-command");
         }
 
-        if (config.ModuleDiscoveryCommand is null || config.ModuleDiscoveryCommand.Count == 0)
+        if (MissingOrInvalidCommand(config.ModuleDiscoveryCommand))
         {
             errors.Add("missing-module-discovery-command");
         }
 
-        if (config.ArchitectureCommand is null || config.ArchitectureCommand.Count == 0)
+        if (MissingOrInvalidCommand(config.ArchitectureCommand))
         {
             errors.Add("missing-architecture-command");
         }
 
-        if (config.RegressionCommand is null || config.RegressionCommand.Count == 0)
+        if (MissingOrInvalidCommand(config.RegressionCommand))
         {
             errors.Add("missing-regression-command");
         }
@@ -251,6 +257,10 @@ public static class Evidence
         if (config.CoverageInputs is null || config.CoverageInputs.Count == 0)
         {
             errors.Add("missing-coverage-inputs");
+        }
+        else if (config.CoverageInputs.Any(input => string.IsNullOrWhiteSpace(input.Key) || string.IsNullOrWhiteSpace(input.Value)))
+        {
+            errors.Add("invalid-coverage-inputs");
         }
 
         if (config.TestRunway is null)
@@ -308,11 +318,6 @@ public static class Evidence
             return "missing-target-verification";
         }
 
-        if (!lifecycle.ReadinessPassAtTarget)
-        {
-            return "missing-current-readiness";
-        }
-
-        return "open";
+        return "missing-current-readiness";
     }
 }

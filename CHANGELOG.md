@@ -3,6 +3,27 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-07-13
+
+### Added
+
+- **Private overlay mode** for an existing Git repository. Explicit
+  `engloopkit overlay install --mode overlay` uses local `.git/info/exclude` and
+  ELK-owned local hooks so managed ELK files stay out of ordinary commits and pushes.
+- `engloopkit overlay verify`, `pack`, and `unpack`: path-safe, hash-verified,
+  repository-identity-bound transfer of registered overlay state in one plain ZIP.
+  Overlay archives are deliberately unencrypted and reject secret-like paths.
+- `/speckit.engloop.09-overlay-pack`, an explicit pack agent. Install and unpack remain
+  tool features because their target root may not yet have agents.
+
+### Security / isolation
+
+- Overlay mode never edits tracked `.gitignore` or workload files, never merges with an
+  existing ELK/Spec Kit surface, and fails closed on tracked-path, hook, origin, base
+  revision, archive path, hash, or collision ambiguity.
+- Normal Git hooks protect commits/pushes; deliberate hook bypass is documented as outside
+  repository-local protection rather than claimed impossible.
+
 ## [1.7.0] - 2026-07-13
 
 ### Added

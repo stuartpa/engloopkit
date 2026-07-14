@@ -44,6 +44,7 @@
     { "id": "components.numbering", "path": "components/EngLoopKit.Components.Numbering/EngLoopKit.Components.Numbering.csproj" },
     { "id": "components.statemachine", "path": "components/EngLoopKit.Components.StateMachine/EngLoopKit.Components.StateMachine.csproj" },
     { "id": "components.documentvalidation", "path": "components/EngLoopKit.Components.DocumentValidation/EngLoopKit.Components.DocumentValidation.csproj" },
+    { "id": "components.overlay", "path": "components/EngLoopKit.Components.Overlay/EngLoopKit.Components.Overlay.csproj" },
     { "id": "core", "path": "src/EngLoopKit.Core/EngLoopKit.Core.csproj" },
     { "id": "tool", "path": "src/EngLoopKit.Tool/EngLoopKit.Tool.csproj" }
   ],

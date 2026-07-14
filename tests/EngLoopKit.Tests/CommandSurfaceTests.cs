@@ -20,7 +20,7 @@ public sealed class CommandSurfaceTests
     }
 
     [Fact]
-    public void HandoffGraph_hasExact23Edges_withStage31None_andNoForbiddenStage08Targets()
+    public void HandoffGraph_hasExact24Edges_withStage31None_andNoForbiddenStage08Targets()
     {
         var edges = 0;
 
@@ -75,6 +75,6 @@ public sealed class CommandSurfaceTests
             }
         }
 
-        Assert.Equal(23, edges);
+        Assert.Equal(24, edges);
     }
 }

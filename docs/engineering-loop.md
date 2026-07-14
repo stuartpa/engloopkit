@@ -1,10 +1,11 @@
 # The ordered EngLoop workflow
 
 **Workflow generation:** Ordered EngLoop v2.
-**Product versioning:** EngLoopKit remains on the **1.x** line; this workflow ships as
-v1.7.0. “v2” is not a v2.0 product release.
+**Product versioning:** EngLoopKit remains on the **1.x** line; the ordered workflow
+ships in v1.7.0 and private overlay support in v1.8.0. “v2” is not a v2.0 product release.
 
-EngLoopKit has three independently invoked lanes. Command ordinals give the picker a
+EngLoopKit has three independently invoked lifecycle lanes plus one local utility.
+Command ordinals give the picker a
 predictable order; they do **not** schedule work automatically. Every accepted stage is
 an evidence-gated transition, not a narrated claim.
 
@@ -20,6 +21,7 @@ an evidence-gated transition, not a narrated claim.
 | 06 | `speckit.engloop.06-explore` | Bounded CORD exploration and deterministic generated suite (`CORDxxx`). |
 | 07 | `speckit.engloop.07-validate` | Fresh generated-suite-only functional validation and reachability (`COVxxx`); no readiness claim. |
 | 08 | `speckit.engloop.08-unittest` | Disposition before direct tests, whole-product coverage, and the sole READY / NOT READY inventory verdict. |
+| 09 | `speckit.engloop.09-overlay-pack` | Pack a verified private local overlay; install/unpack use the tool because a target may have no agent surface yet. |
 
 The Stage 08 PASS requires current evidence for every configured module: architecture,
 regressions, artifact-appropriate verification, and measured **95% line + branch**
@@ -51,6 +53,20 @@ Operations is not created merely because a delivery lane completed.
 Handoffs are review-first UI suggestions with `send: false`. Opening or clicking a
 handoff does not mutate state, satisfy evidence, or schedule another lane. Submission
 at the target command re-runs the root-local versioned entry validator.
+
+## Private overlay utility: install / pack / unpack
+
+Overlay is selected at installation time, not inferred from a repository:
+
+```text
+engloopkit overlay install --mode overlay --root <git-root> ...
+```
+
+It owns a closed local path set and proves every managed file is untracked and ignored
+before normal work begins. `overlay pack` produces one plain hash-verified ZIP outside
+the repository. `overlay unpack` accepts only a matching repository identity/base
+revision and rejects collisions, tracked paths, archive path escapes, hash failures, and
+secret-like files. It is deterministic tool validation; ELK performs no UI validation.
 
 ## Why this is Loop Engineering
 

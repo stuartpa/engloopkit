@@ -43,6 +43,34 @@ public sealed class ToolValidationCommandTests : IDisposable
     }
 
     [Fact]
+    public void AgentEntry_rejectsMalformedConfigAndEveryUnprovenRunwayStage()
+    {
+        CreateCanonicalFixture(modulePath: "module.csproj");
+        File.WriteAllText(Path.Combine(_fixture, "module.csproj"), "<Project />");
+
+        var configPath = Path.Combine(_fixture, ".engloop", "config.json");
+        var valid = File.ReadAllText(configPath);
+        File.WriteAllText(configPath, valid.Replace("\"productId\": \"engloopkit\"", "\"productId\": \"Invalid Product!\"", StringComparison.Ordinal));
+        Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.01-northstar", "--root", _fixture]));
+
+        File.WriteAllText(configPath, valid.Replace("\"status\": \"proven\"", "\"status\": \"unproven\"", StringComparison.Ordinal));
+        Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.09-overlay-pack", "--root", _fixture]));
+        foreach (var stage in new[]
+        {
+            "speckit.engloop.05-model",
+            "speckit.engloop.06-explore",
+            "speckit.engloop.07-validate",
+            "speckit.engloop.08-unittest",
+        })
+        {
+            Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", stage, "--root", _fixture]));
+        }
+
+        File.WriteAllText(configPath, "{");
+        Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.01-northstar", "--root", _fixture]));
+    }
+
+    [Fact]
     public void RootAndInstallation_shortCircuitOnInvalidRootOrConfig()
     {
         Assert.Equal(1, ValidationCommands.ValidateRoot(["--root", _fixture]));

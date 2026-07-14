@@ -13,6 +13,7 @@ $coverageJson = Join-Path $root '.engloop/out/cov003-readiness.json'
 New-Item -ItemType Directory (Split-Path $coverageDoc -Parent) -Force | Out-Null
 New-Item -ItemType Directory (Split-Path $coverageJson -Parent) -Force | Out-Null
 Remove-Item $coverageRoot -Recurse -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Path $coverageRoot -Force | Out-Null
 
 function Invoke-Checked {
     param([string]$Name, [scriptblock]$Action)
@@ -27,15 +28,72 @@ function Invoke-Checked {
     }
 }
 
+function Write-CoverletRunSettings {
+        param(
+                [string]$Path,
+                [string]$MergeWith = ''
+        )
+
+        $merge = if ([string]::IsNullOrWhiteSpace($MergeWith)) {
+                ''
+        }
+        else {
+                "          <MergeWith>$([System.Security.SecurityElement]::Escape($MergeWith))</MergeWith>"
+        }
+
+        @"
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+    <DataCollectionRunSettings>
+        <DataCollectors>
+            <DataCollector friendlyName="XPlat Code Coverage">
+                <Configuration>
+                    <Format>cobertura,json</Format>
+                    <UseSourceLink>false</UseSourceLink>
+$merge
+                </Configuration>
+            </DataCollector>
+        </DataCollectors>
+    </DataCollectionRunSettings>
+</RunSettings>
+"@ | Set-Content $Path -Encoding utf8NoBOM
+}
+
 # Stage 07 functional evidence remains independent: only freshly generated tests run here.
 $functionalPass = Invoke-Checked 'generated functional suite' {
     dotnet test tests/EngLoopKit.Loop.Generated/ModelProgramTests.csproj -c Debug --nologo
 }
 
 # Stage 08 direct/property evidence plus real Cobertura output (same collector/version as SEK).
+# The test process has two deterministic partitions: generic/core validation tests and
+# overlay Git/tool transaction tests. Coverlet merges the two native JSON reports. This
+# runs every direct test exactly once while avoiding a Windows testhost collector crash
+# observed only when both partitions share one host process.
 $directPass = Invoke-Checked 'direct test suite with coverage' {
-    dotnet test tests/EngLoopKit.Tests/EngLoopKit.Tests.csproj -c Debug `
-        --collect:'XPlat Code Coverage' --results-directory $coverageRoot --nologo
+    dotnet build tests/EngLoopKit.Tests/EngLoopKit.Tests.csproj -c Debug --nologo
+    if ($LASTEXITCODE -ne 0) { throw 'direct test build failed' }
+
+    $coreCoverageRoot = Join-Path $coverageRoot 'core'
+    $overlayCoverageRoot = Join-Path $coverageRoot 'overlay'
+    $coreSettings = Join-Path $coverageRoot 'core.runsettings'
+    $overlaySettings = Join-Path $coverageRoot 'overlay.runsettings'
+    Write-CoverletRunSettings -Path $coreSettings
+
+    $coreFilter = 'FullyQualifiedName~AgentSurfaceValidationTests|FullyQualifiedName~BundleConformanceTests|FullyQualifiedName~CommandSurfaceTests|FullyQualifiedName~CoreNegativeContractTests|FullyQualifiedName~DocumentValidationEdgeTests|FullyQualifiedName~DocumentValidationTests|FullyQualifiedName~EngineeringLoopTests|FullyQualifiedName~EvidenceAndLearningTests|FullyQualifiedName~EvidenceCurrencyTests|FullyQualifiedName~EvidenceRecordAndConfigTests|FullyQualifiedName~InstallationValidationTests|FullyQualifiedName~LoopFacadeTests|FullyQualifiedName~NumberingRegistryTests|FullyQualifiedName~ReadinessGateTests|FullyQualifiedName~RunwayBoundaryTests|FullyQualifiedName~StateMachineComponentTests|FullyQualifiedName~ToolSurfaceFailureTests|FullyQualifiedName~ToolValidationCommandTests'
+    dotnet test tests/EngLoopKit.Tests/EngLoopKit.Tests.csproj -c Debug --no-build --no-restore `
+        --filter $coreFilter --settings $coreSettings --collect:'XPlat Code Coverage' `
+        --results-directory $coreCoverageRoot --nologo
+    if ($LASTEXITCODE -ne 0) { throw 'core direct coverage partition failed' }
+
+    $coreJson = Get-ChildItem $coreCoverageRoot -Recurse -Filter coverage.json | Select-Object -Last 1 -ExpandProperty FullName
+    if (-not $coreJson) { throw 'core direct coverage JSON report missing' }
+    Write-CoverletRunSettings -Path $overlaySettings -MergeWith $coreJson
+
+    $overlayFilter = 'FullyQualifiedName~OverlayArchiveTests|FullyQualifiedName~OverlayCommandCoverageTests|FullyQualifiedName~OverlayCommandFailureTests|FullyQualifiedName~OverlayCommandPrivateTests|FullyQualifiedName~OverlayCommandTests'
+    dotnet test tests/EngLoopKit.Tests/EngLoopKit.Tests.csproj -c Debug --no-build --no-restore `
+        --filter $overlayFilter --settings $overlaySettings --collect:'XPlat Code Coverage' `
+        --results-directory $overlayCoverageRoot --nologo
+    if ($LASTEXITCODE -ne 0) { throw 'overlay direct coverage partition failed' }
 }
 
 $architecturePass = Invoke-Checked 'root/config/command/agent validation' {
@@ -48,13 +106,14 @@ $architecturePass = Invoke-Checked 'root/config/command/agent validation' {
     dotnet run --project src/EngLoopKit.Tool/EngLoopKit.Tool.csproj -- validate agent-surfaces --root .
 }
 
-$reportPath = Get-ChildItem $coverageRoot -Recurse -Filter coverage.cobertura.xml -ErrorAction SilentlyContinue |
+$reportPath = Get-ChildItem (Join-Path $coverageRoot 'overlay') -Recurse -Filter coverage.cobertura.xml -ErrorAction SilentlyContinue |
     Sort-Object LastWriteTime | Select-Object -Last 1 -ExpandProperty FullName
 
 $packageByModule = [ordered]@{
     'components.numbering'          = 'EngLoopKit.Components.Numbering'
     'components.statemachine'       = 'EngLoopKit.Components.StateMachine'
     'components.documentvalidation' = 'EngLoopKit.Components.DocumentValidation'
+    'components.overlay'            = 'EngLoopKit.Components.Overlay'
     'core'                          = 'EngLoopKit.Core'
     'tool'                          = 'engloopkit'
 }

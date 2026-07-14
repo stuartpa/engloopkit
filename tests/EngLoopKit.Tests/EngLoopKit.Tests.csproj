@@ -19,6 +19,7 @@
     <ProjectReference Include="..\..\src\EngLoopKit.Core\EngLoopKit.Core.csproj" />
     <ProjectReference Include="..\..\src\EngLoopKit.Tool\EngLoopKit.Tool.csproj" />
     <ProjectReference Include="..\..\components\EngLoopKit.Components.DocumentValidation\EngLoopKit.Components.DocumentValidation.csproj" />
+    <ProjectReference Include="..\..\components\EngLoopKit.Components.Overlay\EngLoopKit.Components.Overlay.csproj" />
   </ItemGroup>
 
 </Project>

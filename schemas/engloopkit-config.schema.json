@@ -20,10 +20,11 @@
   ],
   "properties": {
     "schemaVersion": { "const": "2.0" },
-    "productId": { "const": "engloopkit" },
+    "productId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$" },
     "artifactRoot": { "const": ".engloop" },
     "transientOutputRoot": { "const": ".engloop/out" },
     "northstarPath": { "const": "NORTHSTAR.md" },
+    "overlayMode": { "type": "boolean" },
     "moduleInventory": {
       "type": "array",
       "items": {

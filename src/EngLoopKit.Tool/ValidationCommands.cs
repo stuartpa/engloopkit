@@ -15,6 +15,7 @@ public static class ValidationCommands
         "speckit.engloop.06-explore",
         "speckit.engloop.07-validate",
         "speckit.engloop.08-unittest",
+        "speckit.engloop.09-overlay-pack",
         "speckit.engloop.20-incident",
         "speckit.engloop.21-postmortem",
         "speckit.engloop.22-repair",
@@ -32,6 +33,7 @@ public static class ValidationCommands
         ["speckit.engloop.06-explore"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.07-validate"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.08-unittest"] = ["read", "search", "edit", "execute", "agent"],
+        ["speckit.engloop.09-overlay-pack"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.20-incident"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.21-postmortem"] = ["read", "search", "edit", "execute", "agent"],
         ["speckit.engloop.22-repair"] = ["read", "search", "edit", "execute"],
@@ -49,6 +51,7 @@ public static class ValidationCommands
         ["speckit.engloop.06-explore"] = [],
         ["speckit.engloop.07-validate"] = [],
         ["speckit.engloop.08-unittest"] = ["Explore"],
+        ["speckit.engloop.09-overlay-pack"] = [],
         ["speckit.engloop.20-incident"] = [],
         ["speckit.engloop.21-postmortem"] = ["Explore"],
         ["speckit.engloop.22-repair"] = [],
@@ -418,7 +421,7 @@ public static class ValidationCommands
             }
         }
 
-        if (totalHandoffs != 23)
+        if (totalHandoffs != 24)
         {
             Console.Error.WriteLine($"wrong-handoff-count:{totalHandoffs}");
             return 1;

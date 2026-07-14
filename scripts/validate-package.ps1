@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$Root = (Join-Path $PSScriptRoot '..'),
-    [string]$Version = '1.7.0',
+    [string]$Version = '1.8.0',
     [string]$EmitReleaseManifest = '',
     [string]$OutDir = ''
 )
@@ -25,6 +25,20 @@ function Invoke-Checked {
     }
     finally {
         Pop-Location
+    }
+}
+
+function Clear-ExactToolCache {
+    param([string]$PackageId, [string]$PackageVersion)
+    $globalPackages = if ($env:NUGET_PACKAGES) {
+        $env:NUGET_PACKAGES
+    }
+    else {
+        Join-Path $env:USERPROFILE '.nuget\packages'
+    }
+    $cachePath = Join-Path $globalPackages (Join-Path $PackageId.ToLowerInvariant() $PackageVersion.ToLowerInvariant())
+    if (Test-Path $cachePath) {
+        Remove-Item $cachePath -Recurse -Force
     }
 }
 
@@ -54,9 +68,11 @@ $bundleText = Get-Content $bundlePath -Raw -Encoding UTF8
 $extensionText = Get-Content $extensionManifestPath -Raw -Encoding UTF8
 $catalog = Get-Content $catalogPath -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable
 
-if ($bundleText -notmatch 'version:\s*"1\.7\.0"') { throw 'bundle.yml is not pinned to 1.7.0' }
-if ($extensionText -notmatch 'version:\s*"1\.7\.0"') { throw 'extension.yml is not pinned to 1.7.0' }
-if ($catalog.extensions[0].version -ne '1.7.0') { throw 'catalog.json is not pinned to 1.7.0' }
+$escapedVersion = [regex]::Escape($Version)
+$versionPattern = 'version:\s*"' + $escapedVersion + '"'
+if ($bundleText -notmatch $versionPattern) { throw "bundle.yml is not pinned to $Version" }
+if ($extensionText -notmatch $versionPattern) { throw "extension.yml is not pinned to $Version" }
+if ($catalog.extensions[0].version -ne $Version) { throw "catalog.json is not pinned to $Version" }
 if ($catalog.extensions[0].sha256 -ne '') { throw 'catalog checksum must remain blank before final artifact creation.' }
 
 $toolPackDir = Join-Path $OutDir 'tool'
@@ -73,14 +89,15 @@ foreach ($dir in @($toolPackDir, $nupkgDir, $bundleBuildDir, $bundleStageDir)) {
 
 # Tool artifact
 Invoke-Checked 'dotnet' @('pack', 'src/EngLoopKit.Tool/EngLoopKit.Tool.csproj', '-c', 'Release', '-o', $nupkgDir, '--nologo') $repoRoot
-$toolNupkg = Get-ChildItem $nupkgDir -Filter 'engloopkit.1.7.0*.nupkg' | Select-Object -First 1
-if ($null -eq $toolNupkg) { throw 'Failed to produce engloopkit tool nupkg.' }
+$toolNupkg = Get-ChildItem $nupkgDir -Filter ("engloopkit.$Version*.nupkg") | Select-Object -First 1
+if ($null -eq $toolNupkg) { throw "Failed to produce engloopkit.$Version tool nupkg." }
 
 $localToolManifestRoot = Join-Path $toolPackDir 'tool-manifest'
 New-Item -ItemType Directory -Path $localToolManifestRoot -Force | Out-Null
 Invoke-Checked 'dotnet' @('new', 'tool-manifest', '--force') $localToolManifestRoot
 $localToolManifestPath = Join-Path $localToolManifestRoot '.config/dotnet-tools.json'
-Invoke-Checked 'dotnet' @('tool', 'install', 'engloopkit', '--version', '1.7.0', '--add-source', $nupkgDir, '--tool-manifest', $localToolManifestPath) $localToolManifestRoot
+Clear-ExactToolCache -PackageId 'engloopkit' -PackageVersion $Version
+Invoke-Checked 'dotnet' @('tool', 'install', 'engloopkit', '--version', $Version, '--add-source', $nupkgDir, '--tool-manifest', $localToolManifestPath, '--no-cache') $localToolManifestRoot
 Invoke-Checked 'dotnet' @('tool', 'run', 'engloopkit', '--', 'validate', 'installation', '--root', $repoRoot) $localToolManifestRoot
 
 # Extension artifact (zip exact extension folder)
@@ -94,8 +111,8 @@ Copy-Item $bundlePath (Join-Path $bundleStageDir 'bundle.yml') -Force
 Copy-Item (Join-Path $repoRoot 'README.md') (Join-Path $bundleStageDir 'README.md') -Force
 Invoke-Checked 'specify' @('bundle', 'validate', '--offline', '--path', $bundleStageDir) $repoRoot
 Invoke-Checked 'specify' @('bundle', 'build', '--path', $bundleStageDir, '--output', $bundleBuildDir) $repoRoot
-$builtBundle = Get-ChildItem $bundleBuildDir -Filter '*.zip' | Where-Object { $_.Name -match '^engloopkit-1\.7\.0\.zip$' } | Select-Object -First 1
-if ($null -eq $builtBundle) { throw 'Spec Kit bundle build did not produce engloopkit-1.7.0.zip' }
+$builtBundle = Get-ChildItem $bundleBuildDir -Filter '*.zip' | Where-Object { $_.Name -eq ("engloopkit-$Version.zip") } | Select-Object -First 1
+if ($null -eq $builtBundle) { throw "Spec Kit bundle build did not produce engloopkit-$Version.zip" }
 Copy-Item $builtBundle.FullName $bundleZipPath -Force
 
 # Agent surfaces: deterministic source/archive/disposable-install semantic gate.
@@ -112,6 +129,12 @@ Invoke-Checked 'pwsh' $agentSurfaceArguments $repoRoot
 
 $agentEvidence = Get-Content $agentSurfaceEvidence -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable
 if ($agentEvidence.verdict -ne 'PASS') { throw 'Agent surface evidence is not PASS.' }
+
+# Private overlay transaction: explicit overlay install, local exclusion/hook enforcement,
+# pack, and matching-checkout unpack. This is deterministic Git/tool evidence only.
+Invoke-Checked 'pwsh' @('-NoProfile', '-File', (Join-Path $repoRoot 'scripts/test-overlay.ps1'),
+    '-Root', $repoRoot, '-ToolNupkg', $toolNupkg.FullName, '-ExtensionArchive', $extensionZipPath,
+    '-Version', $Version) $repoRoot
 
 # Hashes
 $toolHash = (Get-FileHash $toolNupkg.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -148,6 +171,7 @@ $artifactSummary = [ordered]@{
         bundleBuild = 'PASS'
         toolInstallValidate = 'PASS'
         agentSurfaceEvidence = $agentSurfaceEvidence
+        overlayTransaction = 'PASS'
     }
     policy = 'No EngLoop-owned alternate generator or post-processing fallback. Agent-surface validation is deterministic and non-UI.'
     catalogChecksumSet = $true

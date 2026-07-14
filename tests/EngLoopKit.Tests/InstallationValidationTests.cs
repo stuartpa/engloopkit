@@ -50,7 +50,7 @@ public sealed class InstallationValidationTests
     {
         var config = new EngLoopConfiguration(
             "1.0",
-            "wrong",
+            "Invalid Product!",
             "engloop",
             "out",
             "northstar.md",
@@ -62,7 +62,7 @@ public sealed class InstallationValidationTests
 
         var errors = Evidence.ValidateConfigurationSafety(config);
         Assert.Contains("unsupported-schema-version", errors);
-        Assert.Contains("unsupported-product-id", errors);
+        Assert.Contains("invalid-product-id", errors);
         Assert.Contains("invalid-artifact-root", errors);
         Assert.Contains("invalid-transient-output-root", errors);
         Assert.Contains("invalid-northstar-path", errors);

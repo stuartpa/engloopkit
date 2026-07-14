@@ -402,6 +402,89 @@ public sealed class EngineeringLoopTests
         RejectsWithoutMutation(EngineeringLoopState.Initial, root, TransitionReasons.MissingProcessRoot);
     }
 
+    [Fact]
+    public void DeliveryAndOperationsAlternateGuards_coverCombinedBranchOutcomes()
+    {
+        var directionPending = EngineeringLoopState.Initial with
+        {
+            LastAcceptedStage = Stage.Northstar,
+            DeliveryCursor = DeliveryCursor.Northstar,
+            DirectionChangePending = true,
+        };
+        var acceptedDirection = Accept(directionPending, Stage.Northstar, new TransitionEvidence(NorthstarComplete: true));
+        Assert.True(acceptedDirection.DirectionRefactorRequired);
+
+        var scan = ReadyState() with
+        {
+            LastAcceptedStage = Stage.RefactorScan,
+            ArchitectureImpactPending = true,
+            DirectionChangePending = false,
+        };
+        RejectsWithoutMutation(scan,
+            EngineeringLoop.Evaluate(scan, Stage.Architect, new TransitionEvidence(ArchitectureCurrent: false)),
+            TransitionReasons.MissingArchitecture);
+
+        var openRepair = ReadyState() with
+        {
+            LastAcceptedStage = Stage.Repair,
+            RepairObligations = [new RepairObligation("RPI-001", false, false, false, false)],
+        };
+        var refactored = Accept(openRepair, Stage.Refactor, new TransitionEvidence(ImplementationCurrent: true));
+        Assert.Equal(Stage.Refactor, refactored.LastAcceptedStage);
+
+        var staleModel = StateAtRefactor() with { ModelRevision = "old" };
+        RejectsWithoutMutation(staleModel,
+            EngineeringLoop.Evaluate(staleModel, Stage.Explore, new TransitionEvidence(GenerationFresh: true)),
+            TransitionReasons.MissingModelOrExploration);
+
+        var ready = ReadyState();
+        var postmortemMissingDemand = ready with { LastAcceptedStage = Stage.Incident, IncidentDemandActive = false, IncidentStabilized = true };
+        RejectsWithoutMutation(postmortemMissingDemand,
+            EngineeringLoop.Evaluate(postmortemMissingDemand, Stage.Postmortem, new TransitionEvidence(SelectedIncidentSet: true)),
+            TransitionReasons.NoPostmortemSelection);
+
+        var scanWithoutCurrentReadiness = ready with { LastAcceptedStage = Stage.UnitTest, Readiness = new ReadinessEvidence(false, ready.ProductRevision, DateTimeOffset.UtcNow) };
+        RejectsWithoutMutation(scanWithoutCurrentReadiness,
+            EngineeringLoop.Evaluate(scanWithoutCurrentReadiness, Stage.RefactorScan, new TransitionEvidence(StewardshipCapacity: true)),
+            TransitionReasons.RefactorGateBypass);
+    }
+
+    [Fact]
+    public void TransitionBranchMatrix_coversAlternateDeliveryAndStewardshipOutcomes()
+    {
+        var started = Accept(EngineeringLoopState.Initial, Stage.Northstar, new TransitionEvidence(NorthstarComplete: true));
+        RejectsWithoutMutation(started,
+            EngineeringLoop.Evaluate(started, Stage.Scaffold, new TransitionEvidence(RunwayProven: false)),
+            TransitionReasons.MissingProvenRunway);
+
+        var scaffold = Accept(started, Stage.Scaffold, new TransitionEvidence(RunwayProven: true));
+        RejectsWithoutMutation(scaffold,
+            EngineeringLoop.Evaluate(scaffold, Stage.Architect, new TransitionEvidence(ArchitectureCurrent: false)),
+            TransitionReasons.MissingArchitecture);
+
+        var architecture = Accept(scaffold, Stage.Architect, new TransitionEvidence(ArchitectureCurrent: true));
+        RejectsWithoutMutation(architecture,
+            EngineeringLoop.Evaluate(architecture, Stage.Refactor, new TransitionEvidence(ImplementationCurrent: false)),
+            TransitionReasons.MissingImplementation);
+
+        var refactor = Accept(architecture, Stage.Refactor, new TransitionEvidence(ImplementationCurrent: true));
+        RejectsWithoutMutation(refactor,
+            EngineeringLoop.Evaluate(refactor, Stage.Model, new TransitionEvidence(ModelAdequate: false)),
+            TransitionReasons.MissingModelOrExploration);
+
+        var model = Accept(refactor, Stage.Model, new TransitionEvidence(ModelAdequate: true));
+        RejectsWithoutMutation(model,
+            EngineeringLoop.Evaluate(model, Stage.Explore, new TransitionEvidence(GenerationFresh: false)),
+            TransitionReasons.MissingModelOrExploration);
+
+        var ready = ReadyState();
+        var scan = Accept(ready, Stage.RefactorScan, new TransitionEvidence(StewardshipCapacity: true));
+        Assert.Equal(Stage.RefactorScan, scan.LastAcceptedStage);
+
+        var rootFailure = EngineeringLoop.EvaluateUnknown(ready, new TransitionEvidence(RootLayoutValid: false, RootFailureReason: TransitionReasons.AmbiguousProcessRoot));
+        RejectsWithoutMutation(ready, rootFailure, TransitionReasons.AmbiguousProcessRoot);
+    }
+
     private static EngineeringLoopState StateAtRefactor()
     {
         var state = EngineeringLoopState.Initial;

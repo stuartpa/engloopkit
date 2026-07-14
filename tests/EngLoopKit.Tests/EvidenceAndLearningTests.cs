@@ -22,7 +22,7 @@ public sealed class EvidenceAndLearningTests : IDisposable
         var bad = config with
         {
             SchemaVersion = "9.0",
-            ProductId = "other",
+            ProductId = "Invalid Product!",
             ArtifactRoot = "engloop",
             TransientOutputRoot = "out",
             NorthstarPath = "northstar.md",
@@ -30,7 +30,7 @@ public sealed class EvidenceAndLearningTests : IDisposable
         };
         var errors = Evidence.ValidateConfigurationSafety(bad);
         Assert.Contains("unsupported-schema-version", errors);
-        Assert.Contains("unsupported-product-id", errors);
+        Assert.Contains("invalid-product-id", errors);
         Assert.Contains("invalid-artifact-root", errors);
         Assert.Contains("invalid-transient-output-root", errors);
         Assert.Contains("invalid-northstar-path", errors);

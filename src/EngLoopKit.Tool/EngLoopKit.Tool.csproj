@@ -9,7 +9,7 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>engloopkit</ToolCommandName>
     <PackageId>engloopkit</PackageId>
-    <Version>1.7.0</Version>
+    <Version>1.8.0</Version>
     <Authors>stuartpa</Authors>
     <Description>Deterministic validation gates for EngLoopKit repositories.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -19,6 +19,7 @@
   <ItemGroup>
     <ProjectReference Include="..\EngLoopKit.Core\EngLoopKit.Core.csproj" />
     <ProjectReference Include="..\..\components\EngLoopKit.Components.DocumentValidation\EngLoopKit.Components.DocumentValidation.csproj" />
+    <ProjectReference Include="..\..\components\EngLoopKit.Components.Overlay\EngLoopKit.Components.Overlay.csproj" />
   </ItemGroup>
 
   <ItemGroup>

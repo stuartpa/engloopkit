@@ -1,8 +1,8 @@
-# EngLoopKit v1.7 document standards
+# EngLoopKit v1.8 document standards
 
 **Workflow generation:** Ordered EngLoop v2.
 **Product SemVer:** EngLoopKit remains on the **1.x** line; this workflow ships as
-v1.7.0. “v2” describes the workflow generation, not a v2.0 release.
+v1.8.0. “v2” describes the workflow generation, not a v2.0 release.
 
 Durable workflow memory lives in exactly one tracked hidden root:
 
@@ -13,6 +13,15 @@ Durable workflow memory lives in exactly one tracked hidden root:
 A governed root also has exactly one root `NORTHSTAR.md` and one root `LEARNINGS.md`.
 Current `engloop/` and `.engloopkit/` roots are forbidden; the validator fails closed
 rather than choosing or merging an alternate root.
+
+## Private overlay mode
+
+An explicit `engloopkit overlay install --mode overlay` creates this same process root
+as **local-only** state. It writes local `.git/info/exclude` rules and ELK-owned local
+Git hooks before creating managed files; it never edits tracked `.gitignore` or product
+files. Overlay state is recorded in `.engloop-overlay/manifest.json` and can be packed
+to a plain, hash-verified ZIP outside the repository. No secrets belong in an overlay
+archive.
 
 ## Naming and counters
 
