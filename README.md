@@ -1,4 +1,4 @@
-# EngLoopKit
+# EngLoopKit (ELK)
 
 > Ordered, evidence-gated engineering loops for long-lived software.
 
