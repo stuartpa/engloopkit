@@ -40,6 +40,25 @@ installation and ELK itself:
 
 Existing files in those locations are an actionable conflict, never a merge target.
 
+## Coexistence host contract (v1.8.1)
+
+Some repositories already own an untracked or tracked agent surface and local hooks. An
+operator may explicitly select `--host-mode coexist` only when a local `.specify/` host
+already exists. Coexistence does not merge directories:
+
+- existing `.github/agents/` and `.github/prompts/` files are snapshotted and must remain
+  byte-identical;
+- ELK owns only exact `speckit.engloop.*.agent.md` and `.prompt.md` names plus
+  `.specify/extensions/engloop/`;
+- tracked shared registration files fail closed because a local overlay must not modify
+  them;
+- an existing hook is renamed to `*.elk-prior`, then ELK installs a wrapper that executes
+  the prior hook before `overlay verify`; rollback restores the prior bytes exactly.
+
+The portable archive contains ELK-owned state only. The target coexistence host must
+already exist when unpacking; its unrelated agent/hook files are never archived or
+rewritten.
+
 ## Consequences
 
 - Overlay mode is suitable for large existing repositories because it does not infer or

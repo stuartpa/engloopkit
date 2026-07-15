@@ -19,7 +19,8 @@ public sealed record OverlayManifest(
     string ToolVersion,
     string ToolPackageRelativePath,
     string ExtensionArchiveIdentity,
-    IReadOnlyList<OverlayFile> Files)
+    IReadOnlyList<OverlayFile> Files,
+    string HostMode = "clean")
 {
     public const string CurrentSchemaVersion = "1.0";
     public const string ArchiveManifestEntry = "overlay-manifest.json";
@@ -408,6 +409,10 @@ public static class OverlayArchive
             || string.IsNullOrWhiteSpace(manifest.ToolPackageRelativePath))
         {
             throw new InvalidDataException("overlay-manifest-missing-identity");
+        }
+        if (manifest.HostMode is not ("clean" or "coexist"))
+        {
+            throw new InvalidDataException("overlay-invalid-host-mode");
         }
 
         var paths = new HashSet<string>(PathComparer);

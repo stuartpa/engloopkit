@@ -3,6 +3,18 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.1] - 2026-07-15
+
+### Fixed
+
+- Added explicit `--host-mode coexist` for repositories that already own local agent
+  directories, prompts, or hooks. Existing host agent/prompt files are preserved
+  byte-for-byte; ELK owns only exact `speckit.engloop.*` entries.
+- Existing local hooks are preserved as `*.elk-prior`; the ELK wrapper invokes the
+  preserved hook before overlay verification.
+- Coexist mode requires an existing local Spec Kit host and rejects tracked shared
+  registration files or exact ELK-owned name collisions.
+
 ## [1.8.0] - 2026-07-13
 
 ### Added

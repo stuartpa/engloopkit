@@ -2,9 +2,9 @@
 
 - **Feature ID:** SPEC002
 - **Status:** IMPLEMENTING
-- **Target release:** EngLoopKit **v1.8.0**
+- **Target release:** EngLoopKit **v1.8.1**
 - **Classification:** additive product feature / consumer-installation capability
-- **SemVer policy:** v1.8.0 remains on the 1.x maturity line.
+- **SemVer policy:** v1.8.1 remains on the 1.x maturity line.
 
 ## Purpose
 
@@ -60,6 +60,21 @@ The installer must:
 A failure rolls back only files created by the transaction and preserves pre-existing
 repository state.
 
+### US1b — Coexist with a repository-owned agent host
+
+An engineer whose repository already owns `.github/agents/`, `.github/prompts/`, or an
+existing local hook invokes:
+
+```text
+dotnet tool run engloopkit -- overlay install --mode overlay --host-mode coexist ...
+```
+
+Coexistence requires an existing local `.specify/` host. It must preserve every
+pre-existing agent/prompt file byte-for-byte, add only exact namespaced ELK agent/prompt
+files, and chain an existing local hook by preserving it as `*.elk-prior` before running
+ELK verification. It rejects tracked shared Spec Kit registration files and any exact ELK
+name collision; it never requires moving, deleting, or renaming repository-owned files.
+
 ### US2 — Prevent managed paths entering ordinary commits or pushes
 
 Overlay install writes local `.git/hooks/pre-commit` and `.git/hooks/pre-push` hooks.
@@ -111,3 +126,5 @@ ELK never claims it can defeat an intentional bypass.
    tracked collision, and existing hook conflict without partial restoration.
 5. Source/archive/disposable-install tests cover the component and tool paths; no UI
    validation is performed.
+6. Coexist mode preserves pre-existing tracked and local agent files byte-for-byte and
+   chains an existing LFS-style pre-push hook without modifying its contents.

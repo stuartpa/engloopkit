@@ -22,7 +22,7 @@ public sealed class OverlayCommandTests : IDisposable
     private readonly string _driver;
     private readonly string _artifactDir;
     private readonly string _archive;
-    private readonly string _version = "1.8.0-overlay" + Guid.NewGuid().ToString("N")[..8];
+    private readonly string _version = "1.8.1-overlay" + Guid.NewGuid().ToString("N")[..8];
 
     public OverlayCommandTests()
     {
@@ -114,6 +114,48 @@ public sealed class OverlayCommandTests : IDisposable
         Assert.False(Directory.Exists(Path.Combine(_wrong, ".engloop")));
     }
 
+    [Fact]
+    public void CoexistHost_preservesExistingAgentFilesAndChainsExistingPrePushHook()
+    {
+        CreateRepository();
+        Run("specify", _source, "init", "--here", "--force", "--integration", "copilot", "--script", "ps", "--ignore-agent-tools");
+
+        var agents = Path.Combine(_source, ".github", "agents");
+        var trackedAgent = Path.Combine(agents, "existing.agent.md");
+        var localAgent = Path.Combine(agents, "local.agent.md");
+        File.WriteAllText(trackedAgent, "tracked existing agent\n");
+        File.WriteAllText(localAgent, "local existing agent\n");
+        var trackedBytes = File.ReadAllBytes(trackedAgent);
+        var localBytes = File.ReadAllBytes(localAgent);
+
+        Run("git", _source, "add", trackedAgent);
+        Run("git", _source, "commit", "-m", "existing agent host");
+        Run("git", _source, "push");
+
+        var prePush = Path.Combine(_source, ".git", "hooks", "pre-push");
+        var lfsHook = "#!/bin/sh\ncommand -v git-lfs >/dev/null 2>&1 || { echo >&2 \"git-lfs missing\"; exit 2; }\ngit lfs pre-push \"$@\"\n";
+        File.WriteAllText(prePush, lfsHook);
+        var lfsHookBytes = File.ReadAllBytes(prePush);
+
+        var (nupkg, extension) = BuildArtifacts();
+        InstallDriver(nupkg);
+        var installExit = OverlayCommands.Execute(InstallArgs(_source, nupkg, extension, "coexist"));
+        Assert.True(installExit == 0, OverlayCommands.LastError);
+
+        Assert.Equal(trackedBytes, File.ReadAllBytes(trackedAgent));
+        Assert.Equal(localBytes, File.ReadAllBytes(localAgent));
+        Assert.True(File.Exists(Path.Combine(_source, ".github", "agents", "speckit.engloop.01-northstar.agent.md")));
+        Assert.True(File.Exists(Path.Combine(_source, ".github", "prompts", "speckit.engloop.01-northstar.prompt.md")));
+        Assert.Equal(lfsHookBytes, File.ReadAllBytes(prePush + ".elk-prior"));
+        var wrapper = File.ReadAllText(prePush);
+        Assert.Contains("ELK_OVERLAY_HOOK", wrapper);
+        Assert.Contains("pre-push.elk-prior", wrapper);
+
+        Assert.Equal(0, OverlayCommands.Execute(["verify", "--root", _source, "--mode", "all"]));
+        Assert.Equal(string.Empty, Run("git", _source, "ls-files", "--", ".github/agents/speckit.engloop.01-northstar.agent.md").StandardOutput.Trim());
+        Assert.Equal(".github/agents/existing.agent.md", Run("git", _source, "ls-files", "--", ".github/agents/existing.agent.md").StandardOutput.Trim());
+    }
+
     private void CreateRepository()
     {
         Run("git", _work, "init", "--bare", _bare);
@@ -148,9 +190,9 @@ public sealed class OverlayCommandTests : IDisposable
             "--add-source", Path.GetDirectoryName(nupkg)!, "--tool-manifest", manifest, "--no-cache");
     }
 
-    private string[] InstallArgs(string root, string nupkg, string extension) =>
+    private string[] InstallArgs(string root, string nupkg, string extension, string hostMode = "clean") =>
     [
-        "install", "--mode", "overlay", "--root", root,
+        "install", "--mode", "overlay", "--host-mode", hostMode, "--root", root,
         "--product-id", "overlay-test", "--repository-id", "overlay-test-repository",
         "--tool-version", _version, "--tool-nupkg", nupkg, "--extension-archive", extension,
     ];

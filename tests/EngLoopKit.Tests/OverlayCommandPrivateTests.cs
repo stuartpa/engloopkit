@@ -71,14 +71,14 @@ public sealed class OverlayCommandPrivateTests : IDisposable
     {
         var exclude = Path.Combine(_root, ".git", "info", "exclude");
         File.WriteAllText(exclude, "existing\n");
-        Invoke<object?>("WriteOverlayExcludes", exclude);
+        Invoke<object?>("WriteOverlayExcludes", exclude, "clean");
         var once = File.ReadAllText(exclude);
-        Invoke<object?>("WriteOverlayExcludes", exclude);
+        Invoke<object?>("WriteOverlayExcludes", exclude, "clean");
         Assert.Equal(once, File.ReadAllText(exclude));
         Assert.Contains("# >>> ELK_OVERLAY_MANAGED >>>", once);
         Assert.Contains("/.engloop/", once);
 
-        Invoke<object?>("InstallHook", _root, "pre-commit", "staged");
+        Invoke<object?>("InstallHook", _root, "pre-commit", "staged", "clean");
         var hook = File.ReadAllText(Path.Combine(_root, ".git", "hooks", "pre-commit"));
         Assert.Contains("ELK_OVERLAY_HOOK", hook);
         Assert.Contains("--mode staged", hook);
@@ -127,7 +127,7 @@ public sealed class OverlayCommandPrivateTests : IDisposable
 
         Directory.CreateDirectory(Path.Combine(_root, ".engloop"));
         File.WriteAllText(Path.Combine(_root, ".engloop", "config.json"), "{}");
-        var manifest = Invoke<OverlayManifest>("CreateCurrentManifest", _root, "private-product", "private-repository", "1.8.0", ".engloop-overlay/packages/tool.nupkg", "extension");
+        var manifest = Invoke<OverlayManifest>("CreateCurrentManifest", _root, "clean", "private-product", "private-repository", "1.8.1", ".engloop-overlay/packages/tool.nupkg", "extension");
         Assert.Contains(manifest.Files, file => file.RelativePath == ".engloop/config.json");
         Invoke<object?>("WriteManifest", _root, manifest);
         var read = Invoke<OverlayManifest>("ReadManifest", _root);
@@ -170,7 +170,7 @@ public sealed class OverlayCommandPrivateTests : IDisposable
         File.WriteAllText(Path.Combine(_root, ".git", "hooks", "pre-commit"), "# ELK_OVERLAY_HOOK\n");
         File.WriteAllText(Path.Combine(_root, ".git", "hooks", "pre-push"), "# ELK_OVERLAY_HOOK\n");
 
-        Invoke<object?>("RollbackInstall", _root, original);
+        Invoke<object?>("RollbackInstall", _root, original, "clean");
         Assert.Equal(original, File.ReadAllText(exclude));
         Assert.False(Directory.Exists(Path.Combine(_root, ".engloop")));
         Assert.False(Directory.Exists(Path.Combine(_root, ".engloop-overlay")));

@@ -31,13 +31,14 @@ $ErrorActionPreference = 'Stop'
 $targetRepositoryRoot = '<repository-root>'
 $productId = '<lowercase-product-id>'
 $repositoryId = '<stable-repository-id>'
-$elkVersion = '1.8.0'
-$bootstrapRoot = Join-Path $env:LOCALAPPDATA 'EngLoopKit\bootstrap\1.8.0'
-$releaseBase = 'https://github.com/stuartpa/engloopkit/releases/download/v1.8.0'
+$elkVersion = '1.8.1'
+$bootstrapRoot = Join-Path $env:LOCALAPPDATA 'EngLoopKit\bootstrap\1.8.1'
+$releaseBase = 'https://github.com/stuartpa/engloopkit/releases/download/v1.8.1'
 
 $expected = @{
-    'engloopkit.1.8.0.nupkg' = 'c3b2f488938f58a921ae54a2dcbc5427978ecdb661b96ba09a69dc18713d4724'
-    'engloopkit-extension-1.8.0.zip' = 'e0b3da4c16a3fc09dc347e9a89fe475f5031bdecb7568db49ba179b90abb9b92'
+    # Copy v1.8.1 release hashes here before execution.
+    'engloopkit.1.8.1.nupkg' = '<sha256-from-v1.8.1-release>'
+    'engloopkit-extension-1.8.1.zip' = '<sha256-from-v1.8.1-release>'
 }
 
 function Assert-Sha256 {
@@ -70,14 +71,14 @@ if ($gitRoot.TrimEnd('\') -ine $targetRepositoryRoot.TrimEnd('\')) {
 }
 
 New-Item -ItemType Directory -Path $bootstrapRoot -Force | Out-Null
-$nupkg = Join-Path $bootstrapRoot 'engloopkit.1.8.0.nupkg'
-$extensionZip = Join-Path $bootstrapRoot 'engloopkit-extension-1.8.0.zip'
+$nupkg = Join-Path $bootstrapRoot 'engloopkit.1.8.1.nupkg'
+$extensionZip = Join-Path $bootstrapRoot 'engloopkit-extension-1.8.1.zip'
 
-Invoke-WebRequest "$releaseBase/engloopkit.1.8.0.nupkg" -OutFile $nupkg
-Invoke-WebRequest "$releaseBase/engloopkit-extension-1.8.0.zip" -OutFile $extensionZip
+Invoke-WebRequest "$releaseBase/engloopkit.1.8.1.nupkg" -OutFile $nupkg
+Invoke-WebRequest "$releaseBase/engloopkit-extension-1.8.1.zip" -OutFile $extensionZip
 
-Assert-Sha256 -Path $nupkg -Expected $expected['engloopkit.1.8.0.nupkg']
-Assert-Sha256 -Path $extensionZip -Expected $expected['engloopkit-extension-1.8.0.zip']
+Assert-Sha256 -Path $nupkg -Expected $expected['engloopkit.1.8.1.nupkg']
+Assert-Sha256 -Path $extensionZip -Expected $expected['engloopkit-extension-1.8.1.zip']
 
 # This manifest deliberately lives OUTSIDE the target repository.
 Push-Location $bootstrapRoot
@@ -130,7 +131,25 @@ Normal Git hooks protect ordinary commit/push flows. Do not bypass them with
 
 ## Existing agent directories or hooks
 
-ELK v1.8.0 `clean` host mode intentionally fails closed when the target already owns
-agent directories, generated command surfaces, or non-ELK hooks. Do not delete, rename,
-or manually merge those existing files. Use a release that explicitly supports a
-repository-host coexistence contract instead.
+ELK v1.8.1 adds an explicit coexistence contract for a repository that already owns a
+local Spec Kit host, agent directories, or local hooks. Replace `--host-mode clean` above
+with `--host-mode coexist` only when the target has a pre-existing local `.specify/`
+directory:
+
+```powershell
+dotnet tool run engloopkit -- overlay install `
+    --mode overlay `
+    --host-mode coexist `
+    --root $targetRepositoryRoot `
+    --product-id $productId `
+    --repository-id $repositoryId `
+    --tool-version $elkVersion `
+    --tool-nupkg $nupkg `
+    --extension-archive $extensionZip
+```
+
+Coexist mode preserves existing `.github/agents/` and `.github/prompts/` content
+byte-for-byte. ELK adds only exact `speckit.engloop.*` entries. An existing local hook is
+preserved as `*.elk-prior`; the ELK wrapper invokes it before ELK verification. Tracked
+shared Spec Kit registration files or exact ELK name collisions fail closed. Do not delete,
+rename, or manually merge existing host files.

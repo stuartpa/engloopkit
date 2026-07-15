@@ -3,7 +3,7 @@ param(
     [string]$Root = (Join-Path $PSScriptRoot '..'),
     [string]$ToolNupkg,
     [string]$ExtensionArchive,
-    [string]$Version = '1.8.0',
+    [string]$Version = '1.8.1',
     [switch]$KeepWork
 )
 
@@ -19,6 +19,7 @@ $source = Join-Path $work 'source'
 $target = Join-Path $work 'target'
 $driver = Join-Path $work 'driver'
 $archive = Join-Path $work 'private-overlay.zip'
+$coexist = Join-Path $work 'coexist'
 
 function Invoke-Checked {
     param([string]$File, [string]$WorkingDirectory, [string[]]$Arguments)
@@ -131,6 +132,40 @@ try {
     $wrong = Join-Path $work 'wrong-identity'
     Invoke-Checked git $work @('clone', '--branch', 'main', $bare, $wrong)
     Invoke-ExpectedFailure dotnet $driver @('tool', 'run', 'engloopkit', '--', 'overlay', 'unpack', '--root', $wrong, '--input', $archive, '--repository-id', 'wrong-id') 'overlay-repository-id-mismatch'
+
+    # Generic coexistence host: the repository owns existing agent content and an LFS-style
+    # local pre-push hook. ELK must preserve them and add only namespaced ELK entries.
+    Invoke-Checked git $work @('clone', '--branch', 'main', $bare, $coexist)
+    Invoke-Checked git $coexist @('config', 'user.email', 'overlay@example.invalid')
+    Invoke-Checked git $coexist @('config', 'user.name', 'Overlay Test')
+    Invoke-Checked specify $coexist @('init', '--here', '--force', '--integration', 'copilot', '--script', 'ps', '--ignore-agent-tools')
+    $agents = Join-Path $coexist '.github/agents'
+    New-Item -ItemType Directory -Path $agents -Force | Out-Null
+    $existingAgent = Join-Path $agents 'existing.agent.md'
+    $localAgent = Join-Path $agents 'local.agent.md'
+    Set-Content $existingAgent 'tracked existing agent' -Encoding utf8
+    Set-Content $localAgent 'local existing agent' -Encoding utf8
+    $existingBytes = [IO.File]::ReadAllBytes($existingAgent)
+    $localBytes = [IO.File]::ReadAllBytes($localAgent)
+    Invoke-Checked git $coexist @('add', $existingAgent)
+    Invoke-Checked git $coexist @('commit', '-m', 'existing agent host')
+    Invoke-Checked git $coexist @('push')
+    $prePush = Join-Path $coexist '.git/hooks/pre-push'
+    $lfsHook = "#!/bin/sh`ncommand -v git-lfs >/dev/null 2>&1 || exit 2`ngit lfs pre-push `"`$@`"`n"
+    Set-Content $prePush $lfsHook -NoNewline -Encoding utf8
+    $lfsHookBytes = [IO.File]::ReadAllBytes($prePush)
+
+    Invoke-Checked dotnet $driver @('tool', 'run', 'engloopkit', '--', 'overlay', 'install', '--mode', 'overlay', '--host-mode', 'coexist', '--root', $coexist, '--product-id', 'overlay-test', '--repository-id', 'overlay-test-repository', '--tool-version', $Version, '--tool-nupkg', $toolNupkg, '--extension-archive', $extensionArchive)
+    Invoke-Checked dotnet $coexist @('tool', 'run', 'engloopkit', '--', 'overlay', 'verify', '--root', $coexist)
+    if (-not ([System.Linq.Enumerable]::SequenceEqual([IO.File]::ReadAllBytes($existingAgent), $existingBytes)) -or -not ([System.Linq.Enumerable]::SequenceEqual([IO.File]::ReadAllBytes($localAgent), $localBytes))) {
+        throw 'Coexistence changed a repository-owned agent file.'
+    }
+    if (-not (Test-Path (Join-Path $coexist '.github/agents/speckit.engloop.01-northstar.agent.md'))) {
+        throw 'Coexistence did not create the ELK namespaced agent entry.'
+    }
+    if (-not ([System.Linq.Enumerable]::SequenceEqual([IO.File]::ReadAllBytes($prePush + '.elk-prior'), $lfsHookBytes)) -or -not (Select-String -Path $prePush -Pattern 'ELK_OVERLAY_HOOK' -Quiet)) {
+        throw 'Coexistence did not preserve and chain the existing pre-push hook.'
+    }
 
     Write-Output "OVERLAY_INTEGRATION_PASS archive=$archive"
 }

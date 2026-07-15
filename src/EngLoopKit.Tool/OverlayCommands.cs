@@ -16,33 +16,90 @@ public static class OverlayCommands
 {
     public static string? LastError { get; private set; }
 
-    private static readonly string[] ManagedRoots =
+    private static readonly string[] ArchiveRoots =
     [
         ".engloop",
         ".engloop-overlay",
         ".config/dotnet-tools.json",
-        ".specify",
-        ".github/agents",
-        ".github/prompts",
-        ".vscode/settings.json",
         "NORTHSTAR.md",
         "LEARNINGS.md",
     ];
 
-    private static readonly string[] ExcludePatterns =
+    private static readonly string[] CleanOnlyManagedRoots =
+    [
+        ".specify",
+        ".github/agents",
+        ".github/prompts",
+        ".vscode/settings.json",
+    ];
+
+    private static readonly string[] SharedHostPaths =
+    [
+        ".specify/extensions/.registry",
+        ".specify/extensions.yml",
+    ];
+
+    private static readonly string[] ArchiveExcludePatterns =
     [
         "/.engloop/",
         "/.engloop-overlay/",
         "/.config/dotnet-tools.json",
-        "/.specify/",
-        "/.github/agents/",
-        "/.github/prompts/",
-        "/.vscode/settings.json",
         "/NORTHSTAR.md",
         "/LEARNINGS.md",
     ];
 
     private static readonly string[] HookNames = ["pre-commit", "pre-push"];
+
+    private sealed record DirectorySnapshot(string RelativeDirectory, IReadOnlyDictionary<string, byte[]> Files);
+    private sealed record HookSnapshot(string HookName, byte[]? Content);
+
+    private static readonly string[] EngLoopCommandIds =
+    [
+        "speckit.engloop.01-northstar", "speckit.engloop.02-scaffold", "speckit.engloop.03-architect",
+        "speckit.engloop.04-refactor", "speckit.engloop.05-model", "speckit.engloop.06-explore",
+        "speckit.engloop.07-validate", "speckit.engloop.08-unittest", "speckit.engloop.09-overlay-pack",
+        "speckit.engloop.20-incident", "speckit.engloop.21-postmortem", "speckit.engloop.22-repair",
+        "speckit.engloop.30-refactor-scan", "speckit.engloop.31-learnings-pyramid",
+    ];
+
+    private static string NormalizeHostMode(string mode)
+    {
+        if (mode is "clean" or "coexist") return mode;
+        throw new InvalidOperationException("overlay-invalid-host-mode");
+    }
+
+    private static string[] GetManagedRoots(string hostMode)
+    {
+        var roots = ArchiveRoots.ToList();
+        if (hostMode == "clean")
+        {
+            roots.AddRange(CleanOnlyManagedRoots);
+        }
+        else
+        {
+            roots.Add(".specify/extensions/engloop");
+            roots.AddRange(EngLoopCommandIds.Select(id => ".github/agents/" + id + ".agent.md"));
+            roots.AddRange(EngLoopCommandIds.Select(id => ".github/prompts/" + id + ".prompt.md"));
+        }
+        return roots.ToArray();
+    }
+
+    private static string[] GetExcludePatterns(string hostMode)
+    {
+        var patterns = ArchiveExcludePatterns.ToList();
+        if (hostMode == "clean")
+        {
+            patterns.AddRange(["/.specify/", "/.github/agents/", "/.github/prompts/", "/.vscode/settings.json"]);
+        }
+        else
+        {
+            patterns.AddRange(SharedHostPaths.Select(path => "/" + path));
+            patterns.Add("/.specify/extensions/engloop/");
+            patterns.AddRange(EngLoopCommandIds.Select(id => "/.github/agents/" + id + ".agent.md"));
+            patterns.AddRange(EngLoopCommandIds.Select(id => "/.github/prompts/" + id + ".prompt.md"));
+        }
+        return patterns.ToArray();
+    }
 
     public static int Execute(string[] args)
     {
@@ -81,6 +138,7 @@ public static class OverlayCommands
         {
             return Fail("overlay-install-requires-mode-overlay");
         }
+        var hostMode = NormalizeHostMode(GetOption(args, "--host-mode", "clean"));
         var productId = RequireOption(args, "--product-id");
         var repositoryId = RequireOption(args, "--repository-id");
         var toolVersion = RequireOption(args, "--tool-version");
@@ -91,13 +149,17 @@ public static class OverlayCommands
         {
             return Fail("overlay-invalid-product-id");
         }
-        PreflightInstall(root);
+        PreflightInstall(root, hostMode);
         var excludePath = GetGitPath(root, "info/exclude");
         var originalExclude = File.Exists(excludePath) ? File.ReadAllText(excludePath) : string.Empty;
+        var existingAgentSnapshot = CaptureDirectorySnapshot(root, ".github/agents");
+        var existingPromptSnapshot = CaptureDirectorySnapshot(root, ".github/prompts");
+        var existingSpecKitSnapshot = CaptureDirectorySnapshot(root, ".specify");
+        var hookSnapshots = CaptureHookSnapshots(root);
         var created = new List<string>();
         try
         {
-            WriteOverlayExcludes(excludePath);
+            WriteOverlayExcludes(excludePath, hostMode);
             Directory.CreateDirectory(Path.Combine(root, ".engloop-overlay", "packages"));
             Directory.CreateDirectory(Path.Combine(root, ".engloop-overlay", "cache"));
 
@@ -118,15 +180,24 @@ public static class OverlayCommands
                 "--add-source", Path.Combine(root, ".engloop-overlay", "packages"),
                 "--tool-manifest", toolManifest, "--no-cache");
 
-            Run("specify", root, "init", "--here", "--force", "--integration", "copilot", "--script", "ps", "--ignore-agent-tools");
+            if (hostMode == "clean")
+            {
+                Run("specify", root, "init", "--here", "--force", "--integration", "copilot", "--script", "ps", "--ignore-agent-tools");
+            }
+            else
+            {
+                RequireExistingSpecKitHost(root);
+            }
             Run("specify", root, "extension", "add", extensionSourceDirectory, "--dev", "--force");
             WaitForGeneratedSurface(root);
+            AssertSnapshotPreserved(root, existingAgentSnapshot);
+            AssertSnapshotPreserved(root, existingPromptSnapshot);
 
             WriteInitialOverlayFiles(root, productId);
-            InstallHook(root, "pre-commit", "staged");
-            InstallHook(root, "pre-push", "push");
+            InstallHook(root, "pre-commit", "staged", hostMode);
+            InstallHook(root, "pre-push", "push", hostMode);
 
-            var manifest = CreateCurrentManifest(root, productId, repositoryId, toolVersion,
+            var manifest = CreateCurrentManifest(root, hostMode, productId, repositoryId, toolVersion,
                 Path.GetRelativePath(root, packageDestination).Replace('\\', '/'),
                 ExtensionIdentity(extensionSource, extensionArchive));
             WriteManifest(root, manifest);
@@ -136,7 +207,12 @@ public static class OverlayCommands
         }
         catch
         {
-            RollbackInstall(root, originalExclude);
+            RollbackInstall(root, originalExclude, hostMode);
+            RemoveNewDirectoryFiles(root, existingSpecKitSnapshot);
+            RestoreDirectorySnapshot(root, existingAgentSnapshot);
+            RestoreDirectorySnapshot(root, existingPromptSnapshot);
+            RestoreDirectorySnapshot(root, existingSpecKitSnapshot);
+            RestoreHookSnapshots(root, hookSnapshots);
             throw;
         }
     }
@@ -220,16 +296,34 @@ public static class OverlayCommands
             return Fail("overlay-base-revision-mismatch");
         }
 
-        PreflightInstall(root);
+        var hostMode = NormalizeHostMode(manifest.HostMode);
+        PreflightInstall(root, hostMode);
         var excludePath = GetGitPath(root, "info/exclude");
         var originalExclude = File.Exists(excludePath) ? File.ReadAllText(excludePath) : string.Empty;
+        var existingAgentSnapshot = CaptureDirectorySnapshot(root, ".github/agents");
+        var existingPromptSnapshot = CaptureDirectorySnapshot(root, ".github/prompts");
+        var existingSpecKitSnapshot = CaptureDirectorySnapshot(root, ".specify");
+        var hookSnapshots = CaptureHookSnapshots(root);
         try
         {
-            WriteOverlayExcludes(excludePath);
+            WriteOverlayExcludes(excludePath, hostMode);
             OverlayArchive.ExtractArchive(input, root, manifest);
             WriteManifest(root, manifest);
-            InstallHook(root, "pre-commit", "staged");
-            InstallHook(root, "pre-push", "push");
+            if (hostMode == "coexist")
+            {
+                RequireExistingSpecKitHost(root);
+                var sourceDirectory = Path.Combine(root, ".engloop-overlay", "cache", "extension-source");
+                if (!Directory.Exists(sourceDirectory))
+                {
+                    throw new InvalidOperationException("overlay-archive-missing-extension-source");
+                }
+                Run("specify", root, "extension", "add", sourceDirectory, "--dev", "--force");
+                WaitForGeneratedSurface(root);
+                AssertSnapshotPreserved(root, existingAgentSnapshot);
+                AssertSnapshotPreserved(root, existingPromptSnapshot);
+            }
+            InstallHook(root, "pre-commit", "staged", hostMode);
+            InstallHook(root, "pre-push", "push", hostMode);
 
             var packageDirectory = Path.GetDirectoryName(Path.Combine(root, manifest.ToolPackageRelativePath))!;
             Run("dotnet", root, "tool", "restore", "--add-source", packageDirectory);
@@ -239,7 +333,12 @@ public static class OverlayCommands
         }
         catch
         {
-            RollbackInstall(root, originalExclude);
+            RollbackInstall(root, originalExclude, hostMode);
+            RemoveNewDirectoryFiles(root, existingSpecKitSnapshot);
+            RestoreDirectorySnapshot(root, existingAgentSnapshot);
+            RestoreDirectorySnapshot(root, existingPromptSnapshot);
+            RestoreDirectorySnapshot(root, existingSpecKitSnapshot);
+            RestoreHookSnapshots(root, hookSnapshots);
             throw;
         }
     }
@@ -254,13 +353,14 @@ public static class OverlayCommands
 
     private static OverlayManifest CreateCurrentManifest(
         string root,
+        string hostMode,
         string productId,
         string repositoryId,
         string toolVersion,
         string toolPackageRelativePath,
         string extensionIdentity)
     {
-        var files = OverlayArchive.CaptureStableFiles(root, ManagedRoots, [OverlayManifest.ManagedManifestPath]);
+        var files = OverlayArchive.CaptureStableFiles(root, GetManagedRoots(hostMode), [OverlayManifest.ManagedManifestPath]);
         RejectSecretLikePaths(files);
         return new OverlayManifest(
             OverlayManifest.CurrentSchemaVersion,
@@ -269,13 +369,14 @@ public static class OverlayCommands
             TryGit(root, "config", "--get", "remote.origin.url"),
             Git(root, "rev-parse", "HEAD").Trim(),
             DateTimeOffset.UtcNow,
-            ManagedRoots,
-            ExcludePatterns,
+            GetManagedRoots(hostMode),
+            GetExcludePatterns(hostMode),
             HookNames,
             toolVersion,
             toolPackageRelativePath,
             extensionIdentity,
-            files);
+            files,
+            hostMode);
     }
 
     private static void EnsureVerified(string root, OverlayManifest manifest, string mode)
@@ -356,9 +457,9 @@ public static class OverlayCommands
         return currentFiles;
     }
 
-    private static void PreflightInstall(string root)
+    private static void PreflightInstall(string root, string hostMode)
     {
-        foreach (var managedRoot in ManagedRoots)
+        foreach (var managedRoot in GetManagedRoots(hostMode))
         {
             var full = Path.Combine(root, managedRoot.Replace('/', Path.DirectorySeparatorChar));
             if (File.Exists(full) || Directory.Exists(full))
@@ -373,17 +474,41 @@ public static class OverlayCommands
             }
         }
 
-        foreach (var hook in HookNames)
+        if (hostMode == "coexist")
         {
-            var path = GetGitPath(root, "hooks/" + hook);
-            if (File.Exists(path) && !File.ReadAllText(path).Contains("ELK_OVERLAY_HOOK", StringComparison.Ordinal))
+            RequireExistingSpecKitHost(root);
+            foreach (var sharedPath in SharedHostPaths)
             {
-                throw new InvalidOperationException($"overlay-hook-conflict:{hook}");
+                var tracked = Git(root, "ls-files", "--", sharedPath).Trim();
+                if (!string.IsNullOrWhiteSpace(tracked))
+                {
+                    throw new InvalidOperationException($"overlay-coexist-tracked-host-config:{sharedPath}");
+                }
+            }
+        }
+        else
+        {
+            foreach (var hook in HookNames)
+            {
+                var path = GetGitPath(root, "hooks/" + hook);
+                if (File.Exists(path) && !File.ReadAllText(path).Contains("ELK_OVERLAY_HOOK", StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException($"overlay-hook-conflict:{hook}");
+                }
             }
         }
     }
 
-    private static void WriteOverlayExcludes(string excludePath)
+    private static void RequireExistingSpecKitHost(string root)
+    {
+        var hostRoot = Path.Combine(root, ".specify");
+        if (!Directory.Exists(hostRoot))
+        {
+            throw new InvalidOperationException("overlay-coexist-requires-spec-kit-host");
+        }
+    }
+
+    private static void WriteOverlayExcludes(string excludePath, string hostMode)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(excludePath)!);
         var existing = File.Exists(excludePath) ? File.ReadAllText(excludePath) : string.Empty;
@@ -395,26 +520,119 @@ public static class OverlayCommands
         }
 
         var lines = new List<string> { existing.TrimEnd(), begin };
-        lines.AddRange(ExcludePatterns);
+        lines.AddRange(GetExcludePatterns(hostMode));
         lines.Add(end);
         File.WriteAllText(excludePath, string.Join(Environment.NewLine, lines.Where(line => line is not null)) + Environment.NewLine);
     }
 
-    private static void InstallHook(string root, string hookName, string mode)
+    private static void InstallHook(string root, string hookName, string mode, string hostMode)
     {
         var path = GetGitPath(root, "hooks/" + hookName);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var priorPath = path + ".elk-prior";
+        if (File.Exists(path) && !File.ReadAllText(path).Contains("ELK_OVERLAY_HOOK", StringComparison.Ordinal))
+        {
+            if (hostMode != "coexist")
+            {
+                throw new InvalidOperationException($"overlay-hook-conflict:{hookName}");
+            }
+            if (File.Exists(priorPath))
+            {
+                throw new InvalidOperationException($"overlay-hook-chain-conflict:{hookName}");
+            }
+            File.Move(path, priorPath);
+        }
+
+        var priorInvocation = File.Exists(priorPath)
+            ? "\"$HOOK_DIR/" + Path.GetFileName(priorPath) + "\" \"$@\"\n"
+            : string.Empty;
         var content = $$"""
 #!/bin/sh
 # ELK_OVERLAY_HOOK
 set -eu
 ROOT="$(git rev-parse --show-toplevel)"
-exec dotnet tool run engloopkit -- overlay verify --root "$ROOT" --mode {{mode}}
+HOOK_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+{{priorInvocation}}exec dotnet tool run engloopkit -- overlay verify --root "$ROOT" --mode {{mode}}
 """;
         File.WriteAllText(path, content);
         if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
         {
             File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        }
+    }
+
+    private static DirectorySnapshot CaptureDirectorySnapshot(string root, string relativeDirectory)
+    {
+        var full = Path.Combine(root, relativeDirectory.Replace('/', Path.DirectorySeparatorChar));
+        var files = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
+        if (Directory.Exists(full))
+        {
+            foreach (var file in Directory.GetFiles(full, "*", SearchOption.AllDirectories))
+            {
+                files[Path.GetRelativePath(full, file).Replace('\\', '/')] = File.ReadAllBytes(file);
+            }
+        }
+        return new DirectorySnapshot(relativeDirectory, files);
+    }
+
+    private static void AssertSnapshotPreserved(string root, DirectorySnapshot snapshot)
+    {
+        var full = Path.Combine(root, snapshot.RelativeDirectory.Replace('/', Path.DirectorySeparatorChar));
+        foreach (var (relative, expected) in snapshot.Files)
+        {
+            var path = Path.Combine(full, relative.Replace('/', Path.DirectorySeparatorChar));
+            if (!File.Exists(path) || !File.ReadAllBytes(path).SequenceEqual(expected))
+            {
+                throw new InvalidOperationException($"overlay-shared-host-file-changed:{snapshot.RelativeDirectory}/{relative}");
+            }
+        }
+    }
+
+    private static void RestoreDirectorySnapshot(string root, DirectorySnapshot snapshot)
+    {
+        var full = Path.Combine(root, snapshot.RelativeDirectory.Replace('/', Path.DirectorySeparatorChar));
+        foreach (var (relative, content) in snapshot.Files)
+        {
+            var path = Path.Combine(full, relative.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllBytes(path, content);
+        }
+    }
+
+    private static void RemoveNewDirectoryFiles(string root, DirectorySnapshot snapshot)
+    {
+        var full = Path.Combine(root, snapshot.RelativeDirectory.Replace('/', Path.DirectorySeparatorChar));
+        if (!Directory.Exists(full)) return;
+        foreach (var path in Directory.GetFiles(full, "*", SearchOption.AllDirectories))
+        {
+            var relative = Path.GetRelativePath(full, path).Replace('\\', '/');
+            if (!snapshot.Files.ContainsKey(relative))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    private static IReadOnlyList<HookSnapshot> CaptureHookSnapshots(string root)
+        => HookNames.Select(hook =>
+        {
+            var path = GetGitPath(root, "hooks/" + hook);
+            return new HookSnapshot(hook, File.Exists(path) ? File.ReadAllBytes(path) : null);
+        }).ToArray();
+
+    private static void RestoreHookSnapshots(string root, IReadOnlyList<HookSnapshot> snapshots)
+    {
+        foreach (var snapshot in snapshots)
+        {
+            var path = GetGitPath(root, "hooks/" + snapshot.HookName);
+            var priorPath = path + ".elk-prior";
+            if (File.Exists(path)) File.Delete(path);
+            if (File.Exists(priorPath)) File.Delete(priorPath);
+            if (snapshot.Content is not null)
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                File.WriteAllBytes(path, snapshot.Content);
+            }
         }
     }
 
@@ -548,9 +766,9 @@ exec dotnet tool run engloopkit -- overlay verify --root "$ROOT" --mode {{mode}}
         return OverlayArchive.ParseManifest(File.ReadAllText(path));
     }
 
-    private static void RollbackInstall(string root, string originalExclude)
+    private static void RollbackInstall(string root, string originalExclude, string hostMode)
     {
-        foreach (var managed in ManagedRoots.OrderByDescending(path => path.Length))
+        foreach (var managed in GetManagedRoots(hostMode).OrderByDescending(path => path.Length))
         {
             var path = Path.Combine(root, managed.Replace('/', Path.DirectorySeparatorChar));
             if (File.Exists(path)) File.Delete(path);
