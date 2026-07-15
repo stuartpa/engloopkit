@@ -1,4 +1,4 @@
-# <Repository> Northstar
+# <Repository> North Star
 
 - **Created:** <date>
 - **Last revised:** <date>
@@ -7,7 +7,7 @@
 - **Audience:** <who this repository serves>
 
 > One living direction document. Git retains prior revisions; do not create numbered
-> direction snapshots.
+> direction snapshots. Write enduring direction, not a dated roadmap or delivery plan.
 
 ## Purpose and audience
 
@@ -24,6 +24,19 @@
 ## Current direction
 
 <The one authoritative direction for product evolution.>
+
+## Staged capability sequence
+
+<Optional. Include this section only when capability, evidence, governance, or safety
+prerequisites require an ordered sequence. Do not use calendar commitments.>
+
+### Stage 1 — <capability or prerequisite>
+
+<The capability/evidence/governance/safety boundary that must hold before the next Stage.>
+
+### Stage 2 — <capability or prerequisite>
+
+<The next dependency boundary. A Stage is not a sprint, date, or delivery promise.>
 
 ## More of
 
@@ -44,3 +57,11 @@
 ## Evidence for this revision
 
 - <Evidence that justified creating or changing direction; routine completion is not enough.>
+
+## Authoring boundary
+
+- Keep this document timeless by default.
+- Use `Stage N — <name>` only for genuine ordered dependency boundaries.
+- Do not use `Phase` for ordered direction.
+- Keep schedules, tasks, milestones, and delivery dates in separate planning artifacts unless
+	the user explicitly requests them here.

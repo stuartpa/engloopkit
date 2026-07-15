@@ -77,4 +77,27 @@ public sealed class CommandSurfaceTests
 
         Assert.Equal(24, edges);
     }
+
+    [Fact]
+    public void NorthStar_authoringSurface_usesTimelessDirectionAndStagePrerequisites()
+    {
+        var command = File.ReadAllText(Path.Combine(CommandsDir, "speckit.engloop.01-northstar.md"));
+        var template = File.ReadAllText(Path.Combine(Root, "extensions", "engloopkit", "templates", "NORTHSTAR-template.md"));
+        var prompt = File.ReadAllText(Path.Combine(Root, ".github", "prompts", "speckit.engloop.01-northstar.prompt.md"));
+
+        Assert.Contains("timeless", command, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("## Staged capability", command, StringComparison.Ordinal);
+        Assert.Contains("Stage N", command, StringComparison.Ordinal);
+        Assert.Contains("Phase", command, StringComparison.Ordinal);
+        Assert.Contains("separate planning artifacts", command, StringComparison.OrdinalIgnoreCase);
+
+        Assert.Contains("# <Repository> North Star", template, StringComparison.Ordinal);
+        Assert.Contains("## Staged capability sequence", template, StringComparison.Ordinal);
+        Assert.Contains("### Stage 1", template, StringComparison.Ordinal);
+        Assert.Contains("Do not use `Phase`", template, StringComparison.Ordinal);
+        Assert.Contains("schedules, tasks, milestones", template, StringComparison.OrdinalIgnoreCase);
+
+        Assert.Contains("timeless North Star", prompt, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Stage N", prompt, StringComparison.Ordinal);
+    }
 }
