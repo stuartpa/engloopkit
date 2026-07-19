@@ -3,7 +3,7 @@ param(
     [string]$Root = (Join-Path $PSScriptRoot '..'),
     [string]$ToolNupkg,
     [string]$ExtensionArchive,
-    [string]$Version = '1.8.1',
+    [string]$Version = '1.8.2',
     [switch]$KeepWork
 )
 
@@ -88,6 +88,19 @@ try {
 
     Invoke-Checked dotnet $driver @('tool', 'run', 'engloopkit', '--', 'overlay', 'install', '--mode', 'overlay', '--root', $source, '--product-id', 'overlay-test', '--repository-id', 'overlay-test-repository', '--tool-version', $Version, '--tool-nupkg', $toolNupkg, '--extension-archive', $extensionArchive)
     Invoke-Checked dotnet $source @('tool', 'run', 'engloopkit', '--', 'overlay', 'verify', '--root', $source)
+
+    # Runtime ownership selected after installation must be registered before creation.
+    Invoke-Checked dotnet $source @('tool', 'run', 'engloopkit', '--', 'overlay', 'register', '--root', $source,
+        '--directory', 'runtime-model/Foo.Model', '--file', 'tests/Generated/Foo.g.cs')
+    New-Item -ItemType Directory -Path (Join-Path $source 'runtime-model/Foo.Model') -Force | Out-Null
+    Set-Content (Join-Path $source 'runtime-model/Foo.Model/Foo.Model.csproj') '<Project />' -Encoding utf8
+    New-Item -ItemType Directory -Path (Join-Path $source 'tests/Generated') -Force | Out-Null
+    Set-Content (Join-Path $source 'tests/Generated/Foo.g.cs') '// generated' -Encoding utf8
+    Invoke-Checked git $source @('check-ignore', '-q', '--no-index', '--', 'runtime-model/Foo.Model/Foo.Model.csproj')
+    Invoke-Checked git $source @('check-ignore', '-q', '--no-index', '--', 'tests/Generated/Foo.g.cs')
+    Invoke-Checked git $source @('add', '-f', 'tests/Generated/Foo.g.cs')
+    Invoke-ExpectedFailure dotnet $source @('tool', 'run', 'engloopkit', '--', 'overlay', 'verify', '--root', $source, '--mode', 'staged') 'overlay-managed-path-staged:tests/Generated/Foo.g.cs'
+    Invoke-Checked git $source @('reset', '--', 'tests/Generated/Foo.g.cs')
 
     $managed = @('.engloop/config.json', '.engloop-overlay/manifest.json', '.config/dotnet-tools.json', '.github/agents/speckit.engloop.01-northstar.agent.md')
     foreach ($path in $managed) {

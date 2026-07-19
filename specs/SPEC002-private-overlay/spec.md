@@ -2,9 +2,9 @@
 
 - **Feature ID:** SPEC002
 - **Status:** IMPLEMENTING
-- **Target release:** EngLoopKit **v1.8.1**
+- **Target release:** EngLoopKit **v1.8.2**
 - **Classification:** additive product feature / consumer-installation capability
-- **SemVer policy:** v1.8.1 remains on the 1.x maturity line.
+- **SemVer policy:** v1.8.2 remains on the 1.x maturity line.
 
 ## Purpose
 
@@ -90,6 +90,17 @@ Hooks protect normal Git commits/pushes. A user who deliberately bypasses Git ho
 uses low-level Git plumbing is outside the tool’s protection and is reported in docs;
 ELK never claims it can defeat an intentional bypass.
 
+### US2b — Register outputs selected after installation
+
+Before an overlay workflow creates a model project or generated destination outside
+`.engloop/`, it invokes `overlay register` with an explicit repository-relative file or
+directory. Registration atomically reconciles the manifest and local exclude block and
+fails if the path is already tracked, staged, or present in history since the overlay
+baseline. Verification and hooks immediately enforce the newly registered ownership.
+
+Ownership is never inferred from application/module names, path conventions, CORD field
+names, or product layout. Files not explicitly registered remain ordinary product source.
+
 ### US3 — Pack local overlay state
 
 `engloopkit overlay pack --root <repo> --output <outside-managed-root>.zip`:
@@ -128,3 +139,7 @@ ELK never claims it can defeat an intentional bypass.
    validation is performed.
 6. Coexist mode preserves pre-existing tracked and local agent files byte-for-byte and
    chains an existing LFS-style pre-push hook without modifying its contents.
+7. Registering a model directory and generated file after installation makes both locally
+   ignored; forced staging and post-baseline commits are rejected by staged/push verify.
+8. Registration is case/slash normalized, rollback-protected, rejects prior leakage, and
+   does not block unrelated unregistered product source.

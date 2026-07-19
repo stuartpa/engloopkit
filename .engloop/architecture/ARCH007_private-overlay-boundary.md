@@ -59,6 +59,24 @@ The portable archive contains ELK-owned state only. The target coexistence host 
 already exist when unpacking; its unrelated agent/hook files are never archived or
 rewritten.
 
+## Runtime ownership registry (v1.8.2)
+
+Installation-time ownership cannot describe model projects or generated suites selected
+later by a workflow. Overlay mode therefore exposes one explicit generic registration
+operation:
+
+`engloopkit overlay register --root . --directory <path> --file <path>`
+
+The command normalizes repository-relative paths, rejects `.git`, tracked, staged, and
+post-baseline history collisions, then updates the overlay manifest and local exclude
+block as one rollback-protected transaction. Verification uses the resulting registry for
+staged, tracked, and history checks with case-insensitive slash-normalized matching.
+
+ELK does not infer ownership from module names, CORD field names, product layout, or
+application conventions. Stage 05/06 must explicitly register model/generator-owned
+outputs before creating them. Unregistered product source remains ordinary trackable
+source.
+
 ## Consequences
 
 - Overlay mode is suitable for large existing repositories because it does not infer or

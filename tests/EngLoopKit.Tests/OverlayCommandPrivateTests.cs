@@ -150,6 +150,77 @@ public sealed class OverlayCommandPrivateTests : IDisposable
         Invoke<object?>("RejectSecretLikePaths", (object)new[] { new OverlayFile(".engloop/config.json", 1, new string('a', 64)) });
 
         Assert.Throws<InvalidOperationException>(() => Invoke<string>("RequireOption", (object)Array.Empty<string>(), "--required"));
+        Assert.Throws<InvalidOperationException>(() => Invoke<string>("NormalizeHostMode", "invalid"));
+        Assert.Equal("coexist", Invoke<string>("NormalizeHostMode", "coexist"));
+        Assert.Throws<InvalidOperationException>(() => Invoke<IReadOnlyList<string>>("GetOptions", new[] { "--file" }, "--file"));
+        Assert.Equal(["one", "two"], Invoke<IReadOnlyList<string>>("GetOptions", new[] { "--file", "one", "--file", "two" }, "--file"));
+    }
+
+    [Fact]
+    public void ExcludeAndSnapshotHelpers_failClosedAndRestoreExactState()
+    {
+        var exclude = Path.Combine(_root, ".git", "info", "exclude");
+        File.WriteAllText(exclude, "# >>> ELK_OVERLAY_MANAGED >>>\nmissing end\n");
+        Assert.Throws<InvalidOperationException>(() => Invoke<object?>("WriteManagedExcludeBlock", exclude, (object)new[] { "/runtime/" }));
+
+        var shared = Path.Combine(_root, ".github", "agents");
+        Directory.CreateDirectory(shared);
+        File.WriteAllText(Path.Combine(shared, "existing.md"), "before");
+        var snapshot = Invoke<object>("CaptureDirectorySnapshot", _root, ".github/agents");
+        File.WriteAllText(Path.Combine(shared, "existing.md"), "changed");
+        Assert.Throws<InvalidOperationException>(() => Invoke<object?>("AssertSnapshotPreserved", _root, snapshot));
+        File.Delete(Path.Combine(shared, "existing.md"));
+        Assert.Throws<InvalidOperationException>(() => Invoke<object?>("AssertSnapshotPreserved", _root, snapshot));
+        File.WriteAllText(Path.Combine(shared, "existing.md"), "changed");
+        File.WriteAllText(Path.Combine(shared, "new.md"), "new");
+        Invoke<object?>("RemoveNewDirectoryFiles", _root, snapshot);
+        Assert.False(File.Exists(Path.Combine(shared, "new.md")));
+        Invoke<object?>("RestoreDirectorySnapshot", _root, snapshot);
+        Assert.Equal("before", File.ReadAllText(Path.Combine(shared, "existing.md")));
+    }
+
+    [Fact]
+    public void CoexistPreflightAndHookChain_failClosed_andHookSnapshotsRestore()
+    {
+        Assert.Throws<InvalidOperationException>(() => Invoke<object?>("PreflightInstall", _root, "coexist"));
+
+        Directory.CreateDirectory(Path.Combine(_root, ".specify", "extensions"));
+        File.WriteAllText(Path.Combine(_root, ".specify", "extensions", ".registry"), "tracked");
+        RunGit("add", "-f", ".specify/extensions/.registry");
+        Assert.Throws<InvalidOperationException>(() => Invoke<object?>("PreflightInstall", _root, "coexist"));
+        RunGit("reset", "--", ".specify/extensions/.registry");
+
+        var prePush = Path.Combine(_root, ".git", "hooks", "pre-push");
+        File.WriteAllText(prePush, "prior hook");
+        var snapshots = Invoke<object>("CaptureHookSnapshots", _root);
+        File.WriteAllText(prePush + ".elk-prior", "chain collision");
+        Assert.Throws<InvalidOperationException>(() => Invoke<object?>("InstallHook", _root, "pre-push", "push", "coexist"));
+
+        File.WriteAllText(prePush, "changed");
+        Invoke<object?>("RestoreHookSnapshots", _root, snapshots);
+        Assert.Equal("prior hook", File.ReadAllText(prePush));
+        Assert.False(File.Exists(prePush + ".elk-prior"));
+    }
+
+    [Fact]
+    public void ProtectedState_rejectsMissingToolManifestAndPackage()
+    {
+        Directory.CreateDirectory(Path.Combine(_root, "managed"));
+        var manifest = new OverlayManifest(
+            OverlayManifest.CurrentSchemaVersion, "product", "repository", null,
+            RunGitOutput("rev-parse", "HEAD").Trim(), DateTimeOffset.UtcNow,
+            ["managed"], ["/managed/"], [], "1.8.2", "managed/tool.nupkg", "extension", []);
+        Assert.Throws<InvalidOperationException>(() => Invoke<object>("EnsureProtected", _root, manifest, "all"));
+
+        Directory.CreateDirectory(Path.Combine(_root, ".config"));
+        File.WriteAllText(Path.Combine(_root, ".config", "dotnet-tools.json"), "{}");
+        var withManifest = manifest with
+        {
+            ManagedRoots = ["managed", ".config"],
+            ExcludePatterns = ["/managed/", "/.config/"],
+        };
+        File.WriteAllText(Path.Combine(_root, ".git", "info", "exclude"), "/managed/\n/.config/\n");
+        Assert.Throws<InvalidOperationException>(() => Invoke<object>("EnsureProtected", _root, withManifest, "all"));
     }
 
     [Fact]
@@ -199,6 +270,17 @@ public sealed class OverlayCommandPrivateTests : IDisposable
         using var process = Process.Start(start)!;
         process.WaitForExit();
         if (process.ExitCode != 0) throw new Xunit.Sdk.XunitException(process.StandardError.ReadToEnd());
+    }
+
+    private string RunGitOutput(params string[] args)
+    {
+        var start = new ProcessStartInfo("git") { WorkingDirectory = _root, RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
+        foreach (var arg in args) start.ArgumentList.Add(arg);
+        using var process = Process.Start(start)!;
+        var output = process.StandardOutput.ReadToEnd();
+        process.WaitForExit();
+        if (process.ExitCode != 0) throw new Xunit.Sdk.XunitException(process.StandardError.ReadToEnd());
+        return output;
     }
 
     private static void WriteZipEntry(ZipArchive archive, string name, string text)

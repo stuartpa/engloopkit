@@ -38,6 +38,13 @@ public sealed class OverlayCommandFailureTests : IDisposable
     }
 
     [Fact]
+    public void Register_requiresAPath()
+    {
+        Assert.NotEqual(0, OverlayCommands.Execute(["register", "--root", _root]));
+        Assert.Equal("overlay-register-requires-path", OverlayCommands.LastError);
+    }
+
+    [Fact]
     public void Install_requiresExplicitOverlayModeAndValidIdentity()
     {
         Assert.NotEqual(0, OverlayCommands.Execute(["install", "--root", _root]));

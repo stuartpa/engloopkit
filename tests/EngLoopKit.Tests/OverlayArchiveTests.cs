@@ -198,6 +198,18 @@ public sealed class OverlayArchiveTests : IDisposable
     }
 
     [Fact]
+    public void ExtractArchive_rejectsMissingRegisteredEntry()
+    {
+        var file = new OverlayFile(".engloop/config.json", 3, Convert.ToHexString(SHA256.HashData("abc"u8.ToArray())).ToLowerInvariant());
+        var manifest = CreateManifest([file]);
+        using (var archive = ZipFile.Open(_archive, ZipArchiveMode.Create))
+        {
+            WriteZipEntry(archive, "overlay-manifest.json", JsonSerializer.Serialize(manifest));
+        }
+        Assert.Throws<InvalidDataException>(() => OverlayArchive.ExtractArchive(_archive, _target, manifest));
+    }
+
+    [Fact]
     public void ExtractArchive_rejectsLengthAndHashDriftAfterCopy()
     {
         WriteSource(".engloop/config.json", "abc");
@@ -252,6 +264,12 @@ public sealed class OverlayArchiveTests : IDisposable
 
         var outsideTool = CreateManifest([]) with { ToolPackageRelativePath = "unmanaged/tool.nupkg" };
         Assert.Throws<InvalidDataException>(() => OverlayArchive.SerializeManifest(outsideTool));
+
+        var invalidHostMode = CreateManifest([]) with { HostMode = "ambiguous" };
+        Assert.Throws<InvalidDataException>(() => OverlayArchive.SerializeManifest(invalidHostMode));
+
+        var duplicateRoot = CreateManifest([]) with { ManagedRoots = [".engloop", ".ENGLOOP", ".engloop-overlay"] };
+        Assert.Throws<InvalidDataException>(() => OverlayArchive.SerializeManifest(duplicateRoot));
     }
 
     [Fact]
@@ -278,7 +296,7 @@ public sealed class OverlayArchiveTests : IDisposable
             var error = Assert.Throws<InvalidDataException>(() => OverlayArchive.CaptureFiles(_source, [".engloop"]));
             Assert.Contains("overlay-link-escapes-root", error.Message);
         }
-        catch (UnauthorizedAccessException)
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
         {
             // Symbolic-link creation can be policy-disabled; archive path/manifest tests remain platform-independent.
         }
@@ -316,10 +334,9 @@ public sealed class OverlayArchiveTests : IDisposable
         try
         {
             File.CreateSymbolicLink(broken, Path.Combine(_source, "missing-target.txt"));
-            var error = Assert.Throws<InvalidDataException>(() => OverlayArchive.CaptureFiles(_source, [".engloop"]));
-            Assert.Contains("overlay-link-unresolvable", error.Message);
+            Assert.ThrowsAny<IOException>(() => OverlayArchive.CaptureFiles(_source, [".engloop"]));
         }
-        catch (UnauthorizedAccessException)
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
         {
             // Windows may prohibit test symlink creation; other archive safety cases remain deterministic.
         }

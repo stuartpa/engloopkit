@@ -42,7 +42,7 @@ public sealed class OverlayCommandCoverageTests : IDisposable
         var exclude = Path.Combine(_root, ".git", "info", "exclude");
         File.WriteAllText(exclude, string.Empty);
         Assert.NotEqual(0, OverlayCommands.Execute(["verify", "--root", _root]));
-        Assert.Contains("overlay-managed-path-not-ignored", OverlayCommands.LastError);
+        Assert.Contains("overlay-managed-root-not-ignored", OverlayCommands.LastError);
 
         WriteExcludes();
         Run("git", _root, "add", "-f", "overlay-local/state.txt");
@@ -119,6 +119,92 @@ public sealed class OverlayCommandCoverageTests : IDisposable
         File.WriteAllText(_output, "already exists");
         Assert.NotEqual(0, OverlayCommands.Execute(["pack", "--root", _root, "--output", _output]));
         Assert.Contains("overlay-output-already-exists", OverlayCommands.LastError);
+    }
+
+    [Fact]
+    public void Register_runtimeOutputs_reconcilesManifestAndExcludes_thenBlocksStagedAndHistoryLeakage()
+    {
+        CreateOverlayState();
+        const string modelRoot = "runtime-model/Foo.Model";
+        const string generatedFile = "tests/Generated/Foo.g.cs";
+
+        var registerExit = OverlayCommands.Execute([
+            "register", "--root", _root,
+            "--directory", "runtime-model\\Foo.Model",
+            "--file", generatedFile,
+        ]);
+        Assert.True(registerExit == 0, OverlayCommands.LastError);
+
+        var manifestPath = Path.Combine(_root, ".engloop-overlay", "manifest.json");
+        var manifest = OverlayArchive.ParseManifest(File.ReadAllText(manifestPath));
+        Assert.Contains(modelRoot, manifest.ManagedRoots, StringComparer.OrdinalIgnoreCase);
+        Assert.Contains(generatedFile, manifest.ManagedRoots, StringComparer.OrdinalIgnoreCase);
+        var excludes = File.ReadAllText(Path.Combine(_root, ".git", "info", "exclude"));
+        Assert.Contains("/runtime-model/Foo.Model/", excludes, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("/tests/Generated/Foo.g.cs", excludes, StringComparison.OrdinalIgnoreCase);
+
+        Directory.CreateDirectory(Path.Combine(_root, "runtime-model", "Foo.Model"));
+        File.WriteAllText(Path.Combine(_root, "runtime-model", "Foo.Model", "Foo.Model.csproj"), "<Project />");
+        Directory.CreateDirectory(Path.Combine(_root, "tests", "Generated"));
+        File.WriteAllText(Path.Combine(_root, "tests", "Generated", "Foo.g.cs"), "// generated");
+        Assert.Equal(0, Run("git", _root, "check-ignore", "-q", "--no-index", "--", modelRoot).ExitCode);
+        Assert.Equal(0, Run("git", _root, "check-ignore", "-q", "--no-index", "--", generatedFile).ExitCode);
+
+        Run("git", _root, "add", "-f", "runtime-model/Foo.Model/Foo.Model.csproj");
+        Assert.NotEqual(0, OverlayCommands.Execute(["verify", "--root", _root, "--mode", "staged"]));
+        Assert.Contains("runtime-model/Foo.Model/Foo.Model.csproj", OverlayCommands.LastError, StringComparison.OrdinalIgnoreCase);
+        Run("git", _root, "reset", "--", "runtime-model/Foo.Model/Foo.Model.csproj");
+
+        Run("git", _root, "add", "-f", generatedFile);
+        Run("git", _root, "commit", "--no-verify", "-m", "deliberate registered output leak");
+        Assert.NotEqual(0, OverlayCommands.Execute(["verify", "--root", _root, "--mode", "push"]));
+        Assert.Contains(generatedFile, OverlayCommands.LastError, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Register_isCaseInsensitiveTransactional_andDoesNotBlockUnregisteredProductSource()
+    {
+        CreateOverlayState();
+        var manifestPath = Path.Combine(_root, ".engloop-overlay", "manifest.json");
+
+        var registerExit = OverlayCommands.Execute([
+            "register", "--root", _root,
+            "--directory", "Runtime-Output\\Model",
+            "--directory", "runtime-output/model",
+        ]);
+        Assert.True(registerExit == 0, OverlayCommands.LastError);
+        var manifest = OverlayArchive.ParseManifest(File.ReadAllText(manifestPath));
+        Assert.Single(manifest.ManagedRoots, path => string.Equals(path, "runtime-output/model", StringComparison.OrdinalIgnoreCase));
+
+        File.WriteAllText(Path.Combine(_root, "ordinary-product.cs"), "// product source");
+        Run("git", _root, "add", "ordinary-product.cs");
+        Assert.Equal(0, OverlayCommands.Execute(["verify", "--root", _root, "--mode", "staged"]));
+
+        var beforeManifest = File.ReadAllText(manifestPath);
+        var beforeExclude = File.ReadAllText(Path.Combine(_root, ".git", "info", "exclude"));
+        Assert.NotEqual(0, OverlayCommands.Execute(["register", "--root", _root, "--directory", ".git/private"]));
+        Assert.Equal("overlay-register-git-path-forbidden", OverlayCommands.LastError);
+        Assert.Equal(beforeManifest, File.ReadAllText(manifestPath));
+        Assert.Equal(beforeExclude, File.ReadAllText(Path.Combine(_root, ".git", "info", "exclude")));
+
+        Run("git", _root, "commit", "-m", "ordinary product source");
+        Directory.CreateDirectory(Path.Combine(_root, "already-tracked-output"));
+        File.WriteAllText(Path.Combine(_root, "already-tracked-output", "tracked.txt"), "tracked");
+        Run("git", _root, "add", "already-tracked-output/tracked.txt");
+        Run("git", _root, "commit", "-m", "existing tracked output");
+        Assert.NotEqual(0, OverlayCommands.Execute(["register", "--root", _root, "--directory", "already-tracked-output"]));
+        Assert.Contains("overlay-register-path-tracked", OverlayCommands.LastError);
+        Assert.Equal(beforeManifest, File.ReadAllText(manifestPath));
+        Assert.Equal(beforeExclude, File.ReadAllText(Path.Combine(_root, ".git", "info", "exclude")));
+
+        Directory.CreateDirectory(Path.Combine(_root, "historical-output"));
+        File.WriteAllText(Path.Combine(_root, "historical-output", "old.txt"), "old");
+        Run("git", _root, "add", "historical-output/old.txt");
+        Run("git", _root, "commit", "-m", "historical output added");
+        Run("git", _root, "rm", "historical-output/old.txt");
+        Run("git", _root, "commit", "-m", "historical output removed");
+        Assert.NotEqual(0, OverlayCommands.Execute(["register", "--root", _root, "--directory", "historical-output"]));
+        Assert.Contains("overlay-register-path-in-history", OverlayCommands.LastError);
     }
 
     [Fact]

@@ -37,7 +37,8 @@ Use exactly `.engloop/` with config at `.engloop/config.json`.
 
 - **Trigger:** current accepted model exists.
 - **Goal:** bounded exploration and generated suite refresh.
-- **Actions:** run explore/generate commands and persist CORD evidence.
+- **Actions:** explicitly register generated destinations, run explore/generate commands,
+  and persist CORD evidence.
 - **Verification:** generated suite is fresh and exploration is bounded.
 - **Memory:** `.engloop/cord/` and generated test destination.
 
@@ -45,7 +46,19 @@ Run before any action:
 
 `dotnet tool run engloopkit validate agent-entry --stage speckit.engloop.06-explore --root .`
 
+## Overlay ownership
+
+When `.engloop/config.json` has `overlayMode: true`, register every generated destination
+outside `.engloop/` **before generation**:
+
+`dotnet tool run engloopkit -- overlay register --root . --file <generated-file>`
+
+Use `--directory <generated-directory>` when the generator owns a whole output tree.
+Registration is explicit and must precede generation; do not guess ownership from CORD
+field names or application layout.
+
 ## Done when
 
 - [ ] Exploration evidence is fresh and bounded
+- [ ] Every overlay-local generated destination is explicitly registered and ignored
 - [ ] Generated suite is regenerated deterministically

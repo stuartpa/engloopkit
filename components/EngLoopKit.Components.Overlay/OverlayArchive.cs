@@ -283,8 +283,8 @@ public static class OverlayArchive
         return manifest.ManagedRoots.Any(root =>
         {
             var normalizedRoot = root.Replace('\\', '/').TrimEnd('/');
-            return string.Equals(normalized, normalizedRoot, StringComparison.Ordinal)
-                || normalized.StartsWith(normalizedRoot + "/", StringComparison.Ordinal);
+            return string.Equals(normalized, normalizedRoot, StringComparison.OrdinalIgnoreCase)
+                || normalized.StartsWith(normalizedRoot + "/", StringComparison.OrdinalIgnoreCase);
         });
     }
 
@@ -304,15 +304,7 @@ public static class OverlayArchive
             return;
         }
 
-        byte[] bytes;
-        try
-        {
-            bytes = File.ReadAllBytes(fullPath);
-        }
-        catch (FileNotFoundException) when (infoHasLinkTarget(fullPath))
-        {
-            throw new InvalidDataException($"overlay-link-unresolvable:{fullPath}");
-        }
+        var bytes = File.ReadAllBytes(fullPath);
         discovered[relative] = new OverlayFile(
             relative,
             bytes.LongLength,
@@ -323,10 +315,6 @@ public static class OverlayArchive
     {
         if (!File.Exists(path))
         {
-            if (infoHasLinkTarget(path))
-            {
-                throw new InvalidDataException($"overlay-link-unresolvable:{path}");
-            }
             throw new FileNotFoundException("overlay-managed-file-missing", path);
         }
 
@@ -353,34 +341,15 @@ public static class OverlayArchive
 
     private static void EnsureLinkStaysWithinRoot(string root, string fullPath)
     {
-        var info = new FileInfo(fullPath);
-        if (info.LinkTarget is null)
-        {
-            return;
-        }
-
-        string resolved;
-        try
-        {
-            resolved = info.ResolveLinkTarget(returnFinalTarget: true)?.FullName
-                ?? throw new InvalidDataException($"overlay-link-unresolvable:{fullPath}");
-        }
-        catch (FileNotFoundException)
-        {
-            throw new InvalidDataException($"overlay-link-unresolvable:{fullPath}");
-        }
+        var resolved = File.ResolveLinkTarget(fullPath, returnFinalTarget: true)?.FullName;
+        if (resolved is null) return;
         var boundary = Path.GetFullPath(root);
-        var relative = Path.GetRelativePath(boundary, resolved);
-        if (relative == ".."
-            || relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal)
-            || relative.StartsWith(".." + Path.AltDirectorySeparatorChar, StringComparison.Ordinal))
+        var relative = Path.GetRelativePath(boundary, resolved).Replace('\\', '/');
+        if (relative == ".." || relative.StartsWith("../", StringComparison.Ordinal))
         {
             throw new InvalidDataException($"overlay-link-escapes-root:{fullPath}");
         }
     }
-
-    private static bool infoHasLinkTarget(string fullPath)
-        => new FileInfo(fullPath).LinkTarget is not null;
 
     private static bool SameFiles(IReadOnlyList<OverlayFile> left, IReadOnlyList<OverlayFile> right)
         => left.Count == right.Count

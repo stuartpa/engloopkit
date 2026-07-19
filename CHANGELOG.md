@@ -3,6 +3,20 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.2] - 2026-07-19
+
+### Fixed
+
+- Added `engloopkit overlay register` as the single explicit runtime ownership registry
+  for model directories and generated destinations selected after overlay installation.
+- Registration atomically reconciles `.engloop-overlay/manifest.json` and the ELK block
+  in `.git/info/exclude`, rejecting paths already tracked, staged, or present in history
+  since the overlay baseline.
+- Staged/push verification now applies registered ownership with case-insensitive,
+  slash-normalized matching, while unregistered product source remains trackable.
+- Stage 05 and Stage 06 now require explicit registration before creating overlay-local
+  model or generated outputs outside `.engloop/`.
+
 ## [1.8.1] - 2026-07-15
 
 ### Fixed

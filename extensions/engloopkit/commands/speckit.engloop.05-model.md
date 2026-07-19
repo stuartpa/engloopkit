@@ -33,7 +33,8 @@ Use exactly `.engloop/` with config at `.engloop/config.json`.
 
 - **Trigger:** implementation and architecture are current.
 - **Goal:** independent rich behavioral model updates.
-- **Actions:** update model state/guards/invariants and validate model build.
+- **Actions:** explicitly register overlay-local model output paths, update model
+  state/guards/invariants, and validate model build.
 - **Verification:** model compiles and captures required negative semantics.
 - **Memory:** `.engloop/models/` and `model/EngLoopKit.Model/`.
 
@@ -41,7 +42,20 @@ Run before any action:
 
 `dotnet tool run engloopkit validate agent-entry --stage speckit.engloop.05-model --root .`
 
+## Overlay ownership
+
+When `.engloop/config.json` has `overlayMode: true`, register every model project
+directory outside `.engloop/` **before creating or updating it**:
+
+`dotnet tool run engloopkit -- overlay register --root . --directory <model-project-directory>`
+
+Registration is explicit; do not infer ownership from a module name or repository layout.
+The command atomically updates the local overlay manifest and `.git/info/exclude`, and
+fails closed if the path is already tracked, staged, or present in history since the
+overlay baseline.
+
 ## Done when
 
 - [ ] Model captures legal and rejection behavior requirements
+- [ ] Every overlay-local model output path is explicitly registered and ignored
 - [ ] Model build/validation passes

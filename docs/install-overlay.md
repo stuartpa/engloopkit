@@ -129,6 +129,23 @@ place.
 Normal Git hooks protect ordinary commit/push flows. Do not bypass them with
 `--no-verify` if you want overlay protection enforced.
 
+## Register runtime-created local outputs
+
+Overlay installation can only know its installation-time files. Before a workflow creates
+an additional local model or generated output outside `.engloop/`, register that exact
+path explicitly:
+
+```powershell
+dotnet tool run engloopkit -- overlay register --root . `
+    --directory <model-or-generated-directory> `
+    --file <generated-file>
+```
+
+The command updates `.engloop-overlay/manifest.json` and the ELK block in
+`.git/info/exclude`, then verifies the path is untracked, absent from staged/history
+leakage, and locally ignored. It does not infer ownership from product names, module
+inventory entries, or repository layout. Unregistered product source remains trackable.
+
 ## Existing agent directories or hooks
 
 ELK v1.8.1 adds an explicit coexistence contract for a repository that already owns a

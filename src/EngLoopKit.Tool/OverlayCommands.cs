@@ -106,7 +106,7 @@ public static class OverlayCommands
         LastError = null;
         if (args.Length == 0)
         {
-            LastError = "Usage: engloopkit overlay <install|verify|pack|unpack|status> [options]";
+            LastError = "Usage: engloopkit overlay <install|register|verify|pack|unpack|status> [options]";
             Console.Error.WriteLine(LastError);
             return 1;
         }
@@ -116,6 +116,7 @@ public static class OverlayCommands
             return args[0] switch
             {
                 "install" => Install(args[1..]),
+                "register" => Register(args[1..]),
                 "verify" => Verify(args[1..]),
                 "pack" => Pack(args[1..]),
                 "unpack" => Unpack(args[1..]),
@@ -129,6 +130,73 @@ public static class OverlayCommands
             Console.Error.WriteLine(ex.Message);
             return 1;
         }
+    }
+
+    private static int Register(string[] args)
+    {
+        var root = RequireGitRoot(GetOption(args, "--root", "."));
+        var directories = GetOptions(args, "--directory");
+        var files = GetOptions(args, "--file");
+        if (directories.Count == 0 && files.Count == 0)
+        {
+            return Fail("overlay-register-requires-path");
+        }
+
+        var manifestPath = Path.Combine(root, OverlayManifest.ManagedManifestPath.Replace('/', Path.DirectorySeparatorChar));
+        var manifestText = File.ReadAllText(manifestPath);
+        var manifest = OverlayArchive.ParseManifest(manifestText);
+        _ = EnsureProtected(root, manifest, "all");
+
+        var registrations = directories.Select(path => (Path: NormalizeRegisteredPath(root, path), Directory: true))
+            .Concat(files.Select(path => (Path: NormalizeRegisteredPath(root, path), Directory: false)))
+            .DistinctBy(item => item.Path, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        RejectRegisteredLeakage(root, manifest.BaseRevision, registrations.Select(item => item.Path));
+
+        var managedRoots = manifest.ManagedRoots
+            .Concat(registrations.Select(item => item.Path))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var excludePatterns = manifest.ExcludePatterns
+            .Concat(registrations.Select(item => "/" + item.Path.TrimEnd('/') + (item.Directory ? "/" : string.Empty)))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var updated = manifest with
+        {
+            ManagedRoots = managedRoots,
+            ExcludePatterns = excludePatterns,
+        };
+
+        var excludePath = GetGitPath(root, "info/exclude");
+        var excludeText = File.Exists(excludePath) ? File.ReadAllText(excludePath) : string.Empty;
+        try
+        {
+            WriteManifest(root, updated);
+            WriteManagedExcludeBlock(excludePath, excludePatterns);
+            foreach (var registration in registrations)
+            {
+                var probe = registration.Directory ? registration.Path.TrimEnd('/') + "/.elk-overlay-probe" : registration.Path;
+                var ignored = Run("git", root, ["check-ignore", "-q", "--no-index", "--", probe], throwOnFailure: false).ExitCode == 0;
+                if (!ignored)
+                {
+                    throw new InvalidOperationException($"overlay-register-path-not-ignored:{registration.Path}");
+                }
+            }
+            _ = EnsureProtected(root, updated, "all");
+        }
+        catch
+        {
+            File.WriteAllText(manifestPath, manifestText);
+            Directory.CreateDirectory(Path.GetDirectoryName(excludePath)!);
+            File.WriteAllText(excludePath, excludeText);
+            throw;
+        }
+
+        Console.WriteLine("OVERLAY_REGISTER_PASS paths=" + string.Join(',', registrations.Select(item => item.Path)));
+        return 0;
     }
 
     private static int Install(string[] args)
@@ -306,7 +374,7 @@ public static class OverlayCommands
         var hookSnapshots = CaptureHookSnapshots(root);
         try
         {
-            WriteOverlayExcludes(excludePath, hostMode);
+            WriteManagedExcludeBlock(excludePath, manifest.ExcludePatterns);
             OverlayArchive.ExtractArchive(input, root, manifest);
             WriteManifest(root, manifest);
             if (hostMode == "coexist")
@@ -381,10 +449,14 @@ public static class OverlayCommands
 
     private static void EnsureVerified(string root, OverlayManifest manifest, string mode)
     {
-        var currentFiles = EnsureProtected(root, manifest, mode);
-        if (mode == "all" && !SameFiles(manifest.Files, currentFiles))
+        _ = EnsureProtected(root, manifest, mode);
+        if (mode == "all")
         {
-            throw new InvalidOperationException("overlay-manifest-file-mismatch");
+            var currentSnapshot = OverlayArchive.CaptureStableFiles(root, manifest.Files.Select(file => file.RelativePath));
+            if (!SameFiles(manifest.Files, currentSnapshot))
+            {
+                throw new InvalidOperationException("overlay-manifest-file-mismatch");
+            }
         }
     }
 
@@ -425,8 +497,7 @@ public static class OverlayCommands
                 throw new InvalidOperationException("overlay-base-revision-not-found");
             }
 
-            var history = Git(root, "diff", "--name-only", manifest.BaseRevision + "..HEAD")
-                .Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var history = GetHistoryPaths(root, manifest.BaseRevision);
             foreach (var path in history)
             {
                 if (OverlayArchive.IsManagedPath(manifest, path))
@@ -436,12 +507,24 @@ public static class OverlayCommands
             }
         }
 
+        var trackedPaths = Git(root, "ls-files").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        foreach (var tracked in trackedPaths)
+        {
+            if (OverlayArchive.IsManagedPath(manifest, tracked))
+            {
+                throw new InvalidOperationException($"overlay-managed-path-tracked:{tracked}");
+            }
+        }
+
         foreach (var managedRoot in manifest.ManagedRoots)
         {
-            var tracked = Git(root, "ls-files", "--", managedRoot).Trim();
-            if (!string.IsNullOrWhiteSpace(tracked))
+            var directoryPattern = "/" + managedRoot.TrimEnd('/') + "/";
+            var isDirectory = manifest.ExcludePatterns.Any(pattern => string.Equals(pattern, directoryPattern, StringComparison.OrdinalIgnoreCase));
+            var probe = isDirectory ? managedRoot.TrimEnd('/') + "/.elk-overlay-probe" : managedRoot;
+            var ignored = Run("git", root, ["check-ignore", "-q", "--no-index", "--", probe], throwOnFailure: false).ExitCode == 0;
+            if (!ignored)
             {
-                throw new InvalidOperationException($"overlay-managed-path-tracked:{managedRoot}");
+                throw new InvalidOperationException($"overlay-managed-root-not-ignored:{managedRoot}");
             }
         }
 
@@ -509,20 +592,62 @@ public static class OverlayCommands
     }
 
     private static void WriteOverlayExcludes(string excludePath, string hostMode)
+        => WriteManagedExcludeBlock(excludePath, GetExcludePatterns(hostMode));
+
+    private static void WriteManagedExcludeBlock(string excludePath, IReadOnlyList<string> patterns)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(excludePath)!);
         var existing = File.Exists(excludePath) ? File.ReadAllText(excludePath) : string.Empty;
         const string begin = "# >>> ELK_OVERLAY_MANAGED >>>";
         const string end = "# <<< ELK_OVERLAY_MANAGED <<<";
-        if (existing.Contains(begin, StringComparison.Ordinal))
+        var beginIndex = existing.IndexOf(begin, StringComparison.Ordinal);
+        if (beginIndex >= 0)
         {
-            return;
+            var endIndex = existing.IndexOf(end, beginIndex, StringComparison.Ordinal);
+            if (endIndex < 0)
+            {
+                throw new InvalidOperationException("overlay-exclude-block-malformed");
+            }
+            existing = existing.Remove(beginIndex, endIndex + end.Length - beginIndex);
         }
 
-        var lines = new List<string> { existing.TrimEnd(), begin };
-        lines.AddRange(GetExcludePatterns(hostMode));
+        var lines = new List<string>();
+        var prefix = existing.Trim();
+        if (prefix.Length > 0) lines.Add(prefix);
+        lines.Add(begin);
+        lines.AddRange(patterns.Distinct(StringComparer.OrdinalIgnoreCase));
         lines.Add(end);
-        File.WriteAllText(excludePath, string.Join(Environment.NewLine, lines.Where(line => line is not null)) + Environment.NewLine);
+        File.WriteAllText(excludePath, string.Join(Environment.NewLine, lines) + Environment.NewLine);
+    }
+
+    private static string NormalizeRegisteredPath(string root, string path)
+    {
+        var normalized = OverlayArchive.NormalizeRelativePath(root, path);
+        if (string.Equals(normalized, ".git", StringComparison.OrdinalIgnoreCase)
+            || normalized.StartsWith(".git/", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("overlay-register-git-path-forbidden");
+        }
+        return normalized;
+    }
+
+    private static void RejectRegisteredLeakage(string root, string baseRevision, IEnumerable<string> registeredPaths)
+    {
+        var probe = new OverlayManifest(
+            OverlayManifest.CurrentSchemaVersion, "registration-probe", "registration-probe", null,
+            baseRevision, DateTimeOffset.UtcNow, registeredPaths.ToArray(), [], [], "registration-probe",
+            registeredPaths.First(), "registration-probe", []);
+
+        var tracked = Git(root, "ls-files").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        var history = GetHistoryPaths(root, baseRevision);
+        foreach (var path in tracked)
+        {
+            if (OverlayArchive.IsManagedPath(probe, path)) throw new InvalidOperationException($"overlay-register-path-tracked:{path}");
+        }
+        foreach (var path in history)
+        {
+            if (OverlayArchive.IsManagedPath(probe, path)) throw new InvalidOperationException($"overlay-register-path-in-history:{path}");
+        }
     }
 
     private static void InstallHook(string root, string hookName, string mode, string hostMode)
@@ -832,6 +957,12 @@ HOOK_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
         return result.StandardOutput;
     }
 
+    private static string[] GetHistoryPaths(string root, string baseRevision)
+        => Git(root, "log", "--format=", "--name-only", baseRevision + "..HEAD")
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
     private static string? TryGit(string workingDirectory, params string[] args)
     {
         var result = Run("git", workingDirectory, args, throwOnFailure: false);
@@ -871,6 +1002,21 @@ HOOK_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
     {
         var index = Array.FindIndex(args, value => string.Equals(value, name, StringComparison.Ordinal));
         return index >= 0 && index + 1 < args.Length ? args[index + 1] : defaultValue;
+    }
+
+    private static IReadOnlyList<string> GetOptions(string[] args, string name)
+    {
+        var values = new List<string>();
+        for (var index = 0; index < args.Length; index++)
+        {
+            if (!string.Equals(args[index], name, StringComparison.Ordinal)) continue;
+            if (index + 1 >= args.Length || args[index + 1].StartsWith("--", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException($"overlay-missing-option:{name}");
+            }
+            values.Add(args[++index]);
+        }
+        return values;
     }
 
     private static string RequireOption(string[] args, string name)

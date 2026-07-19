@@ -9,7 +9,7 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>engloopkit</ToolCommandName>
     <PackageId>engloopkit</PackageId>
-    <Version>1.8.1</Version>
+    <Version>1.8.2</Version>
     <Authors>stuartpa</Authors>
     <Description>Deterministic validation gates for EngLoopKit repositories.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
