@@ -118,10 +118,17 @@ public sealed class OverlayCommandPrivateTests : IDisposable
         var prompts = Path.Combine(_root, ".github", "prompts");
         Directory.CreateDirectory(agents);
         Directory.CreateDirectory(prompts);
-        for (var i = 1; i <= 14; i++)
+        var ids = new[]
         {
-            File.WriteAllText(Path.Combine(agents, $"speckit.engloop.{i:D2}.agent.md"), "agent");
-            File.WriteAllText(Path.Combine(prompts, $"speckit.engloop.{i:D2}.prompt.md"), "prompt");
+            "01-northstar", "02-scaffold", "03-architect", "04-refactor", "05-model",
+            "06-explore", "07-validate", "08-unittest", "09-codereview-prepare",
+            "20-incident", "21-postmortem", "22-repair", "30-refactor-scan",
+            "31-learnings-pyramid", "40-pomodoro-create", "50-overlay-pack", "51-overlay-remove",
+        };
+        foreach (var id in ids)
+        {
+            File.WriteAllText(Path.Combine(agents, $"speckit.engloop.{id}.agent.md"), "agent");
+            File.WriteAllText(Path.Combine(prompts, $"speckit.engloop.{id}.prompt.md"), "prompt");
         }
         Invoke<object?>("WaitForGeneratedSurface", _root);
 
@@ -247,6 +254,127 @@ public sealed class OverlayCommandPrivateTests : IDisposable
         Assert.False(Directory.Exists(Path.Combine(_root, ".engloop-overlay")));
         Assert.False(File.Exists(Path.Combine(_root, "NORTHSTAR.md")));
         Assert.False(File.Exists(Path.Combine(_root, ".git", "hooks", "pre-commit")));
+    }
+
+    [Fact]
+    public void RemovalHelpers_validatePlanExcludeHooksAndSharedHostState()
+    {
+        var exclude = Path.Combine(_root, ".git", "info", "exclude");
+        Assert.Throws<InvalidOperationException>(() => Invoke<object?>("WriteExcludeWithoutManagedBlock", exclude, "unrelated\n"));
+        Assert.Throws<InvalidOperationException>(() => Invoke<object?>("WriteExcludeWithoutManagedBlock", exclude, "# >>> ELK_OVERLAY_MANAGED >>>\nmissing-end\n"));
+        Invoke<object?>("WriteExcludeWithoutManagedBlock", exclude, "before\n# >>> ELK_OVERLAY_MANAGED >>>\n/owned/\n# <<< ELK_OVERLAY_MANAGED <<<\nafter\n");
+        Assert.Equal("before" + Environment.NewLine + "after" + Environment.NewLine, File.ReadAllText(exclude));
+
+        var hooks = Path.Combine(_root, ".git", "hooks");
+        File.WriteAllText(Path.Combine(hooks, "pre-commit"), "foreign");
+        Assert.Throws<InvalidOperationException>(() => Invoke<object?>("PreflightRemovalHooks", _root, (object)new[] { "pre-commit" }));
+        File.WriteAllText(Path.Combine(hooks, "pre-commit"), "# ELK_OVERLAY_HOOK\n");
+        Invoke<object?>("PreflightRemovalHooks", _root, (object)new[] { "pre-commit" });
+
+        Directory.CreateDirectory(Path.Combine(_root, "owned", "child"));
+        File.WriteAllText(Path.Combine(_root, "owned", "child", "x.txt"), "x");
+        var manifest = new OverlayManifest(
+            OverlayManifest.CurrentSchemaVersion, "product", "repository", null,
+            RunGitOutput("rev-parse", "HEAD").Trim(), DateTimeOffset.UtcNow,
+            ["owned", "owned/child", "owned/file.txt"], ["/owned/"], [], "1.9.0",
+            "owned/tool.nupkg", "extension", []);
+        var plan = (System.Collections.IEnumerable)Invoke<object>("BuildRemovalPlan", _root, manifest);
+        Assert.Single(plan.Cast<object>());
+
+        Directory.CreateDirectory(Path.Combine(_root, ".github", "agents"));
+        File.WriteAllText(Path.Combine(_root, ".github", "agents", "existing.md"), "original");
+        var quarantine = Path.Combine(_root, ".git", "remove-test");
+        Directory.CreateDirectory(quarantine);
+        Invoke<object?>("CaptureSharedHostFilesForRollback", _root, quarantine);
+        Invoke<object?>("AssertSharedHostFilesPreserved", _root, quarantine, manifest);
+        File.WriteAllText(Path.Combine(_root, ".github", "agents", "existing.md"), "changed");
+        Assert.Throws<InvalidOperationException>(() => Invoke<object?>("AssertSharedHostFilesPreserved", _root, quarantine, manifest));
+        Invoke<object?>("RestoreSharedHostFilesFromQuarantine", _root, quarantine);
+        Assert.Equal("original", File.ReadAllText(Path.Combine(_root, ".github", "agents", "existing.md")));
+    }
+
+    [Fact]
+    public void RemovalRollbackHelpers_restoreFilesDirectories_andEmptyExclude()
+    {
+        var exclude = Path.Combine(_root, ".git", "info", "exclude");
+        Invoke<object?>("WriteExcludeWithoutManagedBlock", exclude,
+            "# >>> ELK_OVERLAY_MANAGED >>>\n/owned/\n# <<< ELK_OVERLAY_MANAGED <<<\n");
+        Assert.Equal(string.Empty, File.ReadAllText(exclude));
+
+        Assert.Throws<InvalidOperationException>(() =>
+            Invoke<object?>("PreflightRemovalHooks", _root, (object)new[] { "missing-hook" }));
+
+        var fileSource = Path.Combine(_root, "restored", "file.txt");
+        var fileQuarantine = Path.Combine(_root, ".git", "quarantine", "file.txt");
+        Directory.CreateDirectory(Path.GetDirectoryName(fileQuarantine)!);
+        File.WriteAllText(fileQuarantine, "file-content");
+
+        var directorySource = Path.Combine(_root, "restored-directory");
+        var directoryQuarantine = Path.Combine(_root, ".git", "quarantine", "directory");
+        Directory.CreateDirectory(directoryQuarantine);
+        File.WriteAllText(Path.Combine(directoryQuarantine, "child.txt"), "directory-content");
+
+        var moved = new List<(string Source, string Quarantine, bool Directory)>
+        {
+            (fileSource, fileQuarantine, false),
+            (directorySource, directoryQuarantine, true),
+            (Path.Combine(_root, "missing-file"), Path.Combine(_root, ".git", "missing-file"), false),
+            (Path.Combine(_root, "missing-directory"), Path.Combine(_root, ".git", "missing-directory"), true),
+        };
+        Invoke<object?>("RestoreMovedPaths", moved);
+        Assert.Equal("file-content", File.ReadAllText(fileSource));
+        Assert.Equal("directory-content", File.ReadAllText(Path.Combine(directorySource, "child.txt")));
+
+        var quarantine = Path.Combine(_root, ".git", "shared-missing");
+        Directory.CreateDirectory(Path.Combine(quarantine, "shared", ".github", "agents"));
+        File.WriteAllText(Path.Combine(quarantine, "shared", ".github", "agents", "existing.md"), "expected");
+        var manifest = new OverlayManifest(
+            OverlayManifest.CurrentSchemaVersion, "product", "repository", null,
+            RunGitOutput("rev-parse", "HEAD").Trim(), DateTimeOffset.UtcNow,
+            [".engloop"], ["/.engloop/"], [], "1.9.0", ".engloop/tool.nupkg", "extension", []);
+        Assert.Throws<InvalidOperationException>(() => Invoke<object?>("AssertSharedHostFilesPreserved", _root, quarantine, manifest));
+    }
+
+    [Fact]
+    public void RemovalBranchMatrix_coversMissingExclude_priorHook_andMovedPathAbsence()
+    {
+        var exclude = Path.Combine(_root, ".git", "info", "exclude");
+        File.Delete(exclude);
+        Assert.Throws<InvalidOperationException>(() => Invoke<object?>("WriteExcludeWithoutManagedBlock", exclude, string.Empty));
+
+        var hooks = Path.Combine(_root, ".git", "hooks");
+        var prePush = Path.Combine(hooks, "pre-push");
+        File.WriteAllText(prePush, "# ELK_OVERLAY_HOOK\n");
+        File.WriteAllText(prePush + ".elk-prior", "prior");
+        var snapshots = Invoke<object>("CaptureHookSnapshots", _root);
+        File.Delete(prePush);
+        File.Delete(prePush + ".elk-prior");
+        Invoke<object?>("RestoreHookSnapshots", _root, snapshots);
+        Assert.Equal("prior", File.ReadAllText(prePush + ".elk-prior"));
+
+        var foreign = Path.Combine(hooks, "pre-commit");
+        File.WriteAllText(foreign, "foreign");
+        Assert.Throws<InvalidOperationException>(() => Invoke<object?>("PreflightRemovalHooks", _root, (object)new[] { "pre-commit" }));
+
+        var sourceFile = Path.Combine(_root, "owned.txt");
+        var quarantineFile = Path.Combine(_root, ".git", "q", "owned.txt");
+        File.WriteAllText(sourceFile, "owned");
+        var moved = new List<(string Source, string Quarantine, bool Directory)>();
+        Invoke<object?>("MoveToQuarantine", sourceFile, quarantineFile, false, moved);
+        Assert.False(File.Exists(sourceFile));
+        Assert.True(File.Exists(quarantineFile));
+        Invoke<object?>("RestoreMovedPaths", moved);
+        Assert.Equal("owned", File.ReadAllText(sourceFile));
+
+        var sourceDirectory = Path.Combine(_root, "owned-dir");
+        var quarantineDirectory = Path.Combine(_root, ".git", "q", "owned-dir");
+        Directory.CreateDirectory(sourceDirectory);
+        File.WriteAllText(Path.Combine(sourceDirectory, "child"), "child");
+        moved.Clear();
+        Invoke<object?>("MoveToQuarantine", sourceDirectory, quarantineDirectory, true, moved);
+        Assert.False(Directory.Exists(sourceDirectory));
+        Invoke<object?>("RestoreMovedPaths", moved);
+        Assert.Equal("child", File.ReadAllText(Path.Combine(sourceDirectory, "child")));
     }
 
     private static T Invoke<T>(string name, params object[] args)

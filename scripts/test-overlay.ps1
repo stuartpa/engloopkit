@@ -3,7 +3,7 @@ param(
     [string]$Root = (Join-Path $PSScriptRoot '..'),
     [string]$ToolNupkg,
     [string]$ExtensionArchive,
-    [string]$Version = '1.8.2',
+    [string]$Version = '1.9.0',
     [switch]$KeepWork
 )
 
@@ -178,6 +178,18 @@ try {
     }
     if (-not ([System.Linq.Enumerable]::SequenceEqual([IO.File]::ReadAllBytes($prePush + '.elk-prior'), $lfsHookBytes)) -or -not (Select-String -Path $prePush -Pattern 'ELK_OVERLAY_HOOK' -Quiet)) {
         throw 'Coexistence did not preserve and chain the existing pre-push hook.'
+    }
+
+    $coexistManifest = Get-Content (Join-Path $coexist '.engloop-overlay/manifest.json') -Raw | ConvertFrom-Json
+    $removeToken = "REMOVE-OVERLAY:$($coexistManifest.repositoryId)@$($coexistManifest.baseRevision)"
+    Invoke-Checked dotnet $coexist @('tool', 'run', 'engloopkit', '--', 'overlay', 'remove', '--root', $coexist, '--confirm', $removeToken)
+    if (Test-Path (Join-Path $coexist '.engloop-overlay/manifest.json')) { throw 'Overlay manifest remained after removal.' }
+    if (Test-Path (Join-Path $coexist '.github/agents/speckit.engloop.01-northstar.agent.md')) { throw 'ELK agent remained after removal.' }
+    if (-not ([System.Linq.Enumerable]::SequenceEqual([IO.File]::ReadAllBytes($existingAgent), $existingBytes)) -or -not ([System.Linq.Enumerable]::SequenceEqual([IO.File]::ReadAllBytes($localAgent), $localBytes))) {
+        throw 'Removal changed a repository-owned agent file.'
+    }
+    if (-not ([System.Linq.Enumerable]::SequenceEqual([IO.File]::ReadAllBytes($prePush), $lfsHookBytes)) -or (Test-Path ($prePush + '.elk-prior'))) {
+        throw 'Removal did not restore the pre-existing pre-push hook exactly.'
     }
 
     Write-Output "OVERLAY_INTEGRATION_PASS archive=$archive"

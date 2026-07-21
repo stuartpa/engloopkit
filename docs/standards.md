@@ -2,7 +2,7 @@
 
 **Workflow generation:** Ordered EngLoop v2.
 **Product SemVer:** EngLoopKit remains on the **1.x** line; this workflow ships as
-v1.8.2. “v2” describes the workflow generation, not a v2.0 release.
+v1.9.0. “v2” describes the workflow generation, not a v2.0 release.
 
 Durable workflow memory lives in exactly one tracked hidden root:
 
@@ -25,8 +25,9 @@ archive.
 
 ## Naming and counters
 
-Every numbered artifact is `<PREFIX><NNN>_<short-title>.md`. Numbers are monotonic,
-never reused, and zero-padded to three digits. Increment the tracked
+Numbered artifacts are monotonic, never reused, and incremented before creation. Most
+use `<PREFIX><NNN>_<short-title>.md`; Pomodoro notes use
+`POM<NNNN>-<brief-kebab-description>.md`. Increment the tracked
 `.engloop/numbering-registry.md` counter **before** creating the artifact.
 
 ## Global prefixes
@@ -42,6 +43,7 @@ never reused, and zero-padded to three digits. Increment the tracked
 | `IN` | 20 Incident | `.engloop/incidents/` | Actual operating disruption, timeline, and local mitigations. |
 | `PM` | 21 Postmortem | `.engloop/postmortems/` | Analysis of deliberately selected stabilized incident sets. |
 | `REFACT` | 30 Refactor scan | `.engloop/refactors/` | One selected evolution decision or `none-this-cycle`. |
+| `POM` | 40 Pomodoro create | `.engloop/pomodoros/` | Brief evidence-backed note about the just-completed 30–60 minute session. |
 
 ## Local prefixes
 

@@ -51,15 +51,17 @@ public static class OverlayCommands
     private static readonly string[] HookNames = ["pre-commit", "pre-push"];
 
     private sealed record DirectorySnapshot(string RelativeDirectory, IReadOnlyDictionary<string, byte[]> Files);
-    private sealed record HookSnapshot(string HookName, byte[]? Content);
+    private sealed record HookSnapshot(string HookName, byte[]? Content, byte[]? PriorContent);
+    private sealed record RemovalItem(string RelativePath, string FullPath, bool IsDirectory);
 
     private static readonly string[] EngLoopCommandIds =
     [
         "speckit.engloop.01-northstar", "speckit.engloop.02-scaffold", "speckit.engloop.03-architect",
         "speckit.engloop.04-refactor", "speckit.engloop.05-model", "speckit.engloop.06-explore",
-        "speckit.engloop.07-validate", "speckit.engloop.08-unittest", "speckit.engloop.09-overlay-pack",
+        "speckit.engloop.07-validate", "speckit.engloop.08-unittest", "speckit.engloop.09-codereview-prepare",
         "speckit.engloop.20-incident", "speckit.engloop.21-postmortem", "speckit.engloop.22-repair",
         "speckit.engloop.30-refactor-scan", "speckit.engloop.31-learnings-pyramid",
+        "speckit.engloop.40-pomodoro-create", "speckit.engloop.50-overlay-pack", "speckit.engloop.51-overlay-remove",
     ];
 
     private static string NormalizeHostMode(string mode)
@@ -106,7 +108,7 @@ public static class OverlayCommands
         LastError = null;
         if (args.Length == 0)
         {
-            LastError = "Usage: engloopkit overlay <install|register|verify|pack|unpack|status> [options]";
+            LastError = "Usage: engloopkit overlay <install|register|verify|pack|unpack|remove|status> [options]";
             Console.Error.WriteLine(LastError);
             return 1;
         }
@@ -120,6 +122,7 @@ public static class OverlayCommands
                 "verify" => Verify(args[1..]),
                 "pack" => Pack(args[1..]),
                 "unpack" => Unpack(args[1..]),
+                "remove" => Remove(args[1..]),
                 "status" => Status(args[1..]),
                 _ => Fail("overlay-invalid-command"),
             };
@@ -129,6 +132,236 @@ public static class OverlayCommands
             LastError = ex.Message;
             Console.Error.WriteLine(ex.Message);
             return 1;
+        }
+    }
+
+    private static int Remove(string[] args)
+    {
+        var root = RequireGitRoot(GetOption(args, "--root", "."));
+        var manifest = ReadManifest(root);
+        var expectedConfirmation = $"REMOVE-OVERLAY:{manifest.RepositoryId}@{manifest.BaseRevision}";
+        var confirmation = RequireOption(args, "--confirm");
+        if (!string.Equals(confirmation, expectedConfirmation, StringComparison.Ordinal))
+        {
+            return Fail("overlay-remove-confirmation-mismatch");
+        }
+
+        _ = EnsureProtected(root, manifest, "all");
+        var items = BuildRemovalPlan(root, manifest);
+        var excludePath = GetGitPath(root, "info/exclude");
+        var originalExclude = File.Exists(excludePath) ? File.ReadAllText(excludePath) : string.Empty;
+        var hookSnapshots = CaptureHookSnapshots(root);
+        var quarantine = GetGitPath(root, "elk-overlay-remove-" + Guid.NewGuid().ToString("N"));
+        var moved = new List<(string Source, string Quarantine, bool Directory)>();
+
+        PreflightRemovalHooks(root, manifest.HookNames);
+        Directory.CreateDirectory(quarantine);
+        try
+        {
+            if (manifest.HostMode == "coexist")
+            {
+                CaptureSharedHostFilesForRollback(root, quarantine);
+                Run("specify", root, "extension", "remove", "engloop", "--force");
+                AssertSharedHostFilesPreserved(root, quarantine, manifest);
+            }
+
+            foreach (var item in items.Where(item => !string.Equals(item.RelativePath, ".engloop-overlay", StringComparison.OrdinalIgnoreCase)))
+            {
+                MoveToQuarantine(item.FullPath, Path.Combine(quarantine, "owned", item.RelativePath.Replace('/', Path.DirectorySeparatorChar)), item.IsDirectory, moved);
+            }
+
+            RemoveOverlayHooks(root, manifest.HookNames);
+            WriteExcludeWithoutManagedBlock(excludePath, originalExclude);
+
+            var overlayItem = items.FirstOrDefault(item => string.Equals(item.RelativePath, ".engloop-overlay", StringComparison.OrdinalIgnoreCase));
+            if (overlayItem is not null)
+            {
+                MoveToQuarantine(overlayItem.FullPath, Path.Combine(quarantine, "owned", ".engloop-overlay"), overlayItem.IsDirectory, moved);
+            }
+
+            foreach (var item in items)
+            {
+                if (File.Exists(item.FullPath) || Directory.Exists(item.FullPath))
+                {
+                    throw new InvalidOperationException($"overlay-remove-path-remains:{item.RelativePath}");
+                }
+            }
+            if (File.ReadAllText(excludePath).Contains("# >>> ELK_OVERLAY_MANAGED >>>", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("overlay-remove-exclude-block-remains");
+            }
+
+            Directory.Delete(quarantine, recursive: true);
+            Console.WriteLine("OVERLAY_REMOVE_PASS");
+            return 0;
+        }
+        catch
+        {
+            RestoreMovedPaths(moved);
+            RestoreSharedHostFilesFromQuarantine(root, quarantine);
+            RestoreHookSnapshots(root, hookSnapshots);
+            Directory.CreateDirectory(Path.GetDirectoryName(excludePath)!);
+            File.WriteAllText(excludePath, originalExclude);
+            if (Directory.Exists(quarantine)) Directory.Delete(quarantine, recursive: true);
+            throw;
+        }
+    }
+
+    private static IReadOnlyList<RemovalItem> BuildRemovalPlan(string root, OverlayManifest manifest)
+    {
+        var normalized = manifest.ManagedRoots
+            .Select(path => OverlayArchive.NormalizeRelativePath(root, path))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(path => path.Length)
+            .ToArray();
+        var directoryRoots = normalized
+            .Where(path => Directory.Exists(Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar)))
+                || manifest.ExcludePatterns.Any(pattern => string.Equals(pattern, "/" + path.TrimEnd('/') + "/", StringComparison.OrdinalIgnoreCase)))
+            .ToArray();
+
+        var plan = new List<RemovalItem>();
+        foreach (var path in normalized)
+        {
+            if (directoryRoots.Any(parent => !string.Equals(parent, path, StringComparison.OrdinalIgnoreCase)
+                && path.StartsWith(parent.TrimEnd('/') + "/", StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+            var full = Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar));
+            var isDirectory = directoryRoots.Contains(path, StringComparer.OrdinalIgnoreCase);
+            plan.Add(new RemovalItem(path, full, isDirectory));
+        }
+
+        return plan.OrderByDescending(item => item.RelativePath.Length).ToArray();
+    }
+
+    private static void PreflightRemovalHooks(string root, IReadOnlyList<string> hookNames)
+    {
+        foreach (var hookName in hookNames)
+        {
+            var path = GetGitPath(root, "hooks/" + hookName);
+            if (!File.Exists(path) || !File.ReadAllText(path).Contains("ELK_OVERLAY_HOOK", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException($"overlay-remove-hook-not-owned:{hookName}");
+            }
+        }
+    }
+
+    private static void MoveToQuarantine(string source, string destination, bool directory, List<(string Source, string Quarantine, bool Directory)> moved)
+    {
+        if (directory)
+        {
+            if (!Directory.Exists(source)) return;
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            Directory.Move(source, destination);
+        }
+        else
+        {
+            if (!File.Exists(source)) return;
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            File.Move(source, destination);
+        }
+        moved.Add((source, destination, directory));
+    }
+
+    private static void RestoreMovedPaths(List<(string Source, string Quarantine, bool Directory)> moved)
+    {
+        foreach (var item in moved.AsEnumerable().Reverse())
+        {
+            if (item.Directory)
+            {
+                if (!Directory.Exists(item.Quarantine)) continue;
+                Directory.CreateDirectory(Path.GetDirectoryName(item.Source)!);
+                Directory.Move(item.Quarantine, item.Source);
+            }
+            else
+            {
+                if (!File.Exists(item.Quarantine)) continue;
+                Directory.CreateDirectory(Path.GetDirectoryName(item.Source)!);
+                File.Move(item.Quarantine, item.Source);
+            }
+        }
+    }
+
+    private static void RemoveOverlayHooks(string root, IReadOnlyList<string> hookNames)
+    {
+        foreach (var hookName in hookNames)
+        {
+            var path = GetGitPath(root, "hooks/" + hookName);
+            var priorPath = path + ".elk-prior";
+            if (File.Exists(path)) File.Delete(path);
+            if (File.Exists(priorPath)) File.Move(priorPath, path);
+        }
+    }
+
+    private static void WriteExcludeWithoutManagedBlock(string excludePath, string original)
+    {
+        const string begin = "# >>> ELK_OVERLAY_MANAGED >>>";
+        const string end = "# <<< ELK_OVERLAY_MANAGED <<<";
+        var normalized = original.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
+        var beginIndex = normalized.IndexOf(begin, StringComparison.Ordinal);
+        if (beginIndex < 0) throw new InvalidOperationException("overlay-remove-exclude-block-missing");
+        var endIndex = normalized.IndexOf(end, beginIndex, StringComparison.Ordinal);
+        if (endIndex < 0) throw new InvalidOperationException("overlay-exclude-block-malformed");
+        var before = normalized[..beginIndex].Trim();
+        var after = normalized[(endIndex + end.Length)..].Trim();
+        var remaining = string.Join(Environment.NewLine, new[] { before, after }.Where(part => part.Length > 0));
+        Directory.CreateDirectory(Path.GetDirectoryName(excludePath)!);
+        File.WriteAllText(excludePath, remaining.Length == 0 ? string.Empty : remaining + Environment.NewLine);
+    }
+
+    private static void CaptureSharedHostFilesForRollback(string root, string quarantine)
+    {
+        foreach (var relative in new[] { ".specify", ".github/agents", ".github/prompts" })
+        {
+            var source = Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar));
+            if (!Directory.Exists(source)) continue;
+            CopyDirectory(source, Path.Combine(quarantine, "shared", relative.Replace('/', Path.DirectorySeparatorChar)));
+        }
+    }
+
+    private static void AssertSharedHostFilesPreserved(string root, string quarantine, OverlayManifest manifest)
+    {
+        var sharedRoot = Path.Combine(quarantine, "shared");
+        if (!Directory.Exists(sharedRoot)) return;
+        foreach (var backup in Directory.GetFiles(sharedRoot, "*", SearchOption.AllDirectories))
+        {
+            var relative = Path.GetRelativePath(sharedRoot, backup).Replace('\\', '/');
+            if (OverlayArchive.IsManagedPath(manifest, relative) || SharedHostPaths.Contains(relative, StringComparer.OrdinalIgnoreCase)) continue;
+            var current = Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar));
+            if (!File.Exists(current) || !File.ReadAllBytes(current).SequenceEqual(File.ReadAllBytes(backup)))
+            {
+                throw new InvalidOperationException($"overlay-remove-shared-host-file-changed:{relative}");
+            }
+        }
+    }
+
+    private static void RestoreSharedHostFilesFromQuarantine(string root, string quarantine)
+    {
+        var sharedRoot = Path.Combine(quarantine, "shared");
+        if (!Directory.Exists(sharedRoot)) return;
+        foreach (var relative in new[] { ".specify", ".github/agents", ".github/prompts" })
+        {
+            var backup = Path.Combine(sharedRoot, relative.Replace('/', Path.DirectorySeparatorChar));
+            if (!Directory.Exists(backup)) continue;
+            var destination = Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar));
+            if (Directory.Exists(destination)) Directory.Delete(destination, recursive: true);
+            CopyDirectory(backup, destination);
+        }
+    }
+
+    private static void CopyDirectory(string source, string destination)
+    {
+        Directory.CreateDirectory(destination);
+        foreach (var directory in Directory.GetDirectories(source, "*", SearchOption.AllDirectories))
+        {
+            Directory.CreateDirectory(Path.Combine(destination, Path.GetRelativePath(source, directory)));
+        }
+        foreach (var file in Directory.GetFiles(source, "*", SearchOption.AllDirectories))
+        {
+            var target = Path.Combine(destination, Path.GetRelativePath(source, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(file, target, overwrite: true);
         }
     }
 
@@ -742,7 +975,11 @@ HOOK_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
         => HookNames.Select(hook =>
         {
             var path = GetGitPath(root, "hooks/" + hook);
-            return new HookSnapshot(hook, File.Exists(path) ? File.ReadAllBytes(path) : null);
+            var priorPath = path + ".elk-prior";
+            return new HookSnapshot(
+                hook,
+                File.Exists(path) ? File.ReadAllBytes(path) : null,
+                File.Exists(priorPath) ? File.ReadAllBytes(priorPath) : null);
         }).ToArray();
 
     private static void RestoreHookSnapshots(string root, IReadOnlyList<HookSnapshot> snapshots)
@@ -757,6 +994,11 @@ HOOK_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
                 File.WriteAllBytes(path, snapshot.Content);
+            }
+            if (snapshot.PriorContent is not null)
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(priorPath)!);
+                File.WriteAllBytes(priorPath, snapshot.PriorContent);
             }
         }
     }
@@ -850,7 +1092,13 @@ HOOK_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
                 ? Directory.GetFiles(promptsDirectory, "speckit.engloop.*.prompt.md", SearchOption.TopDirectoryOnly)
                 : [];
 
-            if (agents.Length == 14 && prompts.Length == 14)
+            var expectedAgents = EngLoopCommandIds.Select(id => id + ".agent.md").OrderBy(name => name, StringComparer.Ordinal).ToArray();
+            var expectedPrompts = EngLoopCommandIds.Select(id => id + ".prompt.md").OrderBy(name => name, StringComparer.Ordinal).ToArray();
+            var actualAgents = agents.Select(Path.GetFileName).OrderBy(name => name, StringComparer.Ordinal).ToArray();
+            var actualPrompts = prompts.Select(Path.GetFileName).OrderBy(name => name, StringComparer.Ordinal).ToArray();
+
+            if (actualAgents.SequenceEqual(expectedAgents, StringComparer.Ordinal)
+                && actualPrompts.SequenceEqual(expectedPrompts, StringComparer.Ordinal))
             {
                 var snapshot = agents.Concat(prompts)
                     .OrderBy(path => path, StringComparer.Ordinal)

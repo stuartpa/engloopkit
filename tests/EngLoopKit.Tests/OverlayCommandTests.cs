@@ -154,6 +154,17 @@ public sealed class OverlayCommandTests : IDisposable
         Assert.Equal(0, OverlayCommands.Execute(["verify", "--root", _source, "--mode", "all"]));
         Assert.Equal(string.Empty, Run("git", _source, "ls-files", "--", ".github/agents/speckit.engloop.01-northstar.agent.md").StandardOutput.Trim());
         Assert.Equal(".github/agents/existing.agent.md", Run("git", _source, "ls-files", "--", ".github/agents/existing.agent.md").StandardOutput.Trim());
+
+        var manifestPath = Path.Combine(_source, ".engloop-overlay", "manifest.json");
+        using var manifest = JsonDocument.Parse(File.ReadAllText(manifestPath));
+        var token = $"REMOVE-OVERLAY:{manifest.RootElement.GetProperty("RepositoryId").GetString()}@{manifest.RootElement.GetProperty("BaseRevision").GetString()}";
+        Assert.Equal(0, OverlayCommands.Execute(["remove", "--root", _source, "--confirm", token]));
+        Assert.False(File.Exists(manifestPath));
+        Assert.False(File.Exists(Path.Combine(_source, ".github", "agents", "speckit.engloop.01-northstar.agent.md")));
+        Assert.Equal(trackedBytes, File.ReadAllBytes(trackedAgent));
+        Assert.Equal(localBytes, File.ReadAllBytes(localAgent));
+        Assert.Equal(lfsHookBytes, File.ReadAllBytes(prePush));
+        Assert.False(File.Exists(prePush + ".elk-prior"));
     }
 
     private void CreateRepository()

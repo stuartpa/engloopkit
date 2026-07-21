@@ -15,12 +15,15 @@ public static class ValidationCommands
         "speckit.engloop.06-explore",
         "speckit.engloop.07-validate",
         "speckit.engloop.08-unittest",
-        "speckit.engloop.09-overlay-pack",
+        "speckit.engloop.09-codereview-prepare",
         "speckit.engloop.20-incident",
         "speckit.engloop.21-postmortem",
         "speckit.engloop.22-repair",
         "speckit.engloop.30-refactor-scan",
         "speckit.engloop.31-learnings-pyramid",
+        "speckit.engloop.40-pomodoro-create",
+        "speckit.engloop.50-overlay-pack",
+        "speckit.engloop.51-overlay-remove",
     ];
 
     private static readonly Dictionary<string, string[]> ExpectedTools = new(StringComparer.Ordinal)
@@ -33,12 +36,15 @@ public static class ValidationCommands
         ["speckit.engloop.06-explore"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.07-validate"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.08-unittest"] = ["read", "search", "edit", "execute", "agent"],
-        ["speckit.engloop.09-overlay-pack"] = ["read", "search", "edit", "execute"],
+        ["speckit.engloop.09-codereview-prepare"] = ["read", "search", "edit", "execute", "web"],
         ["speckit.engloop.20-incident"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.21-postmortem"] = ["read", "search", "edit", "execute", "agent"],
         ["speckit.engloop.22-repair"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.30-refactor-scan"] = ["read", "search", "edit", "execute", "agent"],
         ["speckit.engloop.31-learnings-pyramid"] = ["read", "search", "edit", "execute", "agent"],
+        ["speckit.engloop.40-pomodoro-create"] = ["read", "search", "edit", "execute"],
+        ["speckit.engloop.50-overlay-pack"] = ["read", "search", "edit", "execute"],
+        ["speckit.engloop.51-overlay-remove"] = ["read", "search", "edit", "execute"],
     };
 
     private static readonly Dictionary<string, string[]> ExpectedAgents = new(StringComparer.Ordinal)
@@ -51,12 +57,15 @@ public static class ValidationCommands
         ["speckit.engloop.06-explore"] = [],
         ["speckit.engloop.07-validate"] = [],
         ["speckit.engloop.08-unittest"] = ["Explore"],
-        ["speckit.engloop.09-overlay-pack"] = [],
+        ["speckit.engloop.09-codereview-prepare"] = [],
         ["speckit.engloop.20-incident"] = [],
         ["speckit.engloop.21-postmortem"] = ["Explore"],
         ["speckit.engloop.22-repair"] = [],
         ["speckit.engloop.30-refactor-scan"] = ["Explore"],
         ["speckit.engloop.31-learnings-pyramid"] = ["Explore"],
+        ["speckit.engloop.40-pomodoro-create"] = [],
+        ["speckit.engloop.50-overlay-pack"] = [],
+        ["speckit.engloop.51-overlay-remove"] = [],
     };
 
     private static string GetOption(string[] args, string name, string defaultValue = ".")
@@ -223,11 +232,11 @@ public static class ValidationCommands
                 return 1;
             }
 
-            if (commandId == "speckit.engloop.31-learnings-pyramid")
+            if (commandId is "speckit.engloop.31-learnings-pyramid" or "speckit.engloop.40-pomodoro-create" or "speckit.engloop.51-overlay-remove")
             {
                 if (map.ContainsKey("handoffs"))
                 {
-                    Console.Error.WriteLine("stage31-handoffs-forbidden");
+                    Console.Error.WriteLine($"terminal-handoffs-forbidden:{commandId}");
                     return 1;
                 }
             }
@@ -421,7 +430,7 @@ public static class ValidationCommands
             }
         }
 
-        if (totalHandoffs != 24)
+        if (totalHandoffs != 25)
         {
             Console.Error.WriteLine($"wrong-handoff-count:{totalHandoffs}");
             return 1;

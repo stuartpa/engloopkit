@@ -20,7 +20,7 @@ public sealed class CommandSurfaceTests
     }
 
     [Fact]
-    public void HandoffGraph_hasExact24Edges_withStage31None_andNoForbiddenStage08Targets()
+    public void HandoffGraph_hasExact25Edges_withTerminalAgentsAndNoForbiddenStage08Targets()
     {
         var edges = 0;
 
@@ -62,7 +62,7 @@ public sealed class CommandSurfaceTests
                 }
             }
 
-            if (id == "speckit.engloop.31-learnings-pyramid")
+            if (id is "speckit.engloop.31-learnings-pyramid" or "speckit.engloop.40-pomodoro-create" or "speckit.engloop.51-overlay-remove")
             {
                 Assert.Empty(localEdges);
             }
@@ -75,7 +75,7 @@ public sealed class CommandSurfaceTests
             }
         }
 
-        Assert.Equal(24, edges);
+        Assert.Equal(25, edges);
     }
 
     [Fact]

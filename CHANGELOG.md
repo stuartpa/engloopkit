@@ -3,6 +3,27 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-07-21
+
+### Added
+
+- `/speckit.engloop.09-codereview-prepare`: minimizes and validates an explicitly
+  selected GitHub/Azure DevOps PR, identifies current reviewers, and records only
+  current-PR, source-linked recurring technical review concerns.
+- `/speckit.engloop.40-pomodoro-create`: records the just-completed 30–60 minute session
+  as `.engloop/pomodoros/POM<NNNN>-<brief-description>.md`; POM numbering begins at
+  `POM0001` and uses a four-digit monotonic counter.
+- `/speckit.engloop.51-overlay-remove` and `engloopkit overlay remove`: require an exact
+  target-bound confirmation token, remove manifest-owned installation and dynamically
+  registered paths, remove the ELK exclude block/wrappers, restore prior hooks, and
+  preserve unrelated coexist-host files.
+
+### Changed
+
+- Renumbered overlay pack from Stage 09 to `/speckit.engloop.50-overlay-pack`.
+- Expanded the exact custom-agent surface from 14 to 17 commands and from 24 to 25
+  review-first handoffs; Stages 31, 40, and 51 are terminal agents.
+
 ## [1.8.2] - 2026-07-19
 
 ### Fixed

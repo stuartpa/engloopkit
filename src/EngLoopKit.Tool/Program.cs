@@ -11,7 +11,7 @@ public static class Program
 
         if (args.Length < 2 || !string.Equals(args[0], "validate", StringComparison.Ordinal))
         {
-            Console.Error.WriteLine("Usage: engloopkit validate <root|config|commands|reachability|learnings|installation|agent-entry|agent-surfaces> [--root <path>] [--stage <id>] | engloopkit overlay <install|register|verify|pack|unpack|status>");
+            Console.Error.WriteLine("Usage: engloopkit validate <root|config|commands|reachability|learnings|installation|agent-entry|agent-surfaces> [--root <path>] [--stage <id>] | engloopkit overlay <install|register|verify|pack|unpack|remove|status>");
             return 1;
         }
 

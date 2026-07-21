@@ -10,7 +10,8 @@ explicit trigger, goal, actions, verification, and durable memory.
 > **SemVer policy:** The phrase **“Ordered EngLoop v2”** refers to the second
 > *workflow/specification generation*, not a product major version. EngLoopKit remains
 > on the **1.x** maturity runway for the foreseeable future: this ordered release is
-> **v1.7.0**; dynamic private overlay ownership ships as **v1.8.2**. No v2.0 release is implied.
+> **v1.7.0** established the ordered baseline; review, Pomodoro memory, and complete
+> overlay lifecycle utilities ship as **v1.9.0**. No v2.0 release is implied.
 
 The v1.8 workflow separates delivery/readiness, operations, stewardship, and local
 overlay utility work into
@@ -30,7 +31,7 @@ A handoff is review-first (`send: false`), not a state transition.
 - **Components are generic:** non-domain runtime/BCL helpers live under language-appropriate
   component boundaries; the vertical composes them.
 
-## The 14 commands
+## The 17 commands
 
 The released extension ID is **`engloop`**; product, bundle, and tool identity remain
 **`engloopkit`**. Lexical picker order is the normal workflow order.
@@ -45,12 +46,15 @@ The released extension ID is **`engloop`**; product, bundle, and tool identity r
 | Delivery | `/speckit.engloop.06-explore` | Explore bounded behavior and regenerate functional tests. |
 | Delivery | `/speckit.engloop.07-validate` | Run generated-only functional validation and reachability. |
 | Delivery | `/speckit.engloop.08-unittest` | Classify residue, add direct tests after disposition, compute sole readiness verdict. |
-| Local utility | `/speckit.engloop.09-overlay-pack` | Pack a verified private local ELK overlay; install/unpack use the tool CLI. |
+| Review | `/speckit.engloop.09-codereview-prepare` | Minimize and validate the current PR and prepare evidence-backed reviewer checks. |
 | Operations | `/speckit.engloop.20-incident` | Stabilize a real operating disruption using mitigations only. |
 | Operations | `/speckit.engloop.21-postmortem` | Turn selected stabilized incidents into PM/LEARN/RPI evidence. |
 | Operations | `/speckit.engloop.22-repair` | Route permanent repair through Stage 04 and applicable 05–08 gates. |
 | Stewardship | `/speckit.engloop.30-refactor-scan` | Select one evidence-backed REFACT decision or record no work. |
 | Stewardship | `/speckit.engloop.31-learnings-pyramid` | Condense source learnings into validated cards and retrieval evidence. |
+| Session memory | `/speckit.engloop.40-pomodoro-create` | Capture a concise POM note about the just-completed 30–60 minute session. |
+| Local utility | `/speckit.engloop.50-overlay-pack` | Pack a verified private local ELK overlay. |
+| Local utility | `/speckit.engloop.51-overlay-remove` | Remove manifest-owned overlay state and restore prior hooks. |
 
 ## Readiness gate
 
@@ -63,7 +67,7 @@ never authorizes operations.
 
 ## Install a release
 
-A released v1.8.2 artifact set contains three immutable pieces:
+A released v1.9.0 artifact set contains three immutable pieces:
 
 1. `engloopkit.<version>.nupkg` — the root-local .NET tool (`engloopkit`);
 2. `engloop-extension-<version>.zip` — the ordered Spec Kit extension (`engloop`);
@@ -75,10 +79,10 @@ not point agent hooks at a sibling build output:
 ```powershell
 # From the consumer root, after downloading the released nupkg to <release-dir>.
 dotnet new tool-manifest --force
-dotnet tool install engloopkit --version 1.8.2 --add-source <release-dir>
+dotnet tool install engloopkit --version 1.9.0 --add-source <release-dir>
 
 # Install the exact released ordered extension archive.
-specify extension add engloop --from <release-dir>/engloopkit-extension-1.8.2.zip
+specify extension add engloop --from <release-dir>/engloopkit-extension-1.9.0.zip
 ```
 
 The extension’s `SessionStart` hook and command body both run:
@@ -115,17 +119,17 @@ explicit at install time and does **not** modify tracked `.gitignore` or product
 
 ```powershell
 # Do this in a private bootstrap directory OUTSIDE <git-root>.
-$bootstrap = Join-Path $env:LOCALAPPDATA 'EngLoopKit\bootstrap\1.8.2'
+$bootstrap = Join-Path $env:LOCALAPPDATA 'EngLoopKit\bootstrap\1.9.0'
 New-Item -ItemType Directory -Force $bootstrap | Out-Null
 Push-Location $bootstrap
 dotnet new tool-manifest --force
-dotnet tool install engloopkit --version 1.8.2 --add-source <release-dir>
+dotnet tool install engloopkit --version 1.9.0 --add-source <release-dir>
 
 # <release-dir> contains the downloaded .nupkg and extension .zip.
 dotnet tool run engloopkit -- overlay install --mode overlay --root <git-root> `
   --product-id <lowercase-product-id> --repository-id <stable-repository-id> `
-  --tool-version 1.8.2 --tool-nupkg <release-dir>\engloopkit.1.8.2.nupkg `
-  --extension-archive <release-dir>\engloopkit-extension-1.8.2.zip
+  --tool-version 1.9.0 --tool-nupkg <release-dir>\engloopkit.1.9.0.nupkg `
+  --extension-archive <release-dir>\engloopkit-extension-1.9.0.zip
 Pop-Location
 ```
 

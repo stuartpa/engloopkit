@@ -1,7 +1,7 @@
 # Contract: Ordered v2 Command Surface
 
-- **Features:** SPEC001 ordered workflow + SPEC002 private overlay
-- **Contract version:** 1.8.0
+- **Features:** SPEC001 ordered workflow + SPEC002 overlay utilities + POM session memory
+- **Contract version:** 1.9.0
 - **Owner:** first-party extension `engloopkit`
 
 ## Identity
@@ -22,12 +22,15 @@ ID maps to exactly one same-named Markdown file.
 | 6 | `speckit.engloop.06-explore` | `commands/speckit.engloop.06-explore.md` | delivery | `CORDxxx` + generated suite at proven destination |
 | 7 | `speckit.engloop.07-validate` | `commands/speckit.engloop.07-validate.md` | delivery | functional-only `COVxxx` and reachability |
 | 8 | `speckit.engloop.08-unittest` | `commands/speckit.engloop.08-unittest.md` | delivery | disposition + readiness `COVxxx` and verdict |
-| 9 | `speckit.engloop.09-overlay-pack` | `commands/speckit.engloop.09-overlay-pack.md` | local utility | pack verified private ELK state; install/unpack are tool operations |
+| 9 | `speckit.engloop.09-codereview-prepare` | `commands/speckit.engloop.09-codereview-prepare.md` | review | minimized current PR + transient evidence-linked review report |
 | 10 | `speckit.engloop.20-incident` | `commands/speckit.engloop.20-incident.md` | operations | `INxxx` + local `MITxxx` |
 | 11 | `speckit.engloop.21-postmortem` | `commands/speckit.engloop.21-postmortem.md` | operations | `PMxxx` + `PMxxx/LEARNxxx` + `RPIxxx` |
 | 12 | `speckit.engloop.22-repair` | `commands/speckit.engloop.22-repair.md` | operations | repair obligation + Stage 04/05–08/release/target evidence |
 | 13 | `speckit.engloop.30-refactor-scan` | `commands/speckit.engloop.30-refactor-scan.md` | stewardship | one `REFACTxxx`, including no-work decisions |
 | 14 | `speckit.engloop.31-learnings-pyramid` | `commands/speckit.engloop.31-learnings-pyramid.md` | stewardship | source-linked cards, root index, instruction, validation/retrieval result |
+| 15 | `speckit.engloop.40-pomodoro-create` | `commands/speckit.engloop.40-pomodoro-create.md` | session memory | one `POM<NNNN>-<description>.md` note |
+| 16 | `speckit.engloop.50-overlay-pack` | `commands/speckit.engloop.50-overlay-pack.md` | local utility | portable registered overlay archive |
+| 17 | `speckit.engloop.51-overlay-remove` | `commands/speckit.engloop.51-overlay-remove.md` | local utility | complete manifest-owned overlay removal |
 
 Ordinal lexical sort of the full IDs MUST equal table order. The manifest order MUST
 also equal table order so integrations that preserve declaration order remain correct.
@@ -37,15 +40,13 @@ also equal table order so integrations that preserve declaration order remain co
 For every current v2 surface:
 
 ```text
-actual IDs == expected 14-ID set
-count(actual IDs) == 14
-count(distinct actual IDs) == 14
+actual IDs == expected 17-ID set
+count(actual IDs) == 17
+count(distinct actual IDs) == 17
 actual IDs sorted ordinal == expected order
 ```
 
-The 13 lifecycle stages from SPEC001 remain unchanged; SPEC002 adds only the explicit
-local overlay pack utility. It creates no automatic lifecycle transition. The following
-current scopes MUST contain zero matches for
+The following current scopes MUST contain zero matches for
 `speckit.engloopkit.`:
 
 - extension manifest and command package;
@@ -95,7 +96,7 @@ Every command file MUST satisfy ARCH002 and contain:
 
 The common header and stage-specific matrices are normative in SPEC001's
 **Custom-agent UX contract**. `infer` and `model` are absent. Every handoff uses
-`send: false` and no model override. Stage 31 alone has no handoffs. Generated prompt
+`send: false` and no model override. Stages 31, 40, and 51 have no handoffs. Generated prompt
 files identify the exact matching agent and contain no `tools` field.
 
 The source command frontmatter and installed `.agent.md` frontmatter must be
@@ -123,7 +124,7 @@ Every source command and generated agent has this common semantic projection:
 | `tools` | Exact row in the matrix below, with no duplicate/extra/missing value. |
 | `agents` | Exact row in the matrix below; `[Explore]` or `[]`, never `*`. |
 | `hooks.SessionStart` | One exact `EntryHook` below. |
-| `handoffs` | Exact ordered outgoing rows in the graph below; omitted only for Stage 31. |
+| `handoffs` | Exact ordered outgoing rows in the graph below; omitted only for Stages 31, 40, and 51. |
 | `infer` | Absent. |
 | `model` | Absent. |
 
@@ -143,11 +144,15 @@ handoffs compare as an ordered sequence because button order is visible UX.
 | `speckit.engloop.06-explore` | `read, search, edit, execute` | `[]` |
 | `speckit.engloop.07-validate` | `read, search, edit, execute` | `[]` |
 | `speckit.engloop.08-unittest` | `read, search, edit, execute, agent` | `[Explore]` |
+| `speckit.engloop.09-codereview-prepare` | `read, search, edit, execute, web` | `[]` |
 | `speckit.engloop.20-incident` | `read, search, edit, execute` | `[]` |
 | `speckit.engloop.21-postmortem` | `read, search, edit, execute, agent` | `[Explore]` |
 | `speckit.engloop.22-repair` | `read, search, edit, execute` | `[]` |
 | `speckit.engloop.30-refactor-scan` | `read, search, edit, execute, agent` | `[Explore]` |
 | `speckit.engloop.31-learnings-pyramid` | `read, search, edit, execute, agent` | `[Explore]` |
+| `speckit.engloop.40-pomodoro-create` | `read, search, edit, execute` | `[]` |
+| `speckit.engloop.50-overlay-pack` | `read, search, edit, execute` | `[]` |
+| `speckit.engloop.51-overlay-remove` | `read, search, edit, execute` | `[]` |
 
 For every nonempty `agents` list, `tools` contains `agent`; for every empty list, it
 does not. The supported VS Code build must resolve every named tool and the `Explore`
@@ -170,6 +175,7 @@ are justified narrowly:
 | 03 | `agent` → `Explore` | Independent read-only boundary/dependency survey before recording architecture. |
 | 05 | `agent` → `Explore` | Independent behavior/state inventory; no implementation delegation. |
 | 08 | `agent` → `Explore` | Independent reachability/authority classification review; no deletion delegation. |
+| 09 | `web` | Query the explicitly selected GitHub/Azure DevOps PR and source-linked reviewer comments; never infer PR identity. |
 | 21 | `agent` → `Explore` | Clean-context cross-incident pattern analysis; no repair implementation. |
 | 30 | `agent` → `Explore` | Independent signal scan before selecting at most one refactor. |
 | 31 | `agent` → `Explore` | Clean-context retrieval cases and subject grouping; no source-learning rewrite. |
@@ -255,6 +261,7 @@ handoff-level `model` field is absent. No other edge is allowed.
 | `speckit.engloop.08-unittest` | `speckit.engloop.04-refactor` | Correct design defect | Route the design or architecture defect identified above through the governed SPEC implementation loop. | `false` | absent |
 | `speckit.engloop.08-unittest` | `speckit.engloop.05-model` | Model intended gap | Model the authoritative but functionally unreached behavior identified above before regenerating tests. | `false` | absent |
 | `speckit.engloop.08-unittest` | `speckit.engloop.07-validate` | Revalidate deletion | Rerun the complete generated functional validation after the coherent residue deletion set above. | `false` | absent |
+| `speckit.engloop.09-codereview-prepare` | `speckit.engloop.08-unittest` | Recompute readiness after review preparation | Re-run direct evidence and the sole readiness gate after the code-review preparation changes above. | `false` | absent |
 | `speckit.engloop.20-incident` | `speckit.engloop.21-postmortem` | Analyze stabilized incidents | Analyze the selected stabilized incident set above and produce source learnings and repair items. | `false` | absent |
 | `speckit.engloop.21-postmortem` | `speckit.engloop.22-repair` | Repair selected item | Route the selected RPI above through Stage 04 and all applicable Stage 05–08 gates. | `false` | absent |
 | `speckit.engloop.21-postmortem` | `speckit.engloop.31-learnings-pyramid` | Condense learnings when capacity exists | When spare stewardship capacity exists, condense the accepted learning backlog above and validate retrieval. | `false` | absent |
@@ -262,8 +269,9 @@ handoff-level `model` field is absent. No other edge is allowed.
 | `speckit.engloop.30-refactor-scan` | `speckit.engloop.01-northstar` | Update direction | Update the living Northstar for the evidence-backed direction change selected above. | `false` | absent |
 | `speckit.engloop.30-refactor-scan` | `speckit.engloop.03-architect` | Re-derive architecture | Re-derive governed architecture for the architecture-impacting refactor selected above. | `false` | absent |
 | `speckit.engloop.30-refactor-scan` | `speckit.engloop.04-refactor` | Implement selected refactor | Route the selected refactor above through the governed SPEC implementation loop. | `false` | absent |
+| `speckit.engloop.50-overlay-pack` | `speckit.engloop.01-northstar` | Define local direction | Define the overlay-local North Star after the private overlay verifies cleanly. | `false` | absent |
 
-Stage 31 has no `handoffs` field and is the only unconditional natural terminal.
+Stages 31, 40, and 51 have no `handoffs` field and are natural terminals.
 Stages 08 and 30 retain their listed conditional branch buttons even though PASS/no-work
 can terminate naturally without a click. In particular, there is no 08→20, 08→30, or
 08→31 edge, and no numeric adjacency creates an implicit edge.
@@ -271,7 +279,7 @@ can terminate naturally without a click. In particular, there is no 08→20, 08�
 ## Ownership constraints
 
 - The bundle composes; it contains no command logic.
-- All 14 commands are owned by the one `engloop` extension of the `engloopkit` product.
+- All 17 commands are owned by the one `engloop` extension of the `engloopkit` product.
 - Architecture-guard and tinyspec remain external, pinned capabilities. Stage 22 never
   routes through tinyspec; its presence is not a repair fallback.
 - Stage 07 owns functional conformance/reachability only.
@@ -283,7 +291,7 @@ can terminate naturally without a click. In particular, there is no 08→20, 08�
 
 ### Early Spec Kit 0.12.4 preservation experiment
 
-Before authoring all production headers, a disposable fixture MUST:
+Before accepting the production headers, a disposable fixture MUST:
 
 1. pin and verify Spec Kit CLI 0.12.4;
 2. create a temporary single-root fixture outside the source/install trees with a
@@ -306,18 +314,18 @@ Any dropped, rewritten, unresolved, or injected field is a hard prerequisite fai
 Implementation then stops for the smallest generic upstream Spec Kit capability change
 or an explicit generation mode implemented and documented by upstream Spec Kit itself.
 The identical experiment must pass against the newly pinned version/revision before the
-14 production headers are written. An EngLoopKit-owned alternate generator,
+production headers are released. An EngLoopKit-owned alternate generator,
 post-processing a partial installation, copying hidden fallback agents, or weakening
 this contract is forbidden.
 
-### Full 14-agent package/install acceptance
+### Full 17-agent package/install acceptance
 
 After the preservation experiment passes, a clean package test MUST:
 
 1. parse the source manifest and assert the exact ordered set;
 2. assert every declared file exists and every undeclared command file is absent;
-3. validate all 14 files against the command-loop shape, common header, exact
-   tool/subagent matrix, entry hook/body gate, and 24-edge handoff table;
+3. validate all 17 files against the command-loop shape, common header, exact
+   tool/subagent matrix, entry hook/body gate, and 25-edge handoff table;
 4. build the release archive and inspect its payload for the same set;
 5. initialize a disposable single-root Spec Kit fixture;
 6. create its sole tracked `.engloop/config.json` contract and prove forbidden roots
@@ -325,9 +333,9 @@ After the preservation experiment passes, a clean package test MUST:
 7. install the exact archive digest;
 8. inspect `.specify/extensions/.registry`, installed commands, generated agents, and
    generated prompts;
-9. assert 14 exact current entries, each once, and zero old entries;
+9. assert 17 exact current entries, each once, and zero old entries;
 10. parse source and installed YAML into a `GeneratedSurfaceSemanticComparison` and
-   prove all 14 common fields, absence rules, exact tool/subagent policies, exact hook
+   prove all 17 common fields, absence rules, exact tool/subagent policies, exact hook
     commands, and the exact ordered handoff edge/value set;
 11. prove all handoff and `Explore` targets resolve and every generated prompt selects
     its matching exact ID while omitting `tools`;
@@ -349,9 +357,9 @@ it does not install a development source as an alternate success path.
 
 ## Version rule
 
-SPEC001's ordered workflow baseline shipped as 1.7.0. SPEC002 private overlay ships as
-1.8.0. “Ordered EngLoop v2” identifies workflow generation only and provides no authority
-for a 2.x product release. Bundle, extension, tool, catalog, archive names, and release
-notes MUST agree on 1.8.0. Catalog SHA-256 values are computed from final immutable
-artifacts. Rebuilding different bits under 1.8.0 is forbidden. Any 2.x value is a
-release-blocking error unless a later explicit maintainer decision supersedes this contract.
+The current command-surface target is 1.9.0. “Ordered EngLoop v2” identifies this workflow
+generation only and provides no authority for a 2.x product release. Bundle, extension,
+tool, catalog, archive names, and release notes MUST agree on 1.9.0. Catalog SHA-256
+values are computed from final immutable artifacts. Rebuilding different bits under
+1.9.0 is forbidden. Any 2.x value is a release-blocking error unless a later explicit
+maintainer decision supersedes this contract.

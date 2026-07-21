@@ -208,6 +208,45 @@ public sealed class OverlayCommandCoverageTests : IDisposable
     }
 
     [Fact]
+    public void Remove_deletesManifestOwnedAndRegisteredPaths_restoresPriorHook_andPreservesUnrelatedFiles()
+    {
+        CreateOverlayState();
+        Assert.Equal(0, OverlayCommands.Execute(["register", "--root", _root, "--directory", "runtime-owned", "--file", "generated/Owned.g.cs"]));
+        Directory.CreateDirectory(Path.Combine(_root, "runtime-owned"));
+        File.WriteAllText(Path.Combine(_root, "runtime-owned", "model.csproj"), "<Project />");
+        Directory.CreateDirectory(Path.Combine(_root, "generated"));
+        File.WriteAllText(Path.Combine(_root, "generated", "Owned.g.cs"), "// generated");
+        File.WriteAllText(Path.Combine(_root, "ordinary-product.cs"), "// preserve");
+
+        var hooks = Path.Combine(_root, ".git", "hooks");
+        var preCommit = Path.Combine(hooks, "pre-commit");
+        var prePush = Path.Combine(hooks, "pre-push");
+        File.WriteAllText(preCommit, "#!/bin/sh\n# ELK_OVERLAY_HOOK\n");
+        File.WriteAllText(prePush, "#!/bin/sh\n# ELK_OVERLAY_HOOK\n");
+        File.WriteAllText(prePush + ".elk-prior", "#!/bin/sh\necho prior\n");
+
+        var manifest = OverlayArchive.ParseManifest(File.ReadAllText(Path.Combine(_root, ".engloop-overlay", "manifest.json")));
+        Assert.NotEqual(0, OverlayCommands.Execute(["remove", "--root", _root, "--confirm", "wrong"]));
+        Assert.Equal("overlay-remove-confirmation-mismatch", OverlayCommands.LastError);
+        Assert.True(Directory.Exists(Path.Combine(_root, "runtime-owned")));
+
+        var token = $"REMOVE-OVERLAY:{manifest.RepositoryId}@{manifest.BaseRevision}";
+        Assert.Equal(0, OverlayCommands.Execute(["remove", "--root", _root, "--confirm", token]));
+        Assert.False(Directory.Exists(Path.Combine(_root, "runtime-owned")));
+        Assert.False(File.Exists(Path.Combine(_root, "generated", "Owned.g.cs")));
+        Assert.False(Directory.Exists(Path.Combine(_root, "overlay-local")));
+        Assert.False(Directory.Exists(Path.Combine(_root, ".engloop-overlay")));
+        Assert.True(File.Exists(Path.Combine(_root, "ordinary-product.cs")));
+        Assert.False(File.Exists(preCommit));
+        Assert.Equal("#!/bin/sh\necho prior\n", File.ReadAllText(prePush));
+        Assert.False(File.Exists(prePush + ".elk-prior"));
+        Assert.DoesNotContain("ELK_OVERLAY_MANAGED", File.ReadAllText(Path.Combine(_root, ".git", "info", "exclude")));
+
+        Assert.NotEqual(0, OverlayCommands.Execute(["remove", "--root", _root, "--confirm", token]));
+        Assert.Contains("overlay-manifest-missing", OverlayCommands.LastError);
+    }
+
+    [Fact]
     public void Install_rejectsNonGitRootAndInvalidExtensionSources()
     {
         var nonGit = Path.Combine(Path.GetTempPath(), "elk-overlay-nongit-" + Guid.NewGuid().ToString("N"));
@@ -233,7 +272,7 @@ public sealed class OverlayCommandCoverageTests : IDisposable
         File.WriteAllText(Path.Combine(_root, ".config", "dotnet-tools.json"), "{\"version\":1,\"isRoot\":true,\"tools\":{}}");
         WriteExcludes();
         Directory.CreateDirectory(Path.Combine(_root, ".engloop-overlay"));
-        var files = OverlayArchive.CaptureStableFiles(_root, ["overlay-local", ".config"]);
+        var files = OverlayArchive.CaptureStableFiles(_root, ["overlay-local", ".config", ".engloop-overlay"], [OverlayManifest.ManagedManifestPath]);
         var manifest = new OverlayManifest(
             OverlayManifest.CurrentSchemaVersion,
             "overlay-test",
@@ -241,9 +280,9 @@ public sealed class OverlayCommandCoverageTests : IDisposable
             null,
             Run("git", _root, "rev-parse", "HEAD").StandardOutput.Trim(),
             DateTimeOffset.UtcNow,
-            ["overlay-local", ".config"],
-            ["/overlay-local/", "/.config/"],
-            [],
+            ["overlay-local", ".config", ".engloop-overlay"],
+            ["/overlay-local/", "/.config/", "/.engloop-overlay/"],
+            ["pre-commit", "pre-push"],
             "1.8.0",
             "overlay-local/tool.nupkg",
             "extension#sha256=" + new string('a', 64),
@@ -254,7 +293,7 @@ public sealed class OverlayCommandCoverageTests : IDisposable
     private void WriteExcludes()
     {
         var exclude = Path.Combine(_root, ".git", "info", "exclude");
-        File.WriteAllText(exclude, "/overlay-local/\n/.config/\n");
+        File.WriteAllText(exclude, "unrelated-pattern\n# >>> ELK_OVERLAY_MANAGED >>>\n/overlay-local/\n/.config/\n/.engloop-overlay/\n# <<< ELK_OVERLAY_MANAGED <<<\n");
     }
 
     private static ProcessResult Run(string file, string root, params string[] arguments)

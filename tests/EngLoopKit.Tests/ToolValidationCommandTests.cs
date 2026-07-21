@@ -54,7 +54,10 @@ public sealed class ToolValidationCommandTests : IDisposable
         Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.01-northstar", "--root", _fixture]));
 
         File.WriteAllText(configPath, valid.Replace("\"status\": \"proven\"", "\"status\": \"unproven\"", StringComparison.Ordinal));
-        Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.09-overlay-pack", "--root", _fixture]));
+        Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.09-codereview-prepare", "--root", _fixture]));
+        Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.40-pomodoro-create", "--root", _fixture]));
+        Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.50-overlay-pack", "--root", _fixture]));
+        Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.51-overlay-remove", "--root", _fixture]));
         foreach (var stage in new[]
         {
             "speckit.engloop.05-model",

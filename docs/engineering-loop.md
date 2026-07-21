@@ -2,7 +2,7 @@
 
 **Workflow generation:** Ordered EngLoop v2.
 **Product versioning:** EngLoopKit remains on the **1.x** line; the ordered workflow
-ships in v1.7.0 and dynamic private overlay ownership in v1.8.2. “v2” is not a v2.0 product release.
+ships in v1.7.0 and the expanded review/session/overlay utility surface in v1.9.0. “v2” is not a v2.0 product release.
 
 EngLoopKit has three independently invoked lifecycle lanes plus one local utility.
 Command ordinals give the picker a
@@ -21,12 +21,20 @@ an evidence-gated transition, not a narrated claim.
 | 06 | `speckit.engloop.06-explore` | Bounded CORD exploration and deterministic generated suite (`CORDxxx`). |
 | 07 | `speckit.engloop.07-validate` | Fresh generated-suite-only functional validation and reachability (`COVxxx`); no readiness claim. |
 | 08 | `speckit.engloop.08-unittest` | Disposition before direct tests, whole-product coverage, and the sole READY / NOT READY inventory verdict. |
-| 09 | `speckit.engloop.09-overlay-pack` | Pack a verified private local overlay; install/unpack use the tool because a target may have no agent surface yet. |
+| 09 | `speckit.engloop.09-codereview-prepare` | Minimize and validate the current PR and prepare evidence-backed reviewer technical checks. |
 
 The Stage 08 PASS requires current evidence for every configured module: architecture,
 regressions, artifact-appropriate verification, and measured **95% line + branch**
 coverage. The stateful vertical additionally needs behavior-level SEK evidence with
 model-derived negative conformance and materially branching paths.
+
+## Session memory and overlay utilities: 40, 50–51
+
+| Stage | Command | Gate and durable output |
+|---:|---|---|
+| 40 | `speckit.engloop.40-pomodoro-create` | One brief `POM<NNNN>-<description>.md` note for the just-completed 30–60 minute session. |
+| 50 | `speckit.engloop.50-overlay-pack` | Pack the verified registered private overlay into one portable archive. |
+| 51 | `speckit.engloop.51-overlay-remove` | Confirm and remove every manifest-owned local path, restore prior hooks, and preserve unrelated host files. |
 
 ## Operations: 20–22
 

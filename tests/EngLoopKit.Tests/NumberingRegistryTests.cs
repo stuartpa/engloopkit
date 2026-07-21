@@ -15,7 +15,8 @@ public sealed class NumberingRegistryTests
     [InlineData("ARCH", 12, "ARCH012")]
     [InlineData("PM", 7, "PM007")]
     [InlineData("REFACT", 1000, "REFACT1000")]
-    public void Format_zeroPadsToThreeDigits(string prefix, int n, string expected)
+    [InlineData("POM", 1, "POM0001")]
+    public void Format_usesPrefixWidth(string prefix, int n, string expected)
     {
         Assert.Equal(expected, NumberingRegistry.Format(prefix, n));
     }
@@ -33,9 +34,9 @@ public sealed class NumberingRegistryTests
     }
 
     [Fact]
-    public void KnownPrefixes_areTheTwelveStandardOnes()
+    public void KnownPrefixes_matchCurrentStandards()
     {
-        string[] expected = ["SPEC", "SCAF", "ARCH", "MODEL", "CORD", "COV", "IN", "PM", "REFACT", "MIT", "LEARN", "RPI"];
+        string[] expected = ["SPEC", "SCAF", "ARCH", "MODEL", "CORD", "COV", "IN", "PM", "REFACT", "POM", "MIT", "LEARN", "RPI"];
         foreach (var p in expected)
         {
             Assert.True(NumberingRegistry.IsKnownPrefix(p), p);
@@ -61,6 +62,7 @@ public sealed class NumberingRegistryTests
         var reg = new NumberingRegistry();
         Assert.Equal("MODEL001", reg.NextId("MODEL"));
         Assert.Equal("MODEL002", reg.NextId("MODEL"));
+        Assert.Equal("POM0001", reg.NextId("POM"));
     }
 
     [Fact]

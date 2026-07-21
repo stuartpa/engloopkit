@@ -8,15 +8,16 @@ in the bundle's [document standards](../docs/standards.md). Artifact root is `.e
 
 | Prefix | Scope | Last used | Notes |
 |---|---|---|---|
-| `SPEC` | Specifications | `SPEC001` | SPEC001 = ordered EngLoop v2 workflow |
+| `SPEC` | Specifications | `SPEC002` | SPEC001 = ordered workflow; SPEC002 = private overlay |
 | `SCAF` | Scaffold/test-runway records | `SCAF001` | SCAF001 = deterministic self-host test runway proof |
-| `ARCH` | Architecture decisions | `ARCH007` | bundle-composition, command-loop-contract, numbering-memory, executable-core, component-pattern, deterministic agent-surface validation, private overlay boundary |
+| `ARCH` | Architecture decisions | `ARCH007` | latest = private overlay boundary |
 | `MODEL` | SEK model records | `MODEL001` | MODEL001 = engineering-loop state machine |
 | `CORD` | CORD exploration records | `CORD001` | CORD001 = loop conformance exploration |
-| `COV` | Coverage/validation/readiness records | `COV003` | COV001 = conformance/artifact coverage; COV002 = functional validation; COV003 = whole-product readiness inventory |
-| `IN` | Incidents | `IN005` | IN001 = consumer declared ready with no bar met; IN002 = gate conflates verification method with being verified; IN003 = self-model granularity ambiguous for a pipeline vertical; IN004 = gate accepts positive-only / thin self-models (no negative-path conformance, no behavioral-richness floor); IN005 = stale Windows testhost process locked ELK test assemblies during coverage/build validation |
+| `COV` | Coverage/validation/readiness records | `COV003` | COV001 = conformance; COV002 = functional; COV003 = readiness |
+| `IN` | Incidents | `IN005` | latest = stale Windows testhost lock incident |
 | `PM` | Post-mortems | `PM004` | PM001 = no readiness gate; PM002 = verification method by module class; PM003 = self-model criterion is behavior-level; PM004 = self-model must be behaviorally rich + prove negative conformance |
 | `REFACT` | Refactor decisions | `REFACT001` | REFACT001 = ordered EngLoop v2 workflow, Northstar, verification split, and Learnings Pyramid |
+| `POM` | Pomodoro session notes | `POM0000` | four-digit global counter; first note is POM0001 |
 
 ## Local counters
 
