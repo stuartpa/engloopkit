@@ -52,6 +52,10 @@ Run before any action:
 4. The ZIP is deliberately unencrypted and must contain no secrets, credentials, `.env`, private keys, Git internals, or arbitrary untracked files.
 5. The command never edits tracked `.gitignore`; never create a tracked ignore rule or
   modify workload/application files.
+6. After intentionally restoring private content over a managed file, treat
+  `overlay-manifest-file-mismatch` as expected stale provenance. Register any new paths,
+  then run this pack command to atomically refresh hashes before requiring all-mode
+  verification. Never edit manifest hashes by hand.
 
 ## Done when
 

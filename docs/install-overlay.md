@@ -146,6 +146,25 @@ The command updates `.engloop-overlay/manifest.json` and the ELK block in
 leakage, and locally ignored. It does not infer ownership from product names, module
 inventory entries, or repository layout. Unregistered product source remains trackable.
 
+## Restore private managed content after install
+
+A fresh install records hashes for its initial managed files. If an operator intentionally
+restores older private content over a managed file (for example a living direction or
+local evidence), `overlay verify --mode all` must report
+`overlay-manifest-file-mismatch` until the restored state is explicitly checkpointed.
+
+Use this order:
+
+1. Register any additional file/directory ownership **before** restoring that path.
+2. Restore the private managed files from the authoritative private backup.
+3. Run `overlay pack --root . --output <new-archive-outside-repository>`; the output must
+    not already exist.
+4. Run `overlay verify --root . --mode all` and require `OVERLAY_VERIFY_PASS`.
+
+`overlay register` changes ownership/excludes; it does not bless content hashes. `overlay
+pack` is the explicit hash-refresh checkpoint. Never hand-edit the manifest to suppress a
+mismatch.
+
 ## Remove an overlay
 
 `overlay remove` derives deletion only from the manifest and requires the exact
