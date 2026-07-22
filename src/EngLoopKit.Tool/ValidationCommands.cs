@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Text.Json;
 using EngLoopKit.Core;
 using EngLoopKit.Components.DocumentValidation;
 
@@ -15,7 +17,8 @@ public static class ValidationCommands
         "speckit.engloop.06-explore",
         "speckit.engloop.07-validate",
         "speckit.engloop.08-unittest",
-        "speckit.engloop.09-codereview-prepare",
+        "speckit.engloop.09-debugger-walk-thru",
+        "speckit.engloop.10-codereview-prepare",
         "speckit.engloop.20-incident",
         "speckit.engloop.21-postmortem",
         "speckit.engloop.22-repair",
@@ -36,7 +39,8 @@ public static class ValidationCommands
         ["speckit.engloop.06-explore"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.07-validate"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.08-unittest"] = ["read", "search", "edit", "execute", "agent"],
-        ["speckit.engloop.09-codereview-prepare"] = ["read", "search", "edit", "execute", "web"],
+        ["speckit.engloop.09-debugger-walk-thru"] = ["read", "search", "edit", "execute"],
+        ["speckit.engloop.10-codereview-prepare"] = ["read", "search", "edit", "execute", "web"],
         ["speckit.engloop.20-incident"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.21-postmortem"] = ["read", "search", "edit", "execute", "agent"],
         ["speckit.engloop.22-repair"] = ["read", "search", "edit", "execute"],
@@ -57,7 +61,8 @@ public static class ValidationCommands
         ["speckit.engloop.06-explore"] = [],
         ["speckit.engloop.07-validate"] = [],
         ["speckit.engloop.08-unittest"] = ["Explore"],
-        ["speckit.engloop.09-codereview-prepare"] = [],
+        ["speckit.engloop.09-debugger-walk-thru"] = [],
+        ["speckit.engloop.10-codereview-prepare"] = [],
         ["speckit.engloop.20-incident"] = [],
         ["speckit.engloop.21-postmortem"] = ["Explore"],
         ["speckit.engloop.22-repair"] = [],
@@ -329,6 +334,21 @@ public static class ValidationCommands
                 Console.Error.WriteLine("missing-proven-runway");
                 return 2;
             }
+
+            if (stage is "speckit.engloop.09-debugger-walk-thru" or "speckit.engloop.10-codereview-prepare")
+            {
+                if (!HasCurrentReadinessPass(rootResult.RepositoryRoot))
+                {
+                    Console.Error.WriteLine("missing-current-readiness");
+                    return 2;
+                }
+            }
+
+            if (stage == "speckit.engloop.10-codereview-prepare" && !HasCurrentDebuggerWalkthrough(rootResult.RepositoryRoot))
+            {
+                Console.Error.WriteLine("missing-current-debugger-walkthrough");
+                return 2;
+            }
         }
         catch (Exception ex)
         {
@@ -430,7 +450,7 @@ public static class ValidationCommands
             }
         }
 
-        if (totalHandoffs != 25)
+        if (totalHandoffs != 27)
         {
             Console.Error.WriteLine($"wrong-handoff-count:{totalHandoffs}");
             return 1;
@@ -438,5 +458,67 @@ public static class ValidationCommands
 
         Console.WriteLine("AGENT_SURFACES_OK");
         return 0;
+    }
+
+    private static bool HasCurrentReadinessPass(string root)
+    {
+        var path = Path.Combine(root, ".engloop", "out", "cov003-readiness.json");
+        if (!File.Exists(path)) return false;
+        try
+        {
+            using var json = JsonDocument.Parse(File.ReadAllText(path));
+            return json.RootElement.TryGetProperty("verdict", out var verdict)
+                && string.Equals(verdict.GetString(), "PASS", StringComparison.Ordinal);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    private static bool HasCurrentDebuggerWalkthrough(string root)
+    {
+        var head = GitHead(root);
+        if (head is null) return false;
+        var directory = Path.Combine(root, ".engloop", "debugger-walkthroughs");
+        if (!Directory.Exists(directory)) return false;
+
+        foreach (var path in Directory.GetFiles(directory, "DBG*.md", SearchOption.TopDirectoryOnly))
+        {
+            var text = File.ReadAllText(path).Replace("\r\n", "\n", StringComparison.Ordinal);
+            if (!text.Contains($"- **Head revision:** {head}", StringComparison.Ordinal)
+                || !text.Contains("- **Status:** COMPLETE", StringComparison.Ordinal)
+                || text.Contains("- [ ]", StringComparison.Ordinal)
+                || text.Contains("| pending |", StringComparison.OrdinalIgnoreCase)
+                || text.Contains("| blocked |", StringComparison.OrdinalIgnoreCase)
+                || text.Contains("| stale |", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+            var attestations = text.Split("**Engineer attestation:**", StringSplitOptions.None).Skip(1).ToArray();
+            if (attestations.Length > 0 && attestations.All(value => !string.IsNullOrWhiteSpace(value.Split('\n')[0].Trim()) && !value.Split('\n')[0].Contains('<')))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static string? GitHead(string root)
+    {
+        var start = new ProcessStartInfo("git")
+        {
+            WorkingDirectory = root,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        start.ArgumentList.Add("rev-parse");
+        start.ArgumentList.Add("HEAD");
+        using var process = Process.Start(start);
+        if (process is null) return null;
+        var output = process.StandardOutput.ReadToEnd().Trim();
+        process.WaitForExit();
+        return process.ExitCode == 0 && output.Length > 0 ? output : null;
     }
 }

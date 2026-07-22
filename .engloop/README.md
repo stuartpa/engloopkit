@@ -26,6 +26,7 @@ The planned required config is `.engloop/config.json`; ignored transient output 
 ├── incidents/              # INxxx — incidents with local MIT actions
 ├── postmortems/            # PMxxx — post-mortems with local LEARN/RPI entries
 ├── refactors/              # REFACTxxx — refactor decisions
+├── debugger-walkthroughs/  # DBGxxx — engineer-attested debugger walkthrough ledgers
 ├── pomodoros/              # POMxxxx — brief completed-session notes
 └── learnings/cards/         # living cards with PM/LEARN provenance
 ```

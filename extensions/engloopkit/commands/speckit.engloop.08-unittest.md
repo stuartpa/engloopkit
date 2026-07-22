@@ -25,6 +25,10 @@ handoffs:
     agent: speckit.engloop.07-validate
     prompt: Rerun the complete generated functional validation after the coherent residue deletion set above.
     send: false
+  - label: Walk through review code in debugger
+    agent: speckit.engloop.09-debugger-walk-thru
+    prompt: Use the current readiness PASS and exact base-to-HEAD diff to prepare an engineer-led debugger walkthrough ledger for every changed executable code chunk.
+    send: false
 ---
 
 ## User Input
@@ -53,3 +57,4 @@ Run before any action:
 
 - [ ] Disposition precedes any new direct tests
 - [ ] Final readiness verdict is emitted only by Stage 08
+- [ ] A readiness PASS is handed to Stage 09 before code-review preparation

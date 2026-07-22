@@ -20,7 +20,7 @@ public sealed class CommandSurfaceTests
     }
 
     [Fact]
-    public void HandoffGraph_hasExact25Edges_withTerminalAgentsAndNoForbiddenStage08Targets()
+    public void HandoffGraph_hasExact27Edges_withDebuggerGateAndTerminalAgents()
     {
         var edges = 0;
 
@@ -69,13 +69,19 @@ public sealed class CommandSurfaceTests
 
             if (id == "speckit.engloop.08-unittest")
             {
+                Assert.Contains("speckit.engloop.09-debugger-walk-thru", localEdges);
                 Assert.DoesNotContain("speckit.engloop.20-incident", localEdges);
                 Assert.DoesNotContain("speckit.engloop.30-refactor-scan", localEdges);
                 Assert.DoesNotContain("speckit.engloop.31-learnings-pyramid", localEdges);
             }
+
+            if (id == "speckit.engloop.09-debugger-walk-thru")
+            {
+                Assert.Equal(["speckit.engloop.10-codereview-prepare"], localEdges);
+            }
         }
 
-        Assert.Equal(25, edges);
+        Assert.Equal(27, edges);
     }
 
     [Fact]

@@ -15,6 +15,7 @@ public sealed class NumberingRegistryTests
     [InlineData("ARCH", 12, "ARCH012")]
     [InlineData("PM", 7, "PM007")]
     [InlineData("REFACT", 1000, "REFACT1000")]
+    [InlineData("DBG", 1, "DBG001")]
     [InlineData("POM", 1, "POM0001")]
     public void Format_usesPrefixWidth(string prefix, int n, string expected)
     {
@@ -36,7 +37,7 @@ public sealed class NumberingRegistryTests
     [Fact]
     public void KnownPrefixes_matchCurrentStandards()
     {
-        string[] expected = ["SPEC", "SCAF", "ARCH", "MODEL", "CORD", "COV", "IN", "PM", "REFACT", "POM", "MIT", "LEARN", "RPI"];
+        string[] expected = ["SPEC", "SCAF", "ARCH", "MODEL", "CORD", "COV", "IN", "PM", "REFACT", "DBG", "POM", "MIT", "LEARN", "RPI"];
         foreach (var p in expected)
         {
             Assert.True(NumberingRegistry.IsKnownPrefix(p), p);

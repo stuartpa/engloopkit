@@ -3,6 +3,25 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] - 2026-07-22
+
+### Added
+
+- `/speckit.engloop.09-debugger-walk-thru`: requires an engineer-led, line-by-line
+  debugger walkthrough for every executable changed-code chunk before review preparation.
+- Numbered `DBGxxx` walkthrough ledgers with exact base/HEAD, chunk boundaries,
+  debugger/breakpoint/trigger evidence, and non-delegable per-chunk engineer attestation.
+- Debugger-neutral setup: use explicit repository/user authority; after one bounded setup
+  failure, offer a reusable repo-local debugger `SKILL.md` and create it only with approval.
+
+### Changed
+
+- Moved code-review preparation from Stage 09 to Stage 10.
+- Required workflow is Stage 08 readiness → Stage 09 debugger walkthrough → Stage 10
+  review preparation. Product edits at Stage 10 invalidate evidence and return through
+  Stages 08 and 09.
+- Expanded the exact agent surface from 17 to 18 commands and from 25 to 27 handoffs.
+
 ## [1.9.1] - 2026-07-21
 
 ### Fixed

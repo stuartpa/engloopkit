@@ -11,7 +11,7 @@ explicit trigger, goal, actions, verification, and durable memory.
 > *workflow/specification generation*, not a product major version. EngLoopKit remains
 > on the **1.x** maturity runway for the foreseeable future: this ordered release is
 > **v1.7.0** established the ordered baseline; review, Pomodoro memory, and complete
-> overlay lifecycle utilities ship as **v1.9.1**. No v2.0 release is implied.
+> the engineer-led debugger review gate ships as **v1.10.0**. No v2.0 release is implied.
 
 The v1.8 workflow separates delivery/readiness, operations, stewardship, and local
 overlay utility work into
@@ -31,7 +31,7 @@ A handoff is review-first (`send: false`), not a state transition.
 - **Components are generic:** non-domain runtime/BCL helpers live under language-appropriate
   component boundaries; the vertical composes them.
 
-## The 17 commands
+## The 18 commands
 
 The released extension ID is **`engloop`**; product, bundle, and tool identity remain
 **`engloopkit`**. Lexical picker order is the normal workflow order.
@@ -46,7 +46,8 @@ The released extension ID is **`engloop`**; product, bundle, and tool identity r
 | Delivery | `/speckit.engloop.06-explore` | Explore bounded behavior and regenerate functional tests. |
 | Delivery | `/speckit.engloop.07-validate` | Run generated-only functional validation and reachability. |
 | Delivery | `/speckit.engloop.08-unittest` | Classify residue, add direct tests after disposition, compute sole readiness verdict. |
-| Review | `/speckit.engloop.09-codereview-prepare` | Minimize and validate the current PR and prepare evidence-backed reviewer checks. |
+| Review gate | `/speckit.engloop.09-debugger-walk-thru` | Prepare and track the engineer's line-by-line debugger walkthrough of review-bound code. |
+| Review | `/speckit.engloop.10-codereview-prepare` | Minimize and validate the current PR after debugger attestation. |
 | Operations | `/speckit.engloop.20-incident` | Stabilize a real operating disruption using mitigations only. |
 | Operations | `/speckit.engloop.21-postmortem` | Turn selected stabilized incidents into PM/LEARN/RPI evidence. |
 | Operations | `/speckit.engloop.22-repair` | Route permanent repair through Stage 04 and applicable 05–08 gates. |
@@ -67,7 +68,7 @@ never authorizes operations.
 
 ## Install a release
 
-A released v1.9.1 artifact set contains three immutable pieces:
+A released v1.10.0 artifact set contains three immutable pieces:
 
 1. `engloopkit.<version>.nupkg` — the root-local .NET tool (`engloopkit`);
 2. `engloop-extension-<version>.zip` — the ordered Spec Kit extension (`engloop`);
@@ -79,10 +80,10 @@ not point agent hooks at a sibling build output:
 ```powershell
 # From the consumer root, after downloading the released nupkg to <release-dir>.
 dotnet new tool-manifest --force
-dotnet tool install engloopkit --version 1.9.1 --add-source <release-dir>
+dotnet tool install engloopkit --version 1.10.0 --add-source <release-dir>
 
 # Install the exact released ordered extension archive.
-specify extension add engloop --from <release-dir>/engloopkit-extension-1.9.1.zip
+specify extension add engloop --from <release-dir>/engloopkit-extension-1.10.0.zip
 ```
 
 The extension’s `SessionStart` hook and command body both run:
@@ -119,17 +120,17 @@ explicit at install time and does **not** modify tracked `.gitignore` or product
 
 ```powershell
 # Do this in a private bootstrap directory OUTSIDE <git-root>.
-$bootstrap = Join-Path $env:LOCALAPPDATA 'EngLoopKit\bootstrap\1.9.1'
+$bootstrap = Join-Path $env:LOCALAPPDATA 'EngLoopKit\bootstrap\1.10.0'
 New-Item -ItemType Directory -Force $bootstrap | Out-Null
 Push-Location $bootstrap
 dotnet new tool-manifest --force
-dotnet tool install engloopkit --version 1.9.1 --add-source <release-dir>
+dotnet tool install engloopkit --version 1.10.0 --add-source <release-dir>
 
 # <release-dir> contains the downloaded .nupkg and extension .zip.
 dotnet tool run engloopkit -- overlay install --mode overlay --root <git-root> `
   --product-id <lowercase-product-id> --repository-id <stable-repository-id> `
-  --tool-version 1.9.1 --tool-nupkg <release-dir>\engloopkit.1.9.1.nupkg `
-  --extension-archive <release-dir>\engloopkit-extension-1.9.1.zip
+  --tool-version 1.10.0 --tool-nupkg <release-dir>\engloopkit.1.10.0.nupkg `
+  --extension-archive <release-dir>\engloopkit-extension-1.10.0.zip
 Pop-Location
 ```
 

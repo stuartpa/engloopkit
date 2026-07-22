@@ -121,7 +121,7 @@ public sealed class OverlayCommandPrivateTests : IDisposable
         var ids = new[]
         {
             "01-northstar", "02-scaffold", "03-architect", "04-refactor", "05-model",
-            "06-explore", "07-validate", "08-unittest", "09-codereview-prepare",
+            "06-explore", "07-validate", "08-unittest", "09-debugger-walk-thru", "10-codereview-prepare",
             "20-incident", "21-postmortem", "22-repair", "30-refactor-scan",
             "31-learnings-pyramid", "40-pomodoro-create", "50-overlay-pack", "51-overlay-remove",
         };

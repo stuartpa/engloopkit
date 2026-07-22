@@ -7,7 +7,7 @@ release identity remain **`engloopkit`**.
 
 > **Versioning clarification:** “Ordered EngLoop v2” is the *workflow generation /
 > specification name*, not a SemVer major release. The product remains on the **1.x**
-> maturity runway: this package is **v1.9.1**; “v2” remains workflow terminology only,
+> maturity runway: this package is **v1.10.0**; “v2” remains workflow terminology only,
 > not v2.0.
 
 ## Ordered command lanes
@@ -15,7 +15,8 @@ release identity remain **`engloopkit`**.
 | Lane | Commands | Purpose |
 |---|---|---|
 | Delivery/readiness | `01-northstar` → `08-unittest` | Direction, runway, architecture, refactor, behavior model, exploration, functional validation, final readiness. |
-| Review | `09-codereview-prepare` | Minimize and validate the current PR and prepare evidence-backed reviewer checks. |
+| Review gate | `09-debugger-walk-thru` | Prepare and track an engineer-led line-by-line debugger walkthrough. |
+| Review | `10-codereview-prepare` | Minimize and validate the current PR after debugger attestation. |
 | Operations | `20-incident` → `22-repair` | Stabilize a real disruption, analyze stabilized incident sets, and route permanent repair back through delivery gates. |
 | Stewardship | `30-refactor-scan`, `31-learnings-pyramid` | Select one evidence-backed evolution decision or condense accepted source learnings when capacity exists. |
 | Session memory | `40-pomodoro-create` | Capture a concise note about the just-completed work session. |
@@ -30,7 +31,7 @@ Install the released extension archive through Spec Kit after installing the mat
 root-local `engloopkit` .NET tool manifest:
 
 ```powershell
-specify extension add engloop --from <release-dir>/engloopkit-extension-1.9.1.zip
+specify extension add engloop --from <release-dir>/engloopkit-extension-1.10.0.zip
 ```
 
 The selected root must have exactly one tracked `.engloop/` root, root `NORTHSTAR.md`,

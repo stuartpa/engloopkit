@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using EngLoopKit.Tool;
 using Xunit;
 
@@ -54,7 +55,8 @@ public sealed class ToolValidationCommandTests : IDisposable
         Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.01-northstar", "--root", _fixture]));
 
         File.WriteAllText(configPath, valid.Replace("\"status\": \"proven\"", "\"status\": \"unproven\"", StringComparison.Ordinal));
-        Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.09-codereview-prepare", "--root", _fixture]));
+        Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.09-debugger-walk-thru", "--root", _fixture]));
+        Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
         Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.40-pomodoro-create", "--root", _fixture]));
         Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.50-overlay-pack", "--root", _fixture]));
         Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.51-overlay-remove", "--root", _fixture]));
@@ -71,6 +73,69 @@ public sealed class ToolValidationCommandTests : IDisposable
 
         File.WriteAllText(configPath, "{");
         Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.01-northstar", "--root", _fixture]));
+    }
+
+    [Fact]
+    public void DebuggerAndReviewEntry_requireReadinessAndCurrentEngineerAttestation()
+    {
+        CreateCanonicalFixture(modulePath: "module.csproj");
+        File.WriteAllText(Path.Combine(_fixture, "module.csproj"), "<Project />");
+        RunGit("init");
+        RunGit("config", "user.email", "walkthrough@example.invalid");
+        RunGit("config", "user.name", "Walkthrough Test");
+        RunGit("add", ".");
+        RunGit("commit", "-m", "fixture");
+
+        Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.09-debugger-walk-thru", "--root", _fixture]));
+        Directory.CreateDirectory(Path.Combine(_fixture, ".engloop", "out"));
+        var readinessPath = Path.Combine(_fixture, ".engloop", "out", "cov003-readiness.json");
+        File.WriteAllText(readinessPath, "{");
+        Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.09-debugger-walk-thru", "--root", _fixture]));
+        File.WriteAllText(readinessPath, "{}");
+        Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.09-debugger-walk-thru", "--root", _fixture]));
+        File.WriteAllText(readinessPath, "{\"verdict\":\"NOT READY\"}");
+        Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.09-debugger-walk-thru", "--root", _fixture]));
+        File.WriteAllText(readinessPath, "{\"verdict\":\"PASS\"}");
+        Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.09-debugger-walk-thru", "--root", _fixture]));
+        Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
+
+        var head = RunGitOutput("rev-parse", "HEAD").Trim();
+        var directory = Path.Combine(_fixture, ".engloop", "debugger-walkthroughs");
+        Directory.CreateDirectory(directory);
+        var ledgerPath = Path.Combine(directory, "DBG001_fixture.md");
+        string Ledger(string ledgerHead, string status, string checklist, string chunkStatus, string attestation) => $$"""
+        # DBG001 — fixture
+        - **Head revision:** {{ledgerHead}}
+        - **Status:** {{status}}
+        | DBG-CHUNK-001 | path | {{chunkStatus}} |
+        - **Engineer attestation:** {{attestation}}
+        {{checklist}}
+        """;
+
+        File.WriteAllText(ledgerPath, Ledger("0000000000000000000000000000000000000000", "COMPLETE", "- [x] Every chunk is attested", "attested", "I personally stepped through it."));
+        Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
+        File.WriteAllText(ledgerPath, Ledger(head, "IN PROGRESS", "- [x] Every chunk is attested", "attested", "I personally stepped through it."));
+        Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
+        File.WriteAllText(ledgerPath, Ledger(head, "COMPLETE", "- [ ] Every chunk is attested", "attested", "I personally stepped through it."));
+        Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
+        foreach (var incomplete in new[] { "pending", "blocked", "stale" })
+        {
+            File.WriteAllText(ledgerPath, Ledger(head, "COMPLETE", "- [x] Every chunk is attested", incomplete, "I personally stepped through it."));
+            Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
+        }
+        File.WriteAllText(ledgerPath, Ledger(head, "COMPLETE", "- [x] Every chunk is attested", "attested", "<exact response>"));
+        Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
+        File.WriteAllText(ledgerPath, Ledger(head, "COMPLETE", "- [x] Every chunk is attested", "attested", ""));
+        Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
+
+        File.WriteAllText(ledgerPath, Ledger(head, "COMPLETE", "- [x] Every chunk is attested", "attested", "I personally stepped through this chunk line by line in the recorded debugger."));
+        Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
+
+        File.AppendAllText(ledgerPath, "\n| DBG-CHUNK-002 | path | pending |\n");
+        Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
+
+        Directory.Move(Path.Combine(_fixture, ".git"), Path.Combine(_fixture, ".git-hidden"));
+        Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
     }
 
     [Fact]
@@ -147,6 +212,36 @@ public sealed class ToolValidationCommandTests : IDisposable
         """);
     }
 
+    private void RunGit(params string[] args)
+    {
+        var result = RunGitProcess(args);
+        if (result.ExitCode != 0) throw new Xunit.Sdk.XunitException(result.Error);
+    }
+
+    private string RunGitOutput(params string[] args)
+    {
+        var result = RunGitProcess(args);
+        if (result.ExitCode != 0) throw new Xunit.Sdk.XunitException(result.Error);
+        return result.Output;
+    }
+
+    private (int ExitCode, string Output, string Error) RunGitProcess(string[] args)
+    {
+        var start = new ProcessStartInfo("git")
+        {
+            WorkingDirectory = _fixture,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        foreach (var arg in args) start.ArgumentList.Add(arg);
+        using var process = Process.Start(start)!;
+        var output = process.StandardOutput.ReadToEnd();
+        var error = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        return (process.ExitCode, output, error);
+    }
+
     private static string FindRepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
@@ -163,7 +258,9 @@ public sealed class ToolValidationCommandTests : IDisposable
     {
         if (Directory.Exists(_fixture))
         {
-            Directory.Delete(_fixture, recursive: true);
+            try { Directory.Delete(_fixture, recursive: true); }
+            catch (IOException) { /* transient disposable Git file lock */ }
+            catch (UnauthorizedAccessException) { /* transient disposable Git file lock */ }
         }
     }
 }

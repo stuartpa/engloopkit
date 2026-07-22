@@ -21,7 +21,8 @@ public sealed class BundleConformanceTests
         "speckit.engloop.06-explore",
         "speckit.engloop.07-validate",
         "speckit.engloop.08-unittest",
-        "speckit.engloop.09-codereview-prepare",
+        "speckit.engloop.09-debugger-walk-thru",
+        "speckit.engloop.10-codereview-prepare",
         "speckit.engloop.20-incident",
         "speckit.engloop.21-postmortem",
         "speckit.engloop.22-repair",
@@ -40,16 +41,16 @@ public sealed class BundleConformanceTests
         using var catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "catalog.json")));
 
         Assert.Contains("id: \"engloop\"", extension);
-        Assert.Contains("version: \"1.9.1\"", extension);
+        Assert.Contains("version: \"1.10.0\"", extension);
         Assert.Contains("id: \"engloopkit\"", bundle);
-        Assert.Contains("version: \"1.9.1\"", bundle);
+        Assert.Contains("version: \"1.10.0\"", bundle);
         Assert.Equal("engloop", catalog.RootElement.GetProperty("extensions")[0].GetProperty("id").GetString());
-        Assert.Equal("1.9.1", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
-        Assert.Equal(17, catalog.RootElement.GetProperty("extensions")[0].GetProperty("provides").GetProperty("commands").GetInt32());
+        Assert.Equal("1.10.0", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
+        Assert.Equal(18, catalog.RootElement.GetProperty("extensions")[0].GetProperty("provides").GetProperty("commands").GetInt32());
     }
 
     [Fact]
-    public void Extension_declaresExactOrderedSeventeenCommandSurface()
+    public void Extension_declaresExactOrderedEighteenCommandSurface()
     {
         var manifest = File.ReadAllText(Path.Combine(ExtensionRoot, "extension.yml"));
         var ids = Regex.Matches(manifest, @"^\s*-\s*name:\s*""?(speckit\.engloop\.[\w-]+)""?", RegexOptions.Multiline)
@@ -101,7 +102,14 @@ public sealed class BundleConformanceTests
     [Fact]
     public void NewUtilityCommands_haveTheirRequiredBoundaries()
     {
-        var review = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.09-codereview-prepare.md"));
+        var debugger = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.09-debugger-walk-thru.md"));
+        Assert.Contains("personally stepped through", debugger, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("per-chunk engineer attestation", debugger, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("SKILL.md", debugger, StringComparison.Ordinal);
+        Assert.Contains("Do not infer a debugger", debugger, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("explicit `--debugger` choice", debugger, StringComparison.OrdinalIgnoreCase);
+
+        var review = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.10-codereview-prepare.md"));
         Assert.Contains("github", review, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("azure-devops", review, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("no persistent personal profile", review, StringComparison.OrdinalIgnoreCase);

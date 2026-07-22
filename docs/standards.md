@@ -2,7 +2,7 @@
 
 **Workflow generation:** Ordered EngLoop v2.
 **Product SemVer:** EngLoopKit remains on the **1.x** line; this workflow ships as
-v1.9.1. “v2” describes the workflow generation, not a v2.0 release.
+v1.10.0. “v2” describes the workflow generation, not a v2.0 release.
 
 Durable workflow memory lives in exactly one tracked hidden root:
 
@@ -43,6 +43,7 @@ use `<PREFIX><NNN>_<short-title>.md`; Pomodoro notes use
 | `IN` | 20 Incident | `.engloop/incidents/` | Actual operating disruption, timeline, and local mitigations. |
 | `PM` | 21 Postmortem | `.engloop/postmortems/` | Analysis of deliberately selected stabilized incident sets. |
 | `REFACT` | 30 Refactor scan | `.engloop/refactors/` | One selected evolution decision or `none-this-cycle`. |
+| `DBG` | 09 Debugger walk-through | `.engloop/debugger-walkthroughs/` | Per-chunk breakpoint/trigger evidence plus explicit engineer attestation at an exact HEAD. |
 | `POM` | 40 Pomodoro create | `.engloop/pomodoros/` | Brief evidence-backed note about the just-completed 30–60 minute session. |
 
 ## Local prefixes

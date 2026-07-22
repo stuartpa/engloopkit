@@ -58,7 +58,8 @@ public static class OverlayCommands
     [
         "speckit.engloop.01-northstar", "speckit.engloop.02-scaffold", "speckit.engloop.03-architect",
         "speckit.engloop.04-refactor", "speckit.engloop.05-model", "speckit.engloop.06-explore",
-        "speckit.engloop.07-validate", "speckit.engloop.08-unittest", "speckit.engloop.09-codereview-prepare",
+        "speckit.engloop.07-validate", "speckit.engloop.08-unittest", "speckit.engloop.09-debugger-walk-thru",
+        "speckit.engloop.10-codereview-prepare",
         "speckit.engloop.20-incident", "speckit.engloop.21-postmortem", "speckit.engloop.22-repair",
         "speckit.engloop.30-refactor-scan", "speckit.engloop.31-learnings-pyramid",
         "speckit.engloop.40-pomodoro-create", "speckit.engloop.50-overlay-pack", "speckit.engloop.51-overlay-remove",

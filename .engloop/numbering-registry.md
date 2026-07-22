@@ -17,6 +17,7 @@ in the bundle's [document standards](../docs/standards.md). Artifact root is `.e
 | `IN` | Incidents | `IN005` | latest = stale Windows testhost lock incident |
 | `PM` | Post-mortems | `PM004` | PM001 = no readiness gate; PM002 = verification method by module class; PM003 = self-model criterion is behavior-level; PM004 = self-model must be behaviorally rich + prove negative conformance |
 | `REFACT` | Refactor decisions | `REFACT001` | REFACT001 = ordered EngLoop v2 workflow, Northstar, verification split, and Learnings Pyramid |
+| `DBG` | Debugger walkthrough ledgers | `DBG000` | engineer-attested per-chunk debugger walkthrough evidence |
 | `POM` | Pomodoro session notes | `POM0000` | four-digit global counter; first note is POM0001 |
 
 ## Local counters

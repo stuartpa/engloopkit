@@ -2,7 +2,7 @@
 
 **Workflow generation:** Ordered EngLoop v2.
 **Product versioning:** EngLoopKit remains on the **1.x** line; the ordered workflow
-ships in v1.7.0 and the corrected review/session/overlay utility surface in v1.9.1. “v2” is not a v2.0 product release.
+ships in v1.7.0 and the engineer-led debugger review gate in v1.10.0. “v2” is not a v2.0 product release.
 
 EngLoopKit has three independently invoked lifecycle lanes plus one local utility.
 Command ordinals give the picker a
@@ -21,7 +21,8 @@ an evidence-gated transition, not a narrated claim.
 | 06 | `speckit.engloop.06-explore` | Bounded CORD exploration and deterministic generated suite (`CORDxxx`). |
 | 07 | `speckit.engloop.07-validate` | Fresh generated-suite-only functional validation and reachability (`COVxxx`); no readiness claim. |
 | 08 | `speckit.engloop.08-unittest` | Disposition before direct tests, whole-product coverage, and the sole READY / NOT READY inventory verdict. |
-| 09 | `speckit.engloop.09-codereview-prepare` | Minimize and validate the current PR and prepare evidence-backed reviewer technical checks. |
+| 09 | `speckit.engloop.09-debugger-walk-thru` | Require an engineer-led line-by-line debugger walkthrough ledger for every review-bound code chunk. |
+| 10 | `speckit.engloop.10-codereview-prepare` | Minimize and validate the current PR after the current HEAD has complete debugger attestation. |
 
 The Stage 08 PASS requires current evidence for every configured module: architecture,
 regressions, artifact-appropriate verification, and measured **95% line + branch**
