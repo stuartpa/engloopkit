@@ -3,6 +3,18 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.1] - 2026-07-21
+
+### Fixed
+
+- Overlay removal now quarantines non-empty registered directories child-first before
+  deleting their empty roots, with path/operation/exception diagnostics on access failure.
+- Install/unpack now persist exact pre-install hook bytes or an explicit absence marker
+  under overlay-owned state. Removal restores non-ELK hooks and pre-existing ELK wrappers
+  byte-for-byte before reporting success.
+- Legacy overlays without authoritative hook-baseline metadata preserve an ambiguous ELK
+  wrapper rather than silently weakening repository protection.
+
 ## [1.9.0] - 2026-07-21
 
 ### Added

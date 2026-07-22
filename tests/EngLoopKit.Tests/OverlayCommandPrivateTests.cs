@@ -377,6 +377,63 @@ public sealed class OverlayCommandPrivateTests : IDisposable
         Assert.Equal("child", File.ReadAllText(Path.Combine(sourceDirectory, "child")));
     }
 
+    [Fact]
+    public void HookBaselineAndQuarantineFailureMatrix_coversAllRemovalStates()
+    {
+        var hooks = Path.Combine(_root, ".git", "hooks");
+        var overlayHooks = Path.Combine(_root, ".engloop-overlay", "hooks");
+        Directory.CreateDirectory(overlayHooks);
+
+        var restore = Path.Combine(hooks, "restore");
+        File.WriteAllText(restore, "current-wrapper");
+        File.WriteAllText(restore + ".elk-prior", "intermediate-prior");
+        File.WriteAllText(Path.Combine(overlayHooks, "restore.before"), "original-before");
+
+        var absent = Path.Combine(hooks, "absent");
+        File.WriteAllText(absent, "current-wrapper");
+        File.WriteAllText(absent + ".elk-prior", "intermediate-prior");
+        File.WriteAllText(Path.Combine(overlayHooks, "absent.absent"), "absent");
+
+        var legacyPrior = Path.Combine(hooks, "legacy-prior");
+        File.WriteAllText(legacyPrior, "current-wrapper");
+        File.WriteAllText(legacyPrior + ".elk-prior", "legacy-original");
+
+        var legacyWrapper = Path.Combine(hooks, "legacy-wrapper");
+        File.WriteAllText(legacyWrapper, "legacy-wrapper-content");
+
+        Invoke<object?>("RestoreOverlayHooks", _root, (object)new[] { "restore", "absent", "legacy-prior", "legacy-wrapper" });
+        Assert.Equal("original-before", File.ReadAllText(restore));
+        Assert.False(File.Exists(restore + ".elk-prior"));
+        Assert.False(File.Exists(absent));
+        Assert.False(File.Exists(absent + ".elk-prior"));
+        Assert.Equal("legacy-original", File.ReadAllText(legacyPrior));
+        Assert.Equal("legacy-wrapper-content", File.ReadAllText(legacyWrapper));
+
+        File.WriteAllText(Path.Combine(hooks, "captured"), "captured-content");
+        var snapshots = Invoke<object>("CaptureHookSnapshots", _root);
+        Directory.Delete(Path.Combine(_root, ".engloop-overlay"), recursive: true);
+        Invoke<object?>("WriteHookBaselines", _root, snapshots);
+        Assert.True(File.Exists(Path.Combine(_root, ".engloop-overlay", "hooks", "pre-commit.absent")));
+        Assert.True(File.Exists(Path.Combine(_root, ".engloop-overlay", "hooks", "pre-push.absent")));
+
+        var moved = new List<(string Source, string Quarantine, bool Directory)>();
+        var sourceFile = Path.Combine(_root, "failure-file");
+        var destinationFile = Path.Combine(_root, ".git", "failure-file");
+        File.WriteAllText(sourceFile, "source");
+        File.WriteAllText(destinationFile, "collision");
+        var fileError = Assert.Throws<IOException>(() => Invoke<object?>("MoveToQuarantine", sourceFile, destinationFile, false, moved));
+        Assert.Contains("operation=file", fileError.Message);
+
+        var sourceDirectory = Path.Combine(_root, "failure-directory");
+        var destinationDirectory = Path.Combine(_root, ".git", "failure-directory");
+        Directory.CreateDirectory(sourceDirectory);
+        Directory.CreateDirectory(destinationDirectory);
+        File.WriteAllText(Path.Combine(sourceDirectory, "child"), "source");
+        File.WriteAllText(Path.Combine(destinationDirectory, "child"), "collision");
+        var directoryError = Assert.Throws<IOException>(() => Invoke<object?>("MoveToQuarantine", sourceDirectory, destinationDirectory, true, moved));
+        Assert.Contains("operation=directory-children-first", directoryError.Message);
+    }
+
     private static T Invoke<T>(string name, params object[] args)
     {
         var method = typeof(OverlayCommands).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Static)

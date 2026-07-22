@@ -224,6 +224,9 @@ public sealed class OverlayCommandCoverageTests : IDisposable
         File.WriteAllText(preCommit, "#!/bin/sh\n# ELK_OVERLAY_HOOK\n");
         File.WriteAllText(prePush, "#!/bin/sh\n# ELK_OVERLAY_HOOK\n");
         File.WriteAllText(prePush + ".elk-prior", "#!/bin/sh\necho prior\n");
+        Directory.CreateDirectory(Path.Combine(_root, ".engloop-overlay", "hooks"));
+        File.WriteAllText(Path.Combine(_root, ".engloop-overlay", "hooks", "pre-commit.absent"), "absent");
+        File.WriteAllText(Path.Combine(_root, ".engloop-overlay", "hooks", "pre-push.before"), "#!/bin/sh\necho prior\n");
 
         var manifest = OverlayArchive.ParseManifest(File.ReadAllText(Path.Combine(_root, ".engloop-overlay", "manifest.json")));
         Assert.NotEqual(0, OverlayCommands.Execute(["remove", "--root", _root, "--confirm", "wrong"]));
@@ -244,6 +247,26 @@ public sealed class OverlayCommandCoverageTests : IDisposable
 
         Assert.NotEqual(0, OverlayCommands.Execute(["remove", "--root", _root, "--confirm", token]));
         Assert.Contains("overlay-manifest-missing", OverlayCommands.LastError);
+    }
+
+    [Fact]
+    public void Remove_preservesPreexistingElkWrapperWhenBaselineProvesItPredatedInstall()
+    {
+        CreateOverlayState();
+        var hooks = Path.Combine(_root, ".git", "hooks");
+        var prePush = Path.Combine(hooks, "pre-push");
+        const string priorWrapper = "#!/bin/sh\n# ELK_OVERLAY_HOOK\necho prior-wrapper\n";
+        File.WriteAllText(prePush, "#!/bin/sh\n# ELK_OVERLAY_HOOK\necho current-wrapper\n");
+        Directory.CreateDirectory(Path.Combine(_root, ".engloop-overlay", "hooks"));
+        File.WriteAllText(Path.Combine(_root, ".engloop-overlay", "hooks", "pre-push.before"), priorWrapper);
+
+        var manifestPath = Path.Combine(_root, ".engloop-overlay", "manifest.json");
+        var manifest = OverlayArchive.ParseManifest(File.ReadAllText(manifestPath)) with { HookNames = ["pre-push"] };
+        File.WriteAllText(manifestPath, OverlayArchive.SerializeManifest(manifest));
+        var token = $"REMOVE-OVERLAY:{manifest.RepositoryId}@{manifest.BaseRevision}";
+        Assert.Equal(0, OverlayCommands.Execute(["remove", "--root", _root, "--confirm", token]));
+        Assert.Equal(priorWrapper, File.ReadAllText(prePush));
+        Assert.False(File.Exists(prePush + ".elk-prior"));
     }
 
     [Fact]

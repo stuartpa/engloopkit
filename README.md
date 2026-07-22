@@ -11,7 +11,7 @@ explicit trigger, goal, actions, verification, and durable memory.
 > *workflow/specification generation*, not a product major version. EngLoopKit remains
 > on the **1.x** maturity runway for the foreseeable future: this ordered release is
 > **v1.7.0** established the ordered baseline; review, Pomodoro memory, and complete
-> overlay lifecycle utilities ship as **v1.9.0**. No v2.0 release is implied.
+> overlay lifecycle utilities ship as **v1.9.1**. No v2.0 release is implied.
 
 The v1.8 workflow separates delivery/readiness, operations, stewardship, and local
 overlay utility work into
@@ -67,7 +67,7 @@ never authorizes operations.
 
 ## Install a release
 
-A released v1.9.0 artifact set contains three immutable pieces:
+A released v1.9.1 artifact set contains three immutable pieces:
 
 1. `engloopkit.<version>.nupkg` — the root-local .NET tool (`engloopkit`);
 2. `engloop-extension-<version>.zip` — the ordered Spec Kit extension (`engloop`);
@@ -79,10 +79,10 @@ not point agent hooks at a sibling build output:
 ```powershell
 # From the consumer root, after downloading the released nupkg to <release-dir>.
 dotnet new tool-manifest --force
-dotnet tool install engloopkit --version 1.9.0 --add-source <release-dir>
+dotnet tool install engloopkit --version 1.9.1 --add-source <release-dir>
 
 # Install the exact released ordered extension archive.
-specify extension add engloop --from <release-dir>/engloopkit-extension-1.9.0.zip
+specify extension add engloop --from <release-dir>/engloopkit-extension-1.9.1.zip
 ```
 
 The extension’s `SessionStart` hook and command body both run:
@@ -119,17 +119,17 @@ explicit at install time and does **not** modify tracked `.gitignore` or product
 
 ```powershell
 # Do this in a private bootstrap directory OUTSIDE <git-root>.
-$bootstrap = Join-Path $env:LOCALAPPDATA 'EngLoopKit\bootstrap\1.9.0'
+$bootstrap = Join-Path $env:LOCALAPPDATA 'EngLoopKit\bootstrap\1.9.1'
 New-Item -ItemType Directory -Force $bootstrap | Out-Null
 Push-Location $bootstrap
 dotnet new tool-manifest --force
-dotnet tool install engloopkit --version 1.9.0 --add-source <release-dir>
+dotnet tool install engloopkit --version 1.9.1 --add-source <release-dir>
 
 # <release-dir> contains the downloaded .nupkg and extension .zip.
 dotnet tool run engloopkit -- overlay install --mode overlay --root <git-root> `
   --product-id <lowercase-product-id> --repository-id <stable-repository-id> `
-  --tool-version 1.9.0 --tool-nupkg <release-dir>\engloopkit.1.9.0.nupkg `
-  --extension-archive <release-dir>\engloopkit-extension-1.9.0.zip
+  --tool-version 1.9.1 --tool-nupkg <release-dir>\engloopkit.1.9.1.nupkg `
+  --extension-archive <release-dir>\engloopkit-extension-1.9.1.zip
 Pop-Location
 ```
 

@@ -2,9 +2,9 @@
 
 - **Feature ID:** SPEC002
 - **Status:** IMPLEMENTING
-- **Target release:** EngLoopKit **v1.8.2**
+- **Target release:** EngLoopKit **v1.9.1**
 - **Classification:** additive product feature / consumer-installation capability
-- **SemVer policy:** v1.8.2 remains on the 1.x maturity line.
+- **SemVer policy:** v1.9.1 remains on the 1.x maturity line.
 
 ## Purpose
 
@@ -143,3 +143,7 @@ names, or product layout. Files not explicitly registered remain ordinary produc
    ignored; forced staging and post-baseline commits are rejected by staged/push verify.
 8. Registration is case/slash normalized, rollback-protected, rejects prior leakage, and
    does not block unrelated unregistered product source.
+9. Removal of a non-empty registered directory quarantines children before deleting the
+   root and reports path/operation/exception details on failure.
+10. Install/unpack persist exact pre-install hook bytes (or absence); removal restores
+    non-ELK and pre-existing ELK wrappers byte-for-byte before reporting success.

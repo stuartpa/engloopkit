@@ -146,6 +146,17 @@ The command updates `.engloop-overlay/manifest.json` and the ELK block in
 leakage, and locally ignored. It does not infer ownership from product names, module
 inventory entries, or repository layout. Unregistered product source remains trackable.
 
+## Remove an overlay
+
+`overlay remove` derives deletion only from the manifest and requires the exact
+`REMOVE-OVERLAY:<repository-id>@<base-revision>` confirmation token. Registered directory
+contents are quarantined child-first before the empty root is deleted. Installation stores
+exact pre-install hook bytes (or an explicit absent marker) under overlay-owned state;
+removal restores those bytes atomically before reporting `OVERLAY_REMOVE_PASS`.
+
+Legacy overlays without authoritative hook-baseline metadata preserve an ambiguous
+existing ELK wrapper rather than silently deleting repository protection.
+
 ## Existing agent directories or hooks
 
 ELK v1.8.1 adds an explicit coexistence contract for a repository that already owns a

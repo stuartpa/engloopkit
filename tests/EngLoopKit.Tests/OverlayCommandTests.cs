@@ -147,6 +147,8 @@ public sealed class OverlayCommandTests : IDisposable
         Assert.True(File.Exists(Path.Combine(_source, ".github", "agents", "speckit.engloop.01-northstar.agent.md")));
         Assert.True(File.Exists(Path.Combine(_source, ".github", "prompts", "speckit.engloop.01-northstar.prompt.md")));
         Assert.Equal(lfsHookBytes, File.ReadAllBytes(prePush + ".elk-prior"));
+        Assert.Equal(lfsHookBytes, File.ReadAllBytes(Path.Combine(_source, ".engloop-overlay", "hooks", "pre-push.before")));
+        Assert.True(File.Exists(Path.Combine(_source, ".engloop-overlay", "hooks", "pre-commit.absent")));
         var wrapper = File.ReadAllText(prePush);
         Assert.Contains("ELK_OVERLAY_HOOK", wrapper);
         Assert.Contains("pre-push.elk-prior", wrapper);

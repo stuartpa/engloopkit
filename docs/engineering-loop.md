@@ -2,7 +2,7 @@
 
 **Workflow generation:** Ordered EngLoop v2.
 **Product versioning:** EngLoopKit remains on the **1.x** line; the ordered workflow
-ships in v1.7.0 and the expanded review/session/overlay utility surface in v1.9.0. “v2” is not a v2.0 product release.
+ships in v1.7.0 and the corrected review/session/overlay utility surface in v1.9.1. “v2” is not a v2.0 product release.
 
 EngLoopKit has three independently invoked lifecycle lanes plus one local utility.
 Command ordinals give the picker a

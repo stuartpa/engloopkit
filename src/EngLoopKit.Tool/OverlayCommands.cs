@@ -170,7 +170,7 @@ public static class OverlayCommands
                 MoveToQuarantine(item.FullPath, Path.Combine(quarantine, "owned", item.RelativePath.Replace('/', Path.DirectorySeparatorChar)), item.IsDirectory, moved);
             }
 
-            RemoveOverlayHooks(root, manifest.HookNames);
+            RestoreOverlayHooks(root, manifest.HookNames);
             WriteExcludeWithoutManagedBlock(excludePath, originalExclude);
 
             var overlayItem = items.FirstOrDefault(item => string.Equals(item.RelativePath, ".engloop-overlay", StringComparison.OrdinalIgnoreCase));
@@ -249,19 +249,40 @@ public static class OverlayCommands
 
     private static void MoveToQuarantine(string source, string destination, bool directory, List<(string Source, string Quarantine, bool Directory)> moved)
     {
-        if (directory)
+        try
         {
-            if (!Directory.Exists(source)) return;
-            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-            Directory.Move(source, destination);
+            if (directory)
+            {
+                if (!Directory.Exists(source)) return;
+                Directory.CreateDirectory(destination);
+                foreach (var childDirectory in Directory.GetDirectories(source, "*", SearchOption.AllDirectories))
+                {
+                    Directory.CreateDirectory(Path.Combine(destination, Path.GetRelativePath(source, childDirectory)));
+                }
+                foreach (var file in Directory.GetFiles(source, "*", SearchOption.AllDirectories))
+                {
+                    var target = Path.Combine(destination, Path.GetRelativePath(source, file));
+                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                    File.Move(file, target);
+                }
+                foreach (var childDirectory in Directory.GetDirectories(source, "*", SearchOption.AllDirectories).OrderByDescending(path => path.Length))
+                {
+                    Directory.Delete(childDirectory);
+                }
+                Directory.Delete(source);
+            }
+            else
+            {
+                if (!File.Exists(source)) return;
+                Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                File.Move(source, destination);
+            }
+            moved.Add((source, destination, directory));
         }
-        else
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            if (!File.Exists(source)) return;
-            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-            File.Move(source, destination);
+            throw new IOException($"overlay-remove-move-failed:path={Path.GetRelativePath(Path.GetDirectoryName(source) ?? source, source)};operation={(directory ? "directory-children-first" : "file")};exception={ex.GetType().Name}", ex);
         }
-        moved.Add((source, destination, directory));
     }
 
     private static void RestoreMovedPaths(List<(string Source, string Quarantine, bool Directory)> moved)
@@ -283,16 +304,71 @@ public static class OverlayCommands
         }
     }
 
-    private static void RemoveOverlayHooks(string root, IReadOnlyList<string> hookNames)
+    private static void RestoreOverlayHooks(string root, IReadOnlyList<string> hookNames)
     {
         foreach (var hookName in hookNames)
         {
             var path = GetGitPath(root, "hooks/" + hookName);
             var priorPath = path + ".elk-prior";
-            if (File.Exists(path)) File.Delete(path);
-            if (File.Exists(priorPath)) File.Move(priorPath, path);
+            var baselinePath = GetHookBaselinePath(root, hookName, present: true);
+            var absentPath = GetHookBaselinePath(root, hookName, present: false);
+            var beforeHash = File.Exists(path) ? Sha256Bytes(File.ReadAllBytes(path)) : "absent";
+
+            if (File.Exists(baselinePath))
+            {
+                if (File.Exists(path)) File.Delete(path);
+                if (File.Exists(priorPath)) File.Delete(priorPath);
+                File.WriteAllBytes(path, File.ReadAllBytes(baselinePath));
+                Console.WriteLine($"OVERLAY_REMOVE_HOOK hook={hookName} state=restored before={beforeHash} after={Sha256Bytes(File.ReadAllBytes(path))}");
+            }
+            else if (File.Exists(absentPath))
+            {
+                if (File.Exists(path)) File.Delete(path);
+                if (File.Exists(priorPath)) File.Delete(priorPath);
+                Console.WriteLine($"OVERLAY_REMOVE_HOOK hook={hookName} state=removed-no-prior before={beforeHash} after=absent");
+            }
+            else if (File.Exists(priorPath))
+            {
+                if (File.Exists(path)) File.Delete(path);
+                File.Move(priorPath, path);
+                Console.WriteLine($"OVERLAY_REMOVE_HOOK hook={hookName} state=restored-legacy-prior before={beforeHash} after={Sha256Bytes(File.ReadAllBytes(path))}");
+            }
+            else
+            {
+                // A schema-1.0 overlay cannot prove whether an existing ELK wrapper
+                // predated this installation. Preserve it rather than silently weakening
+                // repository protection; a subsequent install may replace it safely.
+                Console.WriteLine($"OVERLAY_REMOVE_HOOK hook={hookName} state=preserved-legacy-wrapper before={beforeHash} after={beforeHash}");
+            }
         }
     }
+
+    private static void WriteHookBaselines(string root, IReadOnlyList<HookSnapshot> snapshots)
+    {
+        var directory = Path.Combine(root, ".engloop-overlay", "hooks");
+        Directory.CreateDirectory(directory);
+        foreach (var snapshot in snapshots)
+        {
+            var baselinePath = GetHookBaselinePath(root, snapshot.HookName, present: true);
+            var absentPath = GetHookBaselinePath(root, snapshot.HookName, present: false);
+            if (File.Exists(baselinePath)) File.Delete(baselinePath);
+            if (File.Exists(absentPath)) File.Delete(absentPath);
+            if (snapshot.Content is null)
+            {
+                File.WriteAllText(absentPath, "absent");
+            }
+            else
+            {
+                File.WriteAllBytes(baselinePath, snapshot.Content);
+            }
+        }
+    }
+
+    private static string GetHookBaselinePath(string root, string hookName, bool present)
+        => Path.Combine(root, ".engloop-overlay", "hooks", hookName + (present ? ".before" : ".absent"));
+
+    private static string Sha256Bytes(byte[] bytes)
+        => Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
 
     private static void WriteExcludeWithoutManagedBlock(string excludePath, string original)
     {
@@ -495,6 +571,7 @@ public static class OverlayCommands
             AssertSnapshotPreserved(root, existingPromptSnapshot);
 
             WriteInitialOverlayFiles(root, productId);
+            WriteHookBaselines(root, hookSnapshots);
             InstallHook(root, "pre-commit", "staged", hostMode);
             InstallHook(root, "pre-push", "push", hostMode);
 
@@ -610,6 +687,7 @@ public static class OverlayCommands
             WriteManagedExcludeBlock(excludePath, manifest.ExcludePatterns);
             OverlayArchive.ExtractArchive(input, root, manifest);
             WriteManifest(root, manifest);
+            WriteHookBaselines(root, hookSnapshots);
             if (hostMode == "coexist")
             {
                 RequireExistingSpecKitHost(root);

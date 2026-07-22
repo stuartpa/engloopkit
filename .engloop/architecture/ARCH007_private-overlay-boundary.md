@@ -77,6 +77,18 @@ application conventions. Stage 05/06 must explicitly register model/generator-ow
 outputs before creating them. Unregistered product source remains ordinary trackable
 source.
 
+## Removal integrity (v1.9.1)
+
+Removal quarantines registered directory contents child-first and deletes empty
+directories last; it never assumes a managed root can be moved as one filesystem object.
+Any access failure identifies the path, attempted operation, and exception type.
+
+Install/unpack persist each hook's exact pre-install state under the overlay-owned hook
+baseline directory. Removal restores those bytes atomically, including a pre-existing ELK
+wrapper. An explicit absent marker authorizes deletion when no prior hook existed. Legacy
+overlays without a baseline preserve an ambiguous ELK wrapper rather than silently
+weakening repository protection.
+
 ## Consequences
 
 - Overlay mode is suitable for large existing repositories because it does not infer or
