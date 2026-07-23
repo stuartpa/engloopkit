@@ -3,6 +3,18 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.2] - 2026-07-23
+
+### Fixed
+
+- Coexist overlay installation now supports repositories whose SpecKit `.registry` and
+  `extensions.yml` are tracked. ELK uses SpecKit's supported extension materialization,
+  then restores repository-owned host metadata byte-for-byte before success.
+- Removal from tracked-registry hosts deletes only manifest-owned ELK paths and does not
+  invoke SpecKit registry mutation.
+- Direct and immutable integration tests prove tracked registry, extensions metadata,
+  repository-owned agents/prompts, Git status, and prior hooks remain unchanged.
+
 ## [1.11.1] - 2026-07-23
 
 ### Fixed

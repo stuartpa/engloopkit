@@ -221,7 +221,7 @@ public sealed class OverlayCommandPrivateTests : IDisposable
         Directory.CreateDirectory(Path.Combine(_root, ".specify", "extensions"));
         File.WriteAllText(Path.Combine(_root, ".specify", "extensions", ".registry"), "tracked");
         RunGit("add", "-f", ".specify/extensions/.registry");
-        Assert.Throws<InvalidOperationException>(() => Invoke<object?>("PreflightInstall", _root, "coexist"));
+        Invoke<object?>("PreflightInstall", _root, "coexist");
         RunGit("reset", "--", ".specify/extensions/.registry");
 
         var prePush = Path.Combine(_root, ".git", "hooks", "pre-push");
@@ -234,6 +234,45 @@ public sealed class OverlayCommandPrivateTests : IDisposable
         Invoke<object?>("RestoreHookSnapshots", _root, snapshots);
         Assert.Equal("prior hook", File.ReadAllText(prePush));
         Assert.False(File.Exists(prePush + ".elk-prior"));
+    }
+
+    [Fact]
+    public void SharedHostMetadataHelpers_restoreAndDetectPresentAbsentChangedAndTrackedStates()
+    {
+        var specify = Path.Combine(_root, ".specify");
+        var registry = Path.Combine(specify, "extensions", ".registry");
+        var extensionsYml = Path.Combine(specify, "extensions.yml");
+        Directory.CreateDirectory(Path.GetDirectoryName(registry)!);
+        File.WriteAllText(registry, "registry-before");
+        File.WriteAllText(extensionsYml, "extensions-before");
+        var snapshot = Invoke<object>("CaptureDirectorySnapshot", _root, ".specify");
+
+        Assert.False(Invoke<bool>("HasTrackedSharedHostMetadata", _root));
+        RunGit("add", "-f", ".specify/extensions/.registry");
+        Assert.True(Invoke<bool>("HasTrackedSharedHostMetadata", _root));
+        RunGit("reset", "--", ".specify/extensions/.registry");
+
+        File.WriteAllText(registry, "registry-changed");
+        File.Delete(extensionsYml);
+        Assert.Throws<InvalidOperationException>(() => Invoke<object?>("AssertSharedHostMetadataPreserved", _root, snapshot));
+        Invoke<object?>("RestoreSharedHostMetadata", _root, snapshot);
+        Invoke<object?>("AssertSharedHostMetadataPreserved", _root, snapshot);
+        Assert.Equal("registry-before", File.ReadAllText(registry));
+        Assert.Equal("extensions-before", File.ReadAllText(extensionsYml));
+
+        File.Delete(registry);
+        Assert.Throws<InvalidOperationException>(() => Invoke<object?>("AssertSharedHostMetadataPreserved", _root, snapshot));
+        Invoke<object?>("RestoreSharedHostMetadata", _root, snapshot);
+
+        Directory.Delete(specify, recursive: true);
+        Directory.CreateDirectory(specify);
+        var emptySnapshot = Invoke<object>("CaptureDirectorySnapshot", _root, ".specify");
+        Directory.CreateDirectory(Path.GetDirectoryName(registry)!);
+        File.WriteAllText(registry, "unexpected");
+        Assert.Throws<InvalidOperationException>(() => Invoke<object?>("AssertSharedHostMetadataPreserved", _root, emptySnapshot));
+        Invoke<object?>("RestoreSharedHostMetadata", _root, emptySnapshot);
+        Assert.False(File.Exists(registry));
+        Invoke<object?>("AssertSharedHostMetadataPreserved", _root, emptySnapshot);
     }
 
     [Fact]

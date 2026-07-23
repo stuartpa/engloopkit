@@ -164,8 +164,11 @@ public static class OverlayCommands
             if (manifest.HostMode == "coexist")
             {
                 CaptureSharedHostFilesForRollback(root, quarantine);
-                Run("specify", root, "extension", "remove", "engloop", "--force");
-                AssertSharedHostFilesPreserved(root, quarantine, manifest);
+                if (!HasTrackedSharedHostMetadata(root))
+                {
+                    Run("specify", root, "extension", "remove", "engloop", "--force");
+                    AssertSharedHostFilesPreserved(root, quarantine, manifest);
+                }
             }
 
             foreach (var item in items.Where(item => !string.Equals(item.RelativePath, ".engloop-overlay", StringComparison.OrdinalIgnoreCase)))
@@ -539,6 +542,7 @@ public static class OverlayCommands
         var existingAgentSnapshot = CaptureDirectorySnapshot(root, ".github/agents");
         var existingPromptSnapshot = CaptureDirectorySnapshot(root, ".github/prompts");
         var existingSpecKitSnapshot = CaptureDirectorySnapshot(root, ".specify");
+        var trackedSharedHostMetadata = hostMode == "coexist" && HasTrackedSharedHostMetadata(root);
         var hookSnapshots = CaptureHookSnapshots(root);
         var created = new List<string>();
         try
@@ -576,6 +580,11 @@ public static class OverlayCommands
             WaitForGeneratedSurface(root);
             AssertSnapshotPreserved(root, existingAgentSnapshot);
             AssertSnapshotPreserved(root, existingPromptSnapshot);
+            if (trackedSharedHostMetadata)
+            {
+                RestoreSharedHostMetadata(root, existingSpecKitSnapshot);
+                AssertSharedHostMetadataPreserved(root, existingSpecKitSnapshot);
+            }
 
             WriteInitialOverlayFiles(root, productId);
             WriteHookBaselines(root, hookSnapshots);
@@ -882,14 +891,6 @@ public static class OverlayCommands
         if (hostMode == "coexist")
         {
             RequireExistingSpecKitHost(root);
-            foreach (var sharedPath in SharedHostPaths)
-            {
-                var tracked = Git(root, "ls-files", "--", sharedPath).Trim();
-                if (!string.IsNullOrWhiteSpace(tracked))
-                {
-                    throw new InvalidOperationException($"overlay-coexist-tracked-host-config:{sharedPath}");
-                }
-            }
         }
         else
         {
@@ -910,6 +911,52 @@ public static class OverlayCommands
         if (!Directory.Exists(hostRoot))
         {
             throw new InvalidOperationException("overlay-coexist-requires-spec-kit-host");
+        }
+    }
+
+    private static bool HasTrackedSharedHostMetadata(string root)
+        => SharedHostPaths.Any(path => !string.IsNullOrWhiteSpace(Git(root, "ls-files", "--", path).Trim()));
+
+    private static void RestoreSharedHostMetadata(string root, DirectorySnapshot snapshot)
+    {
+        foreach (var sharedPath in SharedHostPaths)
+        {
+            var relative = sharedPath[".specify/".Length..];
+            var path = Path.Combine(root, sharedPath.Replace('/', Path.DirectorySeparatorChar));
+            if (snapshot.Files.TryGetValue(relative, out var content))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                var temporary = path + ".elk-restore-" + Guid.NewGuid().ToString("N");
+                try
+                {
+                    File.WriteAllBytes(temporary, content);
+                    File.Move(temporary, path, overwrite: true);
+                }
+                finally
+                {
+                    if (File.Exists(temporary)) File.Delete(temporary);
+                }
+            }
+            else if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    private static void AssertSharedHostMetadataPreserved(string root, DirectorySnapshot snapshot)
+    {
+        foreach (var sharedPath in SharedHostPaths)
+        {
+            var relative = sharedPath[".specify/".Length..];
+            var path = Path.Combine(root, sharedPath.Replace('/', Path.DirectorySeparatorChar));
+            var expected = snapshot.Files.TryGetValue(relative, out var content) ? content : null;
+            var actual = File.Exists(path) ? File.ReadAllBytes(path) : null;
+            if ((expected is null) != (actual is null)
+                || (expected is not null && actual is not null && !actual.SequenceEqual(expected)))
+            {
+                throw new InvalidOperationException($"overlay-shared-host-metadata-changed:{sharedPath}");
+            }
         }
     }
 

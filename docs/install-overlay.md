@@ -197,5 +197,8 @@ dotnet tool run engloopkit -- overlay install `
 Coexist mode preserves existing `.github/agents/` and `.github/prompts/` content
 byte-for-byte. ELK adds only exact `speckit.engloop.*` entries. An existing local hook is
 preserved as `*.elk-prior`; the ELK wrapper invokes it before ELK verification. Tracked
-shared Spec Kit registration files or exact ELK name collisions fail closed. Do not delete,
+SpecKit `.registry` and `extensions.yml` files are supported: ELK invokes SpecKit's
+supported extension materialization, then restores those repository-owned files
+byte-for-byte before success. Removal deletes only manifest-owned ELK paths and does not
+mutate a tracked host registry. Exact ELK name collisions still fail closed. Do not delete,
 rename, or manually merge existing host files.

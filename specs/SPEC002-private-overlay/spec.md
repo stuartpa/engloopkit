@@ -147,3 +147,6 @@ names, or product layout. Files not explicitly registered remain ordinary produc
    root and reports path/operation/exception details on failure.
 10. Install/unpack persist exact pre-install hook bytes (or absence); removal restores
     non-ELK and pre-existing ELK wrappers byte-for-byte before reporting success.
+11. Coexist install may materialize through SpecKit when `.registry` or `extensions.yml`
+   is tracked only if those repository-owned files are restored byte-for-byte before
+   success; removal must not mutate them.

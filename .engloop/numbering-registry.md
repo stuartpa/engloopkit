@@ -14,7 +14,7 @@ in the bundle's [document standards](../docs/standards.md). Artifact root is `.e
 | `MODEL` | SEK model records | `MODEL001` | MODEL001 = engineering-loop state machine |
 | `CORD` | CORD exploration records | `CORD001` | CORD001 = loop conformance exploration |
 | `COV` | Coverage/validation/readiness records | `COV003` | COV001 = conformance; COV002 = functional; COV003 = readiness |
-| `IN` | Incidents | `IN005` | latest = stale Windows testhost lock incident |
+| `IN` | Incidents | `IN006` | latest = tracked SpecKit registry blocks private overlay coexistence |
 | `PM` | Post-mortems | `PM004` | PM001 = no readiness gate; PM002 = verification method by module class; PM003 = self-model criterion is behavior-level; PM004 = self-model must be behaviorally rich + prove negative conformance |
 | `REFACT` | Refactor decisions | `REFACT001` | REFACT001 = ordered EngLoop v2 workflow, Northstar, verification split, and Learnings Pyramid |
 | `DBG` | Debugger walkthrough ledgers | `DBG000` | engineer-attested per-chunk debugger walkthrough evidence |

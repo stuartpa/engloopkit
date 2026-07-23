@@ -3,7 +3,7 @@ param(
     [string]$Root = (Join-Path $PSScriptRoot '..'),
     [string]$ToolNupkg,
     [string]$ExtensionArchive,
-    [string]$Version = '1.11.1',
+    [string]$Version = '1.11.2',
     [switch]$KeepWork
 )
 
@@ -160,7 +160,14 @@ try {
     Set-Content $localAgent 'local existing agent' -Encoding utf8
     $existingBytes = [IO.File]::ReadAllBytes($existingAgent)
     $localBytes = [IO.File]::ReadAllBytes($localAgent)
-    Invoke-Checked git $coexist @('add', $existingAgent)
+    $registry = Join-Path $coexist '.specify/extensions/.registry'
+    $extensionsYml = Join-Path $coexist '.specify/extensions.yml'
+    New-Item -ItemType Directory -Path (Split-Path $registry -Parent) -Force | Out-Null
+    Set-Content $registry '{"schema_version":"1.0","extensions":{"existing":{"version":"1.0.0","enabled":true}}}' -NoNewline -Encoding utf8
+    Set-Content $extensionsYml "schema_version: '1.0'`nextensions: []`n" -NoNewline -Encoding utf8
+    $registryBytes = [IO.File]::ReadAllBytes($registry)
+    $extensionsYmlBytes = [IO.File]::ReadAllBytes($extensionsYml)
+    Invoke-Checked git $coexist @('add', $existingAgent, $registry, $extensionsYml)
     Invoke-Checked git $coexist @('commit', '-m', 'existing agent host')
     Invoke-Checked git $coexist @('push')
     $prePush = Join-Path $coexist '.git/hooks/pre-push'
@@ -172,6 +179,9 @@ try {
     Invoke-Checked dotnet $coexist @('tool', 'run', 'engloopkit', '--', 'overlay', 'verify', '--root', $coexist)
     if (-not ([System.Linq.Enumerable]::SequenceEqual([IO.File]::ReadAllBytes($existingAgent), $existingBytes)) -or -not ([System.Linq.Enumerable]::SequenceEqual([IO.File]::ReadAllBytes($localAgent), $localBytes))) {
         throw 'Coexistence changed a repository-owned agent file.'
+    }
+    if (-not ([System.Linq.Enumerable]::SequenceEqual([IO.File]::ReadAllBytes($registry), $registryBytes)) -or -not ([System.Linq.Enumerable]::SequenceEqual([IO.File]::ReadAllBytes($extensionsYml), $extensionsYmlBytes))) {
+        throw 'Coexistence changed tracked SpecKit host metadata.'
     }
     if (-not (Test-Path (Join-Path $coexist '.github/agents/speckit.engloop.01-northstar.agent.md'))) {
         throw 'Coexistence did not create the ELK namespaced agent entry.'
@@ -187,6 +197,9 @@ try {
     if (Test-Path (Join-Path $coexist '.github/agents/speckit.engloop.01-northstar.agent.md')) { throw 'ELK agent remained after removal.' }
     if (-not ([System.Linq.Enumerable]::SequenceEqual([IO.File]::ReadAllBytes($existingAgent), $existingBytes)) -or -not ([System.Linq.Enumerable]::SequenceEqual([IO.File]::ReadAllBytes($localAgent), $localBytes))) {
         throw 'Removal changed a repository-owned agent file.'
+    }
+    if (-not ([System.Linq.Enumerable]::SequenceEqual([IO.File]::ReadAllBytes($registry), $registryBytes)) -or -not ([System.Linq.Enumerable]::SequenceEqual([IO.File]::ReadAllBytes($extensionsYml), $extensionsYmlBytes))) {
+        throw 'Removal changed tracked SpecKit host metadata.'
     }
     if (-not ([System.Linq.Enumerable]::SequenceEqual([IO.File]::ReadAllBytes($prePush), $lfsHookBytes)) -or (Test-Path ($prePush + '.elk-prior'))) {
         throw 'Removal did not restore the pre-existing pre-push hook exactly.'

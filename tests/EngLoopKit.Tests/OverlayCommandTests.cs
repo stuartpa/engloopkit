@@ -136,8 +136,10 @@ public sealed class OverlayCommandTests : IDisposable
         Assert.False(Directory.Exists(Path.Combine(_wrong, ".engloop")));
     }
 
-    [Fact]
-    public void CoexistHost_preservesExistingAgentFilesAndChainsExistingPrePushHook()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CoexistHost_preservesExistingAgentFilesAndChainsExistingPrePushHook(bool trackHostMetadata)
     {
         CreateRepository();
         Run("specify", _source, "init", "--here", "--force", "--integration", "copilot", "--script", "ps", "--ignore-agent-tools");
@@ -150,7 +152,22 @@ public sealed class OverlayCommandTests : IDisposable
         var trackedBytes = File.ReadAllBytes(trackedAgent);
         var localBytes = File.ReadAllBytes(localAgent);
 
-        Run("git", _source, "add", trackedAgent);
+        var registry = Path.Combine(_source, ".specify", "extensions", ".registry");
+        var extensionsYml = Path.Combine(_source, ".specify", "extensions.yml");
+        Directory.CreateDirectory(Path.GetDirectoryName(registry)!);
+        File.WriteAllText(registry, "{\"schema_version\":\"1.0\",\"extensions\":{\"existing\":{\"version\":\"1.0.0\",\"enabled\":true}}}");
+        File.WriteAllText(extensionsYml, "schema_version: '1.0'\nextensions: []\n");
+        var registryBytes = File.ReadAllBytes(registry);
+        var extensionsYmlBytes = File.ReadAllBytes(extensionsYml);
+
+        if (trackHostMetadata)
+        {
+            Run("git", _source, "add", trackedAgent, registry, extensionsYml);
+        }
+        else
+        {
+            Run("git", _source, "add", trackedAgent);
+        }
         Run("git", _source, "commit", "-m", "existing agent host");
         Run("git", _source, "push");
 
@@ -166,6 +183,11 @@ public sealed class OverlayCommandTests : IDisposable
 
         Assert.Equal(trackedBytes, File.ReadAllBytes(trackedAgent));
         Assert.Equal(localBytes, File.ReadAllBytes(localAgent));
+        if (trackHostMetadata)
+        {
+            Assert.Equal(registryBytes, File.ReadAllBytes(registry));
+            Assert.Equal(extensionsYmlBytes, File.ReadAllBytes(extensionsYml));
+        }
         Assert.True(File.Exists(Path.Combine(_source, ".github", "agents", "speckit.engloop.01-northstar.agent.md")));
         Assert.True(File.Exists(Path.Combine(_source, ".github", "prompts", "speckit.engloop.01-northstar.prompt.md")));
         Assert.Equal(lfsHookBytes, File.ReadAllBytes(prePush + ".elk-prior"));
@@ -187,6 +209,11 @@ public sealed class OverlayCommandTests : IDisposable
         Assert.False(File.Exists(Path.Combine(_source, ".github", "agents", "speckit.engloop.01-northstar.agent.md")));
         Assert.Equal(trackedBytes, File.ReadAllBytes(trackedAgent));
         Assert.Equal(localBytes, File.ReadAllBytes(localAgent));
+        if (trackHostMetadata)
+        {
+            Assert.Equal(registryBytes, File.ReadAllBytes(registry));
+            Assert.Equal(extensionsYmlBytes, File.ReadAllBytes(extensionsYml));
+        }
         Assert.Equal(lfsHookBytes, File.ReadAllBytes(prePush));
         Assert.False(File.Exists(prePush + ".elk-prior"));
     }
