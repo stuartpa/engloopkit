@@ -33,7 +33,7 @@ Create one numbered ledger under `.engloop/debugger-walkthroughs/` named
 
 ## Loop definition
 
-- **Trigger:** Stage 08 emitted a current readiness PASS for code intended to leave the engineer's control.
+- **Trigger:** Stage 02 has proven the test runway; the engineer may invoke this stage at any later point to inspect the current implementation early.
 - **Goal:** the engineer personally steps line by line through every executable changed-code chunk under a real debugger and explicitly attests each completed chunk.
 - **Actions:** bind the diff to base/HEAD, inventory chunks, select/configure a debugger, place a breakpoint, run a triggering test, pause for engineer stepping, and record attestation.
 - **Verification:** every executable changed-code chunk has a reached breakpoint, deterministic trigger, observed path, exact engineer attestation, and the ledger HEAD equals current HEAD.
@@ -51,9 +51,11 @@ each chunk, pause and require the engineer to explicitly attest that they person
 stepped through it line by line. Silence, a passing test, a reached breakpoint, trace
 output, or agent observation is not attestation.
 
-Any product-code edit changes HEAD and invalidates the ledger. Stop, route the fix through
-the governed implementation and Stage 08 readiness gate, then create or refresh the
-walkthrough evidence for the new HEAD before Stage 10.
+Any product-code edit changes HEAD and makes prior completion evidence stale. Preserve
+earlier ledgers as historical observations, but never carry their attestations forward as
+current. The engineer may immediately invoke Stage 09 again at the new HEAD. Before Stage
+10, the final current HEAD must have one complete ledger covering the complete final diff
+and Stage 08 must have emitted current readiness.
 
 ## Scope inventory
 

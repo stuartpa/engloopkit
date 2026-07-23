@@ -34,7 +34,7 @@ public sealed class AgentSurfaceValidationTests
     public void PromptFiles_selectExactAgents_andForbidTools()
     {
         var prompts = Directory.GetFiles(PromptsDir, "speckit.engloop.*.prompt.md", SearchOption.TopDirectoryOnly);
-        Assert.Equal(18, prompts.Length);
+        Assert.Equal(19, prompts.Length);
 
         foreach (var prompt in prompts)
         {

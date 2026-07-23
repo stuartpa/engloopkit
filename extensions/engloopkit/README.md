@@ -7,7 +7,7 @@ release identity remain **`engloopkit`**.
 
 > **Versioning clarification:** “Ordered EngLoop v2” is the *workflow generation /
 > specification name*, not a SemVer major release. The product remains on the **1.x**
-> maturity runway: this package is **v1.10.0**; “v2” remains workflow terminology only,
+> maturity runway: this package is **v1.11.0**; “v2” remains workflow terminology only,
 > not v2.0.
 
 ## Ordered command lanes
@@ -21,6 +21,7 @@ release identity remain **`engloopkit`**.
 | Stewardship | `30-refactor-scan`, `31-learnings-pyramid` | Select one evidence-backed evolution decision or condense accepted source learnings when capacity exists. |
 | Session memory | `40-pomodoro-create` | Capture a concise note about the just-completed work session. |
 | Local utility | `50-overlay-pack`, `51-overlay-remove` | Pack or completely remove manifest-owned local overlay state. |
+| Presentation | `60-powerpnt-create` | Create an evidence-backed Markdown-first PPTX with architecture/model/test-path graphics. |
 
 Every command is a Trigger · Goal · Actions · Verification · Memory loop with a
 versioned entry validator, exact least-privilege tools, and review-first handoffs.
@@ -31,7 +32,7 @@ Install the released extension archive through Spec Kit after installing the mat
 root-local `engloopkit` .NET tool manifest:
 
 ```powershell
-specify extension add engloop --from <release-dir>/engloopkit-extension-1.10.0.zip
+specify extension add engloop --from <release-dir>/engloopkit-extension-1.11.0.zip
 ```
 
 The selected root must have exactly one tracked `.engloop/` root, root `NORTHSTAR.md`,

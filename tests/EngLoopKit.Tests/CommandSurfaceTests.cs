@@ -20,7 +20,7 @@ public sealed class CommandSurfaceTests
     }
 
     [Fact]
-    public void HandoffGraph_hasExact27Edges_withDebuggerGateAndTerminalAgents()
+    public void HandoffGraph_hasExact28Edges_withReusableDebuggerGateAndTerminalAgents()
     {
         var edges = 0;
 
@@ -62,7 +62,7 @@ public sealed class CommandSurfaceTests
                 }
             }
 
-            if (id is "speckit.engloop.31-learnings-pyramid" or "speckit.engloop.40-pomodoro-create" or "speckit.engloop.51-overlay-remove")
+            if (id is "speckit.engloop.31-learnings-pyramid" or "speckit.engloop.40-pomodoro-create" or "speckit.engloop.51-overlay-remove" or "speckit.engloop.60-powerpnt-create")
             {
                 Assert.Empty(localEdges);
             }
@@ -75,13 +75,18 @@ public sealed class CommandSurfaceTests
                 Assert.DoesNotContain("speckit.engloop.31-learnings-pyramid", localEdges);
             }
 
+            if (id == "speckit.engloop.02-scaffold")
+            {
+                Assert.Contains("speckit.engloop.09-debugger-walk-thru", localEdges);
+            }
+
             if (id == "speckit.engloop.09-debugger-walk-thru")
             {
                 Assert.Equal(["speckit.engloop.10-codereview-prepare"], localEdges);
             }
         }
 
-        Assert.Equal(27, edges);
+        Assert.Equal(28, edges);
     }
 
     [Fact]

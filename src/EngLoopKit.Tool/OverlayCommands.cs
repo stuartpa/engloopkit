@@ -63,6 +63,7 @@ public static class OverlayCommands
         "speckit.engloop.20-incident", "speckit.engloop.21-postmortem", "speckit.engloop.22-repair",
         "speckit.engloop.30-refactor-scan", "speckit.engloop.31-learnings-pyramid",
         "speckit.engloop.40-pomodoro-create", "speckit.engloop.50-overlay-pack", "speckit.engloop.51-overlay-remove",
+        "speckit.engloop.60-powerpnt-create",
     ];
 
     private static string NormalizeHostMode(string mode)

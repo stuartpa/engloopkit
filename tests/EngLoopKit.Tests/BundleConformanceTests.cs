@@ -31,6 +31,7 @@ public sealed class BundleConformanceTests
         "speckit.engloop.40-pomodoro-create",
         "speckit.engloop.50-overlay-pack",
         "speckit.engloop.51-overlay-remove",
+        "speckit.engloop.60-powerpnt-create",
     ];
 
     [Fact]
@@ -41,16 +42,16 @@ public sealed class BundleConformanceTests
         using var catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "catalog.json")));
 
         Assert.Contains("id: \"engloop\"", extension);
-        Assert.Contains("version: \"1.10.0\"", extension);
+        Assert.Contains("version: \"1.11.0\"", extension);
         Assert.Contains("id: \"engloopkit\"", bundle);
-        Assert.Contains("version: \"1.10.0\"", bundle);
+        Assert.Contains("version: \"1.11.0\"", bundle);
         Assert.Equal("engloop", catalog.RootElement.GetProperty("extensions")[0].GetProperty("id").GetString());
-        Assert.Equal("1.10.0", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
-        Assert.Equal(18, catalog.RootElement.GetProperty("extensions")[0].GetProperty("provides").GetProperty("commands").GetInt32());
+        Assert.Equal("1.11.0", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
+        Assert.Equal(19, catalog.RootElement.GetProperty("extensions")[0].GetProperty("provides").GetProperty("commands").GetInt32());
     }
 
     [Fact]
-    public void Extension_declaresExactOrderedEighteenCommandSurface()
+    public void Extension_declaresExactOrderedNineteenCommandSurface()
     {
         var manifest = File.ReadAllText(Path.Combine(ExtensionRoot, "extension.yml"));
         var ids = Regex.Matches(manifest, @"^\s*-\s*name:\s*""?(speckit\.engloop\.[\w-]+)""?", RegexOptions.Multiline)
@@ -122,6 +123,14 @@ public sealed class BundleConformanceTests
         var remove = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.51-overlay-remove.md"));
         Assert.Contains("REMOVE-OVERLAY:<repository-id>@<base-revision>", remove, StringComparison.Ordinal);
         Assert.Contains("restore", remove, StringComparison.OrdinalIgnoreCase);
+
+        var presentation = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.60-powerpnt-create.md"));
+        Assert.Contains("North Star", presentation, StringComparison.Ordinal);
+        Assert.Contains("boxes-and-lines", presentation, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("7 +/- 2 nodes", presentation, StringComparison.Ordinal);
+        Assert.Contains("straight-line", presentation, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("@marp-team/marp-cli", presentation, StringComparison.Ordinal);
+        Assert.Contains("powerpnt-create", presentation, StringComparison.Ordinal);
     }
 
     [Fact]

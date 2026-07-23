@@ -45,7 +45,7 @@ Use exactly `.engloop/` with config at `.engloop/config.json`.
 
 - **Trigger:** current Stage 07 functional evidence exists.
 - **Goal:** complete disposition then sole readiness PASS/FAIL emission.
-- **Actions:** classify unreached paths, enforce delete/revalidate sequence, add direct tests only after disposition.
+- **Actions:** classify unreached paths, enforce delete/revalidate sequence, add direct tests only after disposition, and emit the generic HEAD-bound readiness record after PASS.
 - **Verification:** per-module 95/95 with full inventory and current evidence.
 - **Memory:** `.engloop/coverage/COV003_ordered-engloop-v2-readiness.md`.
 
@@ -53,8 +53,20 @@ Run before any action:
 
 `dotnet tool run engloopkit validate agent-entry --stage speckit.engloop.08-unittest --root .`
 
+## Readiness-state emission
+
+After the Stage 08 evidence document has an explicit checked PASS verdict, emit the
+generic current readiness record consumed by Stage 10:
+
+`dotnet tool run engloopkit -- readiness emit --root . --evidence <.engloop/coverage/COVxxx-readiness.md> --verdict pass`
+
+The command validates the evidence, hashes it, and binds `.engloop/readiness/current.json`
+to the exact Git HEAD. A product edit makes that record stale automatically. Do not copy
+the self-host `cov003-readiness.json` convention into consumer repositories.
+
 ## Done when
 
 - [ ] Disposition precedes any new direct tests
 - [ ] Final readiness verdict is emitted only by Stage 08
+- [ ] A checked PASS emits `.engloop/readiness/current.json` for the exact current HEAD
 - [ ] A readiness PASS is handed to Stage 09 before code-review preparation

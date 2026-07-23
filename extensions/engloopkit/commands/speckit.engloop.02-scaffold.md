@@ -13,6 +13,10 @@ hooks:
       command: dotnet tool run engloopkit validate agent-entry --stage speckit.engloop.02-scaffold --root .
       timeout: 30
 handoffs:
+  - label: Walk current slice in debugger
+    agent: speckit.engloop.09-debugger-walk-thru
+    prompt: Use the proven runway above to prepare an engineer-led debugger walkthrough of the current thin slice before more implementation accumulates.
+    send: false
   - label: Derive architecture
     agent: speckit.engloop.03-architect
     prompt: Use the proven scaffold and test runway above to derive and govern the long-lived architecture.

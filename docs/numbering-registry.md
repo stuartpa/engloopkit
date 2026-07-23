@@ -21,6 +21,7 @@ parent artifact and are tracked there.
 | `PM` | `PM000` | Selected stabilized incident-set postmortems. |
 | `REFACT` | `REFACT000` | Stewardship refactor decisions or no-work records. |
 | `DBG` | `DBG000` | Engineer-attested debugger walkthrough ledgers. |
+| `PPT` | `PPT000` | Markdown-first presentation decks and generated PowerPoint artifacts. |
 | `POM` | `POM0000` | Brief four-digit records of completed 30–60 minute work sessions. |
 
 ## Local counters

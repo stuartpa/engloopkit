@@ -3,6 +3,26 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - 2026-07-23
+
+### Added
+
+- Generic `engloopkit readiness emit`: Stage 08 emits a checked, hashed readiness record
+  bound to the exact Git HEAD and evidence path for Stage 10 consumption.
+- `/speckit.engloop.60-powerpnt-create`: creates a Markdown-first Marp deck and PPTX that
+  starts with the North Star, drills through boxes-and-lines architecture, explains
+  focused 5–9-node model behavior graphs, and appends straight-line generated test paths.
+- `PPTxxx` numbering and `.engloop/presentations/` artifact storage.
+
+### Changed
+
+- Stage 09 debugger walkthrough is available as soon as Stage 02 proves the runway and
+  may be repeated at any later HEAD. Earlier ledgers remain historical and become stale
+  when code changes.
+- Stage 10 alone requires both the final current-HEAD walkthrough ledger and the generic
+  current readiness record emitted by Stage 08.
+- Expanded the exact surface from 18 to 19 commands and from 27 to 28 handoffs.
+
 ## [1.10.0] - 2026-07-22
 
 ### Added

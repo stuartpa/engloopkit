@@ -7,6 +7,7 @@ namespace EngLoopKit.Tool;
 
 public static class ValidationCommands
 {
+    private const string CurrentReadinessRelativePath = ".engloop/readiness/current.json";
     private static readonly string[] ExpectedIds =
     [
         "speckit.engloop.01-northstar",
@@ -27,6 +28,7 @@ public static class ValidationCommands
         "speckit.engloop.40-pomodoro-create",
         "speckit.engloop.50-overlay-pack",
         "speckit.engloop.51-overlay-remove",
+        "speckit.engloop.60-powerpnt-create",
     ];
 
     private static readonly Dictionary<string, string[]> ExpectedTools = new(StringComparer.Ordinal)
@@ -49,6 +51,7 @@ public static class ValidationCommands
         ["speckit.engloop.40-pomodoro-create"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.50-overlay-pack"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.51-overlay-remove"] = ["read", "search", "edit", "execute"],
+        ["speckit.engloop.60-powerpnt-create"] = ["read", "search", "edit", "execute"],
     };
 
     private static readonly Dictionary<string, string[]> ExpectedAgents = new(StringComparer.Ordinal)
@@ -71,6 +74,7 @@ public static class ValidationCommands
         ["speckit.engloop.40-pomodoro-create"] = [],
         ["speckit.engloop.50-overlay-pack"] = [],
         ["speckit.engloop.51-overlay-remove"] = [],
+        ["speckit.engloop.60-powerpnt-create"] = [],
     };
 
     private static string GetOption(string[] args, string name, string defaultValue = ".")
@@ -82,6 +86,69 @@ public static class ValidationCommands
         }
 
         return defaultValue;
+    }
+
+    private static string RequireOption(string[] args, string name)
+    {
+        var value = GetOption(args, name, string.Empty);
+        if (string.IsNullOrWhiteSpace(value) || value.StartsWith("--", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException($"missing-option:{name}");
+        }
+        return value;
+    }
+
+    public static int ExecuteReadiness(string[] args)
+    {
+        if (args.Length == 0 || !string.Equals(args[0], "emit", StringComparison.Ordinal))
+        {
+            Console.Error.WriteLine("Usage: engloopkit readiness emit --root <path> --evidence <stage-08-evidence> --verdict pass");
+            return 1;
+        }
+
+        try
+        {
+            var root = Path.GetFullPath(GetOption(args, "--root"));
+            var rootResult = Evidence.ValidateRootLayout(root);
+            if (!rootResult.Passed) throw new InvalidOperationException(rootResult.Reason);
+            var verdict = RequireOption(args, "--verdict");
+            if (!string.Equals(verdict, "pass", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("readiness-emit-requires-pass-verdict");
+            }
+            var evidence = RequireOption(args, "--evidence");
+            var relativeEvidence = NormalizeReadinessEvidencePath(rootResult.RepositoryRoot, evidence);
+            var evidencePath = Path.Combine(rootResult.RepositoryRoot, relativeEvidence.Replace('/', Path.DirectorySeparatorChar));
+            if (!File.Exists(evidencePath)) throw new FileNotFoundException("readiness-evidence-missing", evidencePath);
+            var evidenceText = File.ReadAllText(evidencePath).Replace("\r\n", "\n", StringComparison.Ordinal);
+            if (!evidenceText.Contains("## Readiness Gate verdict", StringComparison.Ordinal)
+                || !evidenceText.Contains("- [x] **PASS**", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("readiness-evidence-not-attested-pass");
+            }
+
+            var head = GitHead(rootResult.RepositoryRoot) ?? throw new InvalidOperationException("readiness-git-head-unavailable");
+            var record = new
+            {
+                schemaVersion = "1.0",
+                stage = "08-unittest",
+                verdict = "PASS",
+                head,
+                evidencePath = relativeEvidence,
+                evidenceSha256 = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(evidencePath))).ToLowerInvariant(),
+                emittedAtUtc = DateTimeOffset.UtcNow,
+            };
+            var output = Path.Combine(rootResult.RepositoryRoot, CurrentReadinessRelativePath.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+            File.WriteAllText(output, JsonSerializer.Serialize(record, new JsonSerializerOptions { WriteIndented = true }));
+            Console.WriteLine("READINESS_EMIT_PASS");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(ex.Message);
+            return 1;
+        }
     }
 
     public static int ValidateRoot(string[] args)
@@ -237,7 +304,7 @@ public static class ValidationCommands
                 return 1;
             }
 
-            if (commandId is "speckit.engloop.31-learnings-pyramid" or "speckit.engloop.40-pomodoro-create" or "speckit.engloop.51-overlay-remove")
+            if (commandId is "speckit.engloop.31-learnings-pyramid" or "speckit.engloop.40-pomodoro-create" or "speckit.engloop.51-overlay-remove" or "speckit.engloop.60-powerpnt-create")
             {
                 if (map.ContainsKey("handoffs"))
                 {
@@ -328,14 +395,15 @@ public static class ValidationCommands
             var runwayRequired = stage is "speckit.engloop.05-model"
                 or "speckit.engloop.06-explore"
                 or "speckit.engloop.07-validate"
-                or "speckit.engloop.08-unittest";
+                or "speckit.engloop.08-unittest"
+                or "speckit.engloop.09-debugger-walk-thru";
             if (runwayRequired && !Evidence.IsTestRunwayProven(config))
             {
                 Console.Error.WriteLine("missing-proven-runway");
                 return 2;
             }
 
-            if (stage is "speckit.engloop.09-debugger-walk-thru" or "speckit.engloop.10-codereview-prepare")
+            if (stage == "speckit.engloop.10-codereview-prepare")
             {
                 if (!HasCurrentReadinessPass(rootResult.RepositoryRoot))
                 {
@@ -450,7 +518,7 @@ public static class ValidationCommands
             }
         }
 
-        if (totalHandoffs != 27)
+        if (totalHandoffs != 28)
         {
             Console.Error.WriteLine($"wrong-handoff-count:{totalHandoffs}");
             return 1;
@@ -462,18 +530,49 @@ public static class ValidationCommands
 
     private static bool HasCurrentReadinessPass(string root)
     {
-        var path = Path.Combine(root, ".engloop", "out", "cov003-readiness.json");
+        var path = Path.Combine(root, CurrentReadinessRelativePath.Replace('/', Path.DirectorySeparatorChar));
         if (!File.Exists(path)) return false;
         try
         {
             using var json = JsonDocument.Parse(File.ReadAllText(path));
-            return json.RootElement.TryGetProperty("verdict", out var verdict)
-                && string.Equals(verdict.GetString(), "PASS", StringComparison.Ordinal);
+            if (!json.RootElement.TryGetProperty("schemaVersion", out var schema)
+                || !string.Equals(schema.GetString(), "1.0", StringComparison.Ordinal)
+                || !json.RootElement.TryGetProperty("stage", out var stage)
+                || !string.Equals(stage.GetString(), "08-unittest", StringComparison.Ordinal)
+                || !json.RootElement.TryGetProperty("verdict", out var verdict)
+                || !string.Equals(verdict.GetString(), "PASS", StringComparison.Ordinal)
+                || !json.RootElement.TryGetProperty("head", out var head)
+                || !string.Equals(head.GetString(), GitHead(root), StringComparison.Ordinal)
+                || !json.RootElement.TryGetProperty("evidencePath", out var evidencePath)
+                || !json.RootElement.TryGetProperty("evidenceSha256", out var evidenceHash))
+            {
+                return false;
+            }
+            var relative = NormalizeReadinessEvidencePath(root, evidencePath.GetString() ?? string.Empty);
+            var full = Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar));
+            return File.Exists(full)
+                && string.Equals(evidenceHash.GetString(), Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(full))).ToLowerInvariant(), StringComparison.Ordinal);
         }
-        catch (JsonException)
+        catch (Exception)
         {
             return false;
         }
+    }
+
+    private static string NormalizeReadinessEvidencePath(string root, string candidate)
+    {
+        if (string.IsNullOrWhiteSpace(candidate) || Path.IsPathRooted(candidate))
+        {
+            throw new InvalidOperationException("readiness-evidence-path-must-be-relative");
+        }
+        var full = Path.GetFullPath(Path.Combine(root, candidate));
+        var relative = Path.GetRelativePath(root, full).Replace('\\', '/');
+        if (relative == ".." || relative.StartsWith("../", StringComparison.Ordinal)
+            || !relative.StartsWith(".engloop/coverage/", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("readiness-evidence-path-invalid");
+        }
+        return relative;
     }
 
     private static bool HasCurrentDebuggerWalkthrough(string root)

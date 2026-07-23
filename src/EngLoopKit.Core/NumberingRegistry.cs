@@ -17,7 +17,7 @@ public sealed class NumberingRegistry
     {
         ["SPEC"] = 3, ["SCAF"] = 3, ["ARCH"] = 3, ["MODEL"] = 3,
         ["CORD"] = 3, ["COV"] = 3, ["IN"] = 3, ["PM"] = 3,
-        ["REFACT"] = 3, ["DBG"] = 3, ["POM"] = 4,
+        ["REFACT"] = 3, ["DBG"] = 3, ["PPT"] = 3, ["POM"] = 4,
         ["MIT"] = 3, ["LEARN"] = 3, ["RPI"] = 3,
     };
 

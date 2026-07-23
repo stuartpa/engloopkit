@@ -27,6 +27,7 @@ The planned required config is `.engloop/config.json`; ignored transient output 
 ├── postmortems/            # PMxxx — post-mortems with local LEARN/RPI entries
 ├── refactors/              # REFACTxxx — refactor decisions
 ├── debugger-walkthroughs/  # DBGxxx — engineer-attested debugger walkthrough ledgers
+├── presentations/          # PPTxxx — Markdown decks, PPTX files, and graph assets
 ├── pomodoros/              # POMxxxx — brief completed-session notes
 └── learnings/cards/         # living cards with PM/LEARN provenance
 ```

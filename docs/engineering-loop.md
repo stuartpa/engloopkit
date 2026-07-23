@@ -2,7 +2,7 @@
 
 **Workflow generation:** Ordered EngLoop v2.
 **Product versioning:** EngLoopKit remains on the **1.x** line; the ordered workflow
-ships in v1.7.0 and the engineer-led debugger review gate in v1.10.0. “v2” is not a v2.0 product release.
+ships in v1.7.0 and reusable debugger/readiness/presentation support in v1.11.0. “v2” is not a v2.0 product release.
 
 EngLoopKit has three independently invoked lifecycle lanes plus one local utility.
 Command ordinals give the picker a
@@ -36,6 +36,7 @@ model-derived negative conformance and materially branching paths.
 | 40 | `speckit.engloop.40-pomodoro-create` | One brief `POM<NNNN>-<description>.md` note for the just-completed 30–60 minute session. |
 | 50 | `speckit.engloop.50-overlay-pack` | Pack the verified registered private overlay into one portable archive. |
 | 51 | `speckit.engloop.51-overlay-remove` | Confirm and remove every manifest-owned local path, restore prior hooks, and preserve unrelated host files. |
+| 60 | `speckit.engloop.60-powerpnt-create` | Create a Markdown-first presentation from North Star, layered architecture, focused model graphs, and generated test paths. |
 
 ## Operations: 20–22
 

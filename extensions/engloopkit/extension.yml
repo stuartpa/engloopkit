@@ -5,7 +5,7 @@ extension:
   # the ordered speckit.engloop picker namespace.
   id: "engloop"
   name: "EngLoopKit"
-  version: "1.10.0"
+  version: "1.11.0"
   description: "Ordered evidence-gated delivery, operations, stewardship, and private overlay workflow for Spec Kit."
   author: "stuartpa"
   repository: "https://github.com/stuartpa/engloopkit"
@@ -71,6 +71,9 @@ provides:
     - name: "speckit.engloop.51-overlay-remove"
       file: "commands/speckit.engloop.51-overlay-remove.md"
       description: "Remove an installed private ELK overlay and restore prior local hooks."
+    - name: "speckit.engloop.60-powerpnt-create"
+      file: "commands/speckit.engloop.60-powerpnt-create.md"
+      description: "Create an evidence-backed Markdown-first PowerPoint deck with architecture and model graphs."
 
 tags:
   - "loop-engineering"
