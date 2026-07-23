@@ -33,7 +33,7 @@ only after path, hash, Git identity, and collision checks pass.
 An engineer invokes the released tool explicitly:
 
 ```text
-dotnet tool run engloopkit -- overlay install --mode overlay --root <repo> --product-id <explicit-id>
+dotnet tool run engloopkit -- overlay install --mode overlay --root <repo>
    --tool-nupkg <released-nupkg> --extension-archive <downloaded-release-archive.zip>
 ```
 

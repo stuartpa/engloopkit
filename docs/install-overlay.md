@@ -11,8 +11,8 @@ The installer is explicitly local-only:
 - The bootstrap tool manifest is outside the target repository.
 - The procedure verifies pinned release artifact hashes before installation.
 
-> Keep target-repository paths, product IDs, repository IDs, origin URLs, and other
-> workload-specific values in a private operational runbook—not in this public document.
+> Keep target-repository paths, origin URLs, and other workload-specific values in a
+> private operational runbook—not in this public document.
 
 ## Prerequisites
 
@@ -27,10 +27,8 @@ The installer is explicitly local-only:
 ```powershell
 $ErrorActionPreference = 'Stop'
 
-# Set these values in your private operational runbook.
+# Set this value in your private operational runbook.
 $targetRepositoryRoot = '<repository-root>'
-$productId = '<lowercase-product-id>'
-$repositoryId = '<stable-repository-id>'
 $elkVersion = '1.8.1'
 $bootstrapRoot = Join-Path $env:LOCALAPPDATA 'EngLoopKit\bootstrap\1.8.1'
 $releaseBase = 'https://github.com/stuartpa/engloopkit/releases/download/v1.8.1'
@@ -98,8 +96,6 @@ try {
         --mode overlay `
         --host-mode clean `
         --root $targetRepositoryRoot `
-        --product-id $productId `
-        --repository-id $repositoryId `
         --tool-version $elkVersion `
         --tool-nupkg $nupkg `
         --extension-archive $extensionZip
@@ -119,6 +115,11 @@ finally {
     Pop-Location
 }
 ```
+
+The installer does not require operator-supplied IDs. It records the generic product
+identity `engloop-overlay` and derives a stable repository identity from the authoritative
+Git `origin` when present, otherwise from the immutable root commit. The derived identity
+is used for local archive matching; it is not an application/workload identity.
 
 ## Important boundary
 
@@ -188,8 +189,6 @@ dotnet tool run engloopkit -- overlay install `
     --mode overlay `
     --host-mode coexist `
     --root $targetRepositoryRoot `
-    --product-id $productId `
-    --repository-id $repositoryId `
     --tool-version $elkVersion `
     --tool-nupkg $nupkg `
     --extension-archive $extensionZip

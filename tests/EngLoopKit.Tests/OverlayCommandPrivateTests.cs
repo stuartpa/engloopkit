@@ -147,6 +147,33 @@ public sealed class OverlayCommandPrivateTests : IDisposable
         Assert.Throws<FileNotFoundException>(() => Invoke<string>("RequireExistingFile", new[] { "--file", Path.Combine(_root, "missing") }, "--file"));
     }
 
+    [Fact]
+    public void DerivedRepositoryIdentity_usesOrigin_thenRootHistory_andFailsWithoutEither()
+    {
+        RunGit("remote", "add", "origin", "https://example.invalid/identity.git");
+        var fromOrigin = Invoke<string>("DeriveRepositoryIdentity", _root);
+        Assert.StartsWith("origin-", fromOrigin, StringComparison.Ordinal);
+
+        RunGit("remote", "remove", "origin");
+        var fromHistory = Invoke<string>("DeriveRepositoryIdentity", _root);
+        Assert.StartsWith("history-", fromHistory, StringComparison.Ordinal);
+
+        var empty = Path.Combine(_root, "identity-empty");
+        Directory.CreateDirectory(empty);
+        var start = new ProcessStartInfo("git")
+        {
+            WorkingDirectory = empty,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        start.ArgumentList.Add("init");
+        using var process = Process.Start(start)!;
+        process.WaitForExit();
+        Assert.Equal(0, process.ExitCode);
+        Assert.Throws<InvalidOperationException>(() => Invoke<string>("DeriveRepositoryIdentity", empty));
+    }
+
 
 
     [Fact]

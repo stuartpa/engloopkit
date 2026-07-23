@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using EngLoopKit.Components.Overlay;
 
@@ -518,8 +519,12 @@ public static class OverlayCommands
             return Fail("overlay-install-requires-mode-overlay");
         }
         var hostMode = NormalizeHostMode(GetOption(args, "--host-mode", "clean"));
-        var productId = RequireOption(args, "--product-id");
-        var repositoryId = RequireOption(args, "--repository-id");
+        var productId = GetOption(args, "--product-id", "engloop-overlay");
+        var repositoryId = GetOption(args, "--repository-id", string.Empty);
+        if (string.IsNullOrWhiteSpace(repositoryId))
+        {
+            repositoryId = DeriveRepositoryIdentity(root);
+        }
         var toolVersion = RequireOption(args, "--tool-version");
         var toolNupkg = RequireExistingFile(args, "--tool-nupkg");
         var extensionSource = RequireExistingFile(args, "--extension-archive");
@@ -648,7 +653,11 @@ public static class OverlayCommands
     {
         var root = RequireGitRoot(GetOption(args, "--root", "."));
         var input = RequireExistingFile(args, "--input");
-        var repositoryId = RequireOption(args, "--repository-id");
+        var repositoryId = GetOption(args, "--repository-id", string.Empty);
+        if (string.IsNullOrWhiteSpace(repositoryId))
+        {
+            repositoryId = DeriveRepositoryIdentity(root);
+        }
         var manifest = OverlayArchive.ReadAndValidateArchive(input);
 
         if (!manifest.Files.Any(file => string.Equals(file.RelativePath, ".config/dotnet-tools.json", StringComparison.Ordinal)))
@@ -1296,6 +1305,28 @@ HOOK_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
         var result = Run("git", workingDirectory, args, throwOnFailure: false);
         return result.ExitCode == 0 ? result.StandardOutput.Trim() : null;
     }
+
+    private static string DeriveRepositoryIdentity(string root)
+    {
+        var origin = TryGit(root, "config", "--get", "remote.origin.url");
+        if (!string.IsNullOrWhiteSpace(origin))
+        {
+            return "origin-" + Sha256Text(origin);
+        }
+
+        var rootCommit = TryGit(root, "rev-list", "--max-parents=0", "HEAD")
+            ?.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .SingleOrDefault();
+        if (!string.IsNullOrWhiteSpace(rootCommit))
+        {
+            return "history-" + Sha256Text(rootCommit);
+        }
+
+        throw new InvalidOperationException("overlay-repository-identity-unavailable");
+    }
+
+    private static string Sha256Text(string value)
+        => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
 
     private static ProcessResult Run(string fileName, string workingDirectory, params string[] arguments)
         => Run(fileName, workingDirectory, arguments, throwOnFailure: true);

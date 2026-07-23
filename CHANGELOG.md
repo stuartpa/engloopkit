@@ -3,6 +3,15 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.1] - 2026-07-23
+
+### Fixed
+
+- Overlay install no longer requires operators to understand or supply product/repository
+  IDs. It uses the generic local product identity `engloop-overlay` and derives the stable
+  archive identity from Git `origin`, or the root commit when no origin exists.
+- Overlay unpack also derives the same identity when an explicit legacy ID is not supplied.
+
 ## [1.11.0] - 2026-07-23
 
 ### Added

@@ -94,6 +94,28 @@ public sealed class OverlayCommandTests : IDisposable
     }
 
     [Fact]
+    public void OverlayInstall_derivesIdentityFromGit_whenCallerSuppliesOnlyTheTargetRoot()
+    {
+        CreateRepository();
+        var (nupkg, extension) = BuildArtifacts();
+        InstallDriver(nupkg);
+
+        Assert.Equal(0, OverlayCommands.Execute([
+            "install", "--mode", "overlay", "--root", _source,
+            "--tool-version", _version, "--tool-nupkg", nupkg, "--extension-archive", extension,
+        ]));
+        var manifestPath = Path.Combine(_source, ".engloop-overlay", "manifest.json");
+        using var manifest = JsonDocument.Parse(File.ReadAllText(manifestPath));
+        Assert.Equal("engloop-overlay", manifest.RootElement.GetProperty("ProductId").GetString());
+        Assert.StartsWith("origin-", manifest.RootElement.GetProperty("RepositoryId").GetString(), StringComparison.Ordinal);
+
+        Assert.Equal(0, OverlayCommands.Execute(["pack", "--root", _source, "--output", _archive]));
+        Clone(_target);
+        Assert.Equal(0, OverlayCommands.Execute(["unpack", "--root", _target, "--input", _archive]));
+        Assert.Equal(0, OverlayCommands.Execute(["verify", "--root", _target, "--mode", "all"]));
+    }
+
+    [Fact]
     public void Unpack_rejectsOriginMismatch_beforeCreatingManagedPaths()
     {
         CreateRepository();
