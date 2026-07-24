@@ -1,7 +1,7 @@
 # Contract: Ordered v2 Command Surface
 
 - **Features:** SPEC001 ordered workflow + SPEC002 overlay utilities + POM session memory
-- **Contract version:** 1.11.3
+- **Contract version:** 1.12.0
 - **Owner:** first-party extension `engloopkit`
 
 ## Identity
@@ -32,7 +32,9 @@ ID maps to exactly one same-named Markdown file.
 | 16 | `speckit.engloop.40-pomodoro-create` | `commands/speckit.engloop.40-pomodoro-create.md` | session memory | one `POM<NNNN>-<description>.md` note |
 | 17 | `speckit.engloop.50-overlay-pack` | `commands/speckit.engloop.50-overlay-pack.md` | local utility | portable registered overlay archive |
 | 18 | `speckit.engloop.51-overlay-remove` | `commands/speckit.engloop.51-overlay-remove.md` | local utility | complete manifest-owned overlay removal |
-| 19 | `speckit.engloop.60-powerpnt-create` | `commands/speckit.engloop.60-powerpnt-create.md` | presentation | `PPTxxx` Markdown/PPTX and evidence-derived graph assets |
+| 19 | `speckit.engloop.60-six-pager-create` | `commands/speckit.engloop.60-six-pager-create.md` | publication | `SIXxxx` Markdown/DOCX, appendices, feedback, and render validation |
+| 20 | `speckit.engloop.61-powerpnt-create` | `commands/speckit.engloop.61-powerpnt-create.md` | presentation | `PPTxxx` Markdown/PPTX, graph source/assets, geometry and rendered-slide validation |
+| 21 | `speckit.engloop.62-academic-paper-create` | `commands/speckit.engloop.62-academic-paper-create.md` | publication | `PAPxxx` Markdown/BibTeX/PDF, figures/data, claim evidence, and review validation |
 
 Ordinal lexical sort of the full IDs MUST equal table order. The manifest order MUST
 also equal table order so integrations that preserve declaration order remain correct.
@@ -42,9 +44,9 @@ also equal table order so integrations that preserve declaration order remain co
 For every current v2 surface:
 
 ```text
-actual IDs == expected 19-ID set
-count(actual IDs) == 19
-count(distinct actual IDs) == 19
+actual IDs == expected 21-ID set
+count(actual IDs) == 21
+count(distinct actual IDs) == 21
 actual IDs sorted ordinal == expected order
 ```
 
@@ -98,7 +100,7 @@ Every command file MUST satisfy ARCH002 and contain:
 
 The common header and stage-specific matrices are normative in SPEC001's
 **Custom-agent UX contract**. `infer` and `model` are absent. Every handoff uses
-`send: false` and no model override. Stages 09, 31, 40, 51, and 60 have no handoffs. Generated prompt
+`send: false` and no model override. Stages 09, 31, 40, 51, 60, 61, and 62 have no handoffs. Generated prompt
 files identify the exact matching agent and contain no `tools` field.
 
 The source command frontmatter and installed `.agent.md` frontmatter must be
@@ -126,7 +128,7 @@ Every source command and generated agent has this common semantic projection:
 | `tools` | Exact row in the matrix below, with no duplicate/extra/missing value. |
 | `agents` | Exact row in the matrix below; `[Explore]` or `[]`, never `*`. |
 | `hooks.SessionStart` | One exact `EntryHook` below. |
-| `handoffs` | Exact ordered outgoing rows in the graph below; omitted only for Stages 09, 31, 40, 51, and 60. |
+| `handoffs` | Exact ordered outgoing rows in the graph below; omitted only for Stages 09, 31, 40, 51, 60, 61, and 62. |
 | `infer` | Absent. |
 | `model` | Absent. |
 
@@ -156,7 +158,9 @@ handoffs compare as an ordered sequence because button order is visible UX.
 | `speckit.engloop.40-pomodoro-create` | `read, search, edit, execute` | `[]` |
 | `speckit.engloop.50-overlay-pack` | `read, search, edit, execute` | `[]` |
 | `speckit.engloop.51-overlay-remove` | `read, search, edit, execute` | `[]` |
-| `speckit.engloop.60-powerpnt-create` | `read, search, edit, execute` | `[]` |
+| `speckit.engloop.60-six-pager-create` | `read, search, edit, execute` | `[]` |
+| `speckit.engloop.61-powerpnt-create` | `read, search, edit, execute` | `[]` |
+| `speckit.engloop.62-academic-paper-create` | `read, search, edit, execute, web` | `[]` |
 
 For every nonempty `agents` list, `tools` contains `agent`; for every empty list, it
 does not. The supported VS Code build must resolve every named tool and the `Explore`
@@ -180,6 +184,7 @@ are justified narrowly:
 | 05 | `agent` → `Explore` | Independent behavior/state inventory; no implementation delegation. |
 | 08 | `agent` → `Explore` | Independent reachability/authority classification review; no deletion delegation. |
 | 10 | `web` | Query the explicitly selected GitHub/Azure DevOps PR and source-linked reviewer comments; never infer PR identity. |
+| 62 | `web` | Retrieve and verify authoritative prior research, bibliographic metadata, venue/format rules, and primary sources; never invent or cite unverified work. |
 | 21 | `agent` → `Explore` | Clean-context cross-incident pattern analysis; no repair implementation. |
 | 30 | `agent` → `Explore` | Independent signal scan before selecting at most one refactor. |
 | 31 | `agent` → `Explore` | Clean-context retrieval cases and subject grouping; no source-learning rewrite. |
@@ -277,7 +282,7 @@ handoff-level `model` field is absent. No other edge is allowed.
 | `speckit.engloop.30-refactor-scan` | `speckit.engloop.04-refactor` | Implement selected refactor | Route the selected refactor above through the governed SPEC implementation loop. | `false` | absent |
 | `speckit.engloop.50-overlay-pack` | `speckit.engloop.01-northstar` | Define local direction | Define the overlay-local North Star after the private overlay verifies cleanly. | `false` | absent |
 
-Stages 09, 31, 40, 51, and 60 have no `handoffs` field and are natural terminals.
+Stages 09, 31, 40, 51, 60, 61, and 62 have no `handoffs` field and are natural terminals.
 Stage 09 may be invoked after Stage 02 and repeatedly at later HEADs. Earlier DBG ledgers
 remain historical observations. Stage 09 is recommended but never gates Stage 10; missing,
 stale, pending, blocked, or incomplete DBG evidence is advisory. Stage 10 mechanically
@@ -289,7 +294,7 @@ can terminate naturally without a click. In particular, there is no 08→20, 08�
 ## Ownership constraints
 
 - The bundle composes; it contains no command logic.
-- All 19 commands are owned by the one `engloop` extension of the `engloopkit` product.
+- All 21 commands are owned by the one `engloop` extension of the `engloopkit` product.
 - Architecture-guard and tinyspec remain external, pinned capabilities. Stage 22 never
   routes through tinyspec; its presence is not a repair fallback.
 - Stage 07 owns functional conformance/reachability only.
@@ -328,13 +333,13 @@ production headers are released. An EngLoopKit-owned alternate generator,
 post-processing a partial installation, copying hidden fallback agents, or weakening
 this contract is forbidden.
 
-### Full 19-agent package/install acceptance
+### Full 21-agent package/install acceptance
 
 After the preservation experiment passes, a clean package test MUST:
 
 1. parse the source manifest and assert the exact ordered set;
 2. assert every declared file exists and every undeclared command file is absent;
-3. validate all 19 files against the command-loop shape, common header, exact
+3. validate all 21 files against the command-loop shape, common header, exact
    tool/subagent matrix, entry hook/body gate, and 27-edge handoff table;
 4. build the release archive and inspect its payload for the same set;
 5. initialize a disposable single-root Spec Kit fixture;
@@ -343,9 +348,9 @@ After the preservation experiment passes, a clean package test MUST:
 7. install the exact archive digest;
 8. inspect `.specify/extensions/.registry`, installed commands, generated agents, and
    generated prompts;
-9. assert 19 exact current entries, each once, and zero old entries;
+9. assert 21 exact current entries, each once, and zero old entries;
 10. parse source and installed YAML into a `GeneratedSurfaceSemanticComparison` and
-   prove all 19 common fields, absence rules, exact tool/subagent policies, exact hook
+   prove all 21 common fields, absence rules, exact tool/subagent policies, exact hook
     commands, and the exact ordered handoff edge/value set;
 11. prove all handoff and `Explore` targets resolve and every generated prompt selects
     its matching exact ID while omitting `tools`;
@@ -367,9 +372,9 @@ it does not install a development source as an alternate success path.
 
 ## Version rule
 
-The current command-surface target is 1.11.3. “Ordered EngLoop v2” identifies this workflow
+The current command-surface target is 1.12.0. “Ordered EngLoop v2” identifies this workflow
 generation only and provides no authority for a 2.x product release. Bundle, extension,
-tool, catalog, archive names, and release notes MUST agree on 1.11.3. Catalog SHA-256
+tool, catalog, archive names, and release notes MUST agree on 1.12.0. Catalog SHA-256
 values are computed from final immutable artifacts. Rebuilding different bits under
-1.11.3 is forbidden. Any 2.x value is a release-blocking error unless a later explicit
+1.12.0 is forbidden. Any 2.x value is a release-blocking error unless a later explicit
 maintainer decision supersedes this contract.

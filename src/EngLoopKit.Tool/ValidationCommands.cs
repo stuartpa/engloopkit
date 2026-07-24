@@ -28,7 +28,9 @@ public static class ValidationCommands
         "speckit.engloop.40-pomodoro-create",
         "speckit.engloop.50-overlay-pack",
         "speckit.engloop.51-overlay-remove",
-        "speckit.engloop.60-powerpnt-create",
+        "speckit.engloop.60-six-pager-create",
+        "speckit.engloop.61-powerpnt-create",
+        "speckit.engloop.62-academic-paper-create",
     ];
 
     private static readonly Dictionary<string, string[]> ExpectedTools = new(StringComparer.Ordinal)
@@ -51,7 +53,9 @@ public static class ValidationCommands
         ["speckit.engloop.40-pomodoro-create"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.50-overlay-pack"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.51-overlay-remove"] = ["read", "search", "edit", "execute"],
-        ["speckit.engloop.60-powerpnt-create"] = ["read", "search", "edit", "execute"],
+        ["speckit.engloop.60-six-pager-create"] = ["read", "search", "edit", "execute"],
+        ["speckit.engloop.61-powerpnt-create"] = ["read", "search", "edit", "execute"],
+        ["speckit.engloop.62-academic-paper-create"] = ["read", "search", "edit", "execute", "web"],
     };
 
     private static readonly Dictionary<string, string[]> ExpectedAgents = new(StringComparer.Ordinal)
@@ -74,7 +78,9 @@ public static class ValidationCommands
         ["speckit.engloop.40-pomodoro-create"] = [],
         ["speckit.engloop.50-overlay-pack"] = [],
         ["speckit.engloop.51-overlay-remove"] = [],
-        ["speckit.engloop.60-powerpnt-create"] = [],
+        ["speckit.engloop.60-six-pager-create"] = [],
+        ["speckit.engloop.61-powerpnt-create"] = [],
+        ["speckit.engloop.62-academic-paper-create"] = [],
     };
 
     private static string GetOption(string[] args, string name, string defaultValue = ".")
@@ -304,7 +310,7 @@ public static class ValidationCommands
                 return 1;
             }
 
-            if (commandId is "speckit.engloop.09-debugger-walk-thru" or "speckit.engloop.31-learnings-pyramid" or "speckit.engloop.40-pomodoro-create" or "speckit.engloop.51-overlay-remove" or "speckit.engloop.60-powerpnt-create")
+            if (commandId is "speckit.engloop.09-debugger-walk-thru" or "speckit.engloop.31-learnings-pyramid" or "speckit.engloop.40-pomodoro-create" or "speckit.engloop.51-overlay-remove" or "speckit.engloop.60-six-pager-create" or "speckit.engloop.61-powerpnt-create" or "speckit.engloop.62-academic-paper-create")
             {
                 if (map.ContainsKey("handoffs"))
                 {

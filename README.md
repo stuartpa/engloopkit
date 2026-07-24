@@ -12,7 +12,7 @@ explicit trigger, goal, actions, verification, and durable memory.
 > on the **1.x** maturity runway for the foreseeable future: this ordered release is
 > **v1.7.0** established the ordered baseline; review, Pomodoro memory, and complete
 > reusable debugger walkthroughs, generic readiness handoff, presentation generation, and
-> no-ID overlay installation and advisory debugger walkthroughs ship as **v1.11.3**. No v2.0 release is implied.
+> no-ID overlay installation, advisory debugger walkthroughs, and publication agents ship as **v1.12.0**. No v2.0 release is implied.
 
 The v1.8 workflow separates delivery/readiness, operations, stewardship, and local
 overlay utility work into
@@ -32,7 +32,7 @@ A handoff is review-first (`send: false`), not a state transition.
 - **Components are generic:** non-domain runtime/BCL helpers live under language-appropriate
   component boundaries; the vertical composes them.
 
-## The 19 commands
+## The 21 commands
 
 The released extension ID is **`engloop`**; product, bundle, and tool identity remain
 **`engloopkit`**. Lexical picker order is the normal workflow order.
@@ -57,7 +57,9 @@ The released extension ID is **`engloop`**; product, bundle, and tool identity r
 | Session memory | `/speckit.engloop.40-pomodoro-create` | Capture a concise POM note about the just-completed 30–60 minute session. |
 | Local utility | `/speckit.engloop.50-overlay-pack` | Pack a verified private local ELK overlay. |
 | Local utility | `/speckit.engloop.51-overlay-remove` | Remove manifest-owned overlay state and restore prior hooks. |
-| Presentation | `/speckit.engloop.60-powerpnt-create` | Build a Markdown-first PPTX from North Star, architecture, model graphs, and generated test paths. |
+| Publication | `/speckit.engloop.60-six-pager-create` | Build a six-page narrative Markdown memo and validated Word document. |
+| Presentation | `/speckit.engloop.61-powerpnt-create` | Build a Markdown-first PPTX with collision-checked architecture/model graphs and rendered-slide validation. |
+| Publication | `/speckit.engloop.62-academic-paper-create` | Build an evidence-backed systems paper in Markdown/BibTeX and a validated PDF. |
 
 ## Readiness gate
 
@@ -70,7 +72,7 @@ never authorizes operations.
 
 ## Install a release
 
-A released v1.11.3 artifact set contains three immutable pieces:
+A released v1.12.0 artifact set contains three immutable pieces:
 
 1. `engloopkit.<version>.nupkg` — the root-local .NET tool (`engloopkit`);
 2. `engloop-extension-<version>.zip` — the ordered Spec Kit extension (`engloop`);
@@ -82,10 +84,10 @@ not point agent hooks at a sibling build output:
 ```powershell
 # From the consumer root, after downloading the released nupkg to <release-dir>.
 dotnet new tool-manifest --force
-dotnet tool install engloopkit --version 1.11.3 --add-source <release-dir>
+dotnet tool install engloopkit --version 1.12.0 --add-source <release-dir>
 
 # Install the exact released ordered extension archive.
-specify extension add engloop --from <release-dir>/engloopkit-extension-1.11.3.zip
+specify extension add engloop --from <release-dir>/engloopkit-extension-1.12.0.zip
 ```
 
 The extension’s `SessionStart` hook and command body both run:
@@ -122,16 +124,16 @@ explicit at install time and does **not** modify tracked `.gitignore` or product
 
 ```powershell
 # Do this in a private bootstrap directory OUTSIDE <git-root>.
-$bootstrap = Join-Path $env:LOCALAPPDATA 'EngLoopKit\bootstrap\1.11.3'
+$bootstrap = Join-Path $env:LOCALAPPDATA 'EngLoopKit\bootstrap\1.12.0'
 New-Item -ItemType Directory -Force $bootstrap | Out-Null
 Push-Location $bootstrap
 dotnet new tool-manifest --force
-dotnet tool install engloopkit --version 1.11.3 --add-source <release-dir>
+dotnet tool install engloopkit --version 1.12.0 --add-source <release-dir>
 
 # <release-dir> contains the downloaded .nupkg and extension .zip.
 dotnet tool run engloopkit -- overlay install --mode overlay --root <git-root> `
-  --tool-version 1.11.3 --tool-nupkg <release-dir>\engloopkit.1.11.3.nupkg `
-  --extension-archive <release-dir>\engloopkit-extension-1.11.3.zip
+  --tool-version 1.12.0 --tool-nupkg <release-dir>\engloopkit.1.12.0.nupkg `
+  --extension-archive <release-dir>\engloopkit-extension-1.12.0.zip
 Pop-Location
 ```
 

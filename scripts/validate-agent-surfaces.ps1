@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$Root = (Join-Path $PSScriptRoot '..'),
-    [string]$Version = '1.11.3',
+    [string]$Version = '1.12.0',
     [string]$OutputPath = '',
     [switch]$SkipDisposableFixture
 )
@@ -109,14 +109,18 @@ $expectedIds = @(
     'speckit.engloop.40-pomodoro-create',
     'speckit.engloop.50-overlay-pack',
     'speckit.engloop.51-overlay-remove',
-    'speckit.engloop.60-powerpnt-create'
+    'speckit.engloop.60-six-pager-create',
+    'speckit.engloop.61-powerpnt-create',
+    'speckit.engloop.62-academic-paper-create'
 )
 $terminalIds = @(
     'speckit.engloop.09-debugger-walk-thru',
     'speckit.engloop.31-learnings-pyramid',
     'speckit.engloop.40-pomodoro-create',
     'speckit.engloop.51-overlay-remove',
-    'speckit.engloop.60-powerpnt-create'
+    'speckit.engloop.60-six-pager-create',
+    'speckit.engloop.61-powerpnt-create',
+    'speckit.engloop.62-academic-paper-create'
 )
 
 $commandsDir = Join-Path $repoRoot 'extensions/engloopkit/commands'
@@ -186,8 +190,8 @@ try {
         promptToolsCount = 0
     }
 
-    if ($actualCommandIds.Count -ne 19) { $mismatches.Add(@{ issue = 'wrong-command-count'; actual = $actualCommandIds.Count }) | Out-Null }
-    if ($actualPromptIds.Count -ne 19) { $mismatches.Add(@{ issue = 'wrong-prompt-count'; actual = $actualPromptIds.Count }) | Out-Null }
+    if ($actualCommandIds.Count -ne 21) { $mismatches.Add(@{ issue = 'wrong-command-count'; actual = $actualCommandIds.Count }) | Out-Null }
+    if ($actualPromptIds.Count -ne 21) { $mismatches.Add(@{ issue = 'wrong-prompt-count'; actual = $actualPromptIds.Count }) | Out-Null }
 
     foreach ($id in $expectedIds) {
         if (-not ($actualCommandIds -contains $id)) { $mismatches.Add(@{ issue = 'missing-command'; id = $id }) | Out-Null }
@@ -260,8 +264,8 @@ try {
         $report.deterministic.fixture.installedAgents = $installedAgents.Count
         $report.deterministic.fixture.installedPrompts = $installedPrompts.Count
 
-        if ($installedAgents.Count -ne 19) { $mismatches.Add(@{ issue = 'fixture-wrong-agent-count'; actual = $installedAgents.Count }) | Out-Null }
-        if ($installedPrompts.Count -ne 19) { $mismatches.Add(@{ issue = 'fixture-wrong-prompt-count'; actual = $installedPrompts.Count }) | Out-Null }
+        if ($installedAgents.Count -ne 21) { $mismatches.Add(@{ issue = 'fixture-wrong-agent-count'; actual = $installedAgents.Count }) | Out-Null }
+        if ($installedPrompts.Count -ne 21) { $mismatches.Add(@{ issue = 'fixture-wrong-prompt-count'; actual = $installedPrompts.Count }) | Out-Null }
 
         foreach ($id in $expectedIds) {
             $sourceFm = Get-FrontmatterObject -Path (Join-Path $commandsDir ($id + '.md'))

@@ -1,11 +1,11 @@
 # COV003 Ordered EngLoop v2 Readiness
 
-- Captured: 2026-07-24T14:57:35.4954973Z
+- Captured: 2026-07-24T22:04:42.2504897Z
 - Verdict: PASS
 - Functional generated suite: True
 - Direct/property suite: True
 - Architecture/installation validators: True
-- Cobertura report: .engloop\out\readiness-coverage\overlay\db31afbb-8a16-4622-88a3-29c9177d6fc8\coverage.cobertura.xml
+- Cobertura report: .engloop\out\readiness-coverage\overlay\3448dc3f-1f6c-4d09-a864-f783e1f4ccd7\coverage.cobertura.xml
 
 ## Readiness inventory
 
@@ -16,4 +16,4 @@
 | components.documentvalidation | EngLoopKit.Components.DocumentValidation | 97.14% | 96.87% | True | True | True | True |
 | components.overlay | EngLoopKit.Components.Overlay | 98.28% | 95.13% | True | True | True | True |
 | core | EngLoopKit.Core | 99.6% | 96.36% | True | True | True | True |
-| tool | engloopkit | 97.28% | 95.39% | True | True | True | True |
+| tool | engloopkit | 97.29% | 95.52% | True | True | True | True |

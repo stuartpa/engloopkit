@@ -33,6 +33,7 @@ description: <audience and purpose>
 - <Explain each line and dependency direction.>
 
 <!-- Source: ARCHxxx / authoritative architecture artifact -->
+<!-- Geometry: connector-label bounds do not intersect nodes, title/subtitle, legend, prior labels, or view-box bounds. -->
 
 ---
 
@@ -70,6 +71,7 @@ description: <audience and purpose>
 - **Implementation relationship:** <what this demonstrates>
 
 <!-- Source: MODELxxx / CORDxxx / exploration output -->
+<!-- Geometry: use a dedicated horizontal label lane or explicit collision-checked label coordinates. -->
 
 ---
 
@@ -96,3 +98,12 @@ description: <audience and purpose>
 - **Expected outcome:** <result/rejection>
 
 <!-- Source: generated test / CORD exploration case -->
+
+<!--
+Validation requirements:
+- Run deterministic geometry preflight for all graph assets.
+- Generate the PPTX from this Markdown.
+- Export every graph slide from the actual PPTX to PNG using an approved renderer.
+- Inspect rendered PNGs at normal presentation size; any text overlap/clipping fails.
+- Record renderer/version, inspected slides, defects/fixes, and pass in VALIDATION.md.
+-->

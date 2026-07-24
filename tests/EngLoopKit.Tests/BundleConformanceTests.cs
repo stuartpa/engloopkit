@@ -31,7 +31,9 @@ public sealed class BundleConformanceTests
         "speckit.engloop.40-pomodoro-create",
         "speckit.engloop.50-overlay-pack",
         "speckit.engloop.51-overlay-remove",
-        "speckit.engloop.60-powerpnt-create",
+        "speckit.engloop.60-six-pager-create",
+        "speckit.engloop.61-powerpnt-create",
+        "speckit.engloop.62-academic-paper-create",
     ];
 
     [Fact]
@@ -42,16 +44,16 @@ public sealed class BundleConformanceTests
         using var catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "catalog.json")));
 
         Assert.Contains("id: \"engloop\"", extension);
-        Assert.Contains("version: \"1.11.3\"", extension);
+        Assert.Contains("version: \"1.12.0\"", extension);
         Assert.Contains("id: \"engloopkit\"", bundle);
-        Assert.Contains("version: \"1.11.3\"", bundle);
+        Assert.Contains("version: \"1.12.0\"", bundle);
         Assert.Equal("engloop", catalog.RootElement.GetProperty("extensions")[0].GetProperty("id").GetString());
-        Assert.Equal("1.11.3", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
-        Assert.Equal(19, catalog.RootElement.GetProperty("extensions")[0].GetProperty("provides").GetProperty("commands").GetInt32());
+        Assert.Equal("1.12.0", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
+        Assert.Equal(21, catalog.RootElement.GetProperty("extensions")[0].GetProperty("provides").GetProperty("commands").GetInt32());
     }
 
     [Fact]
-    public void Extension_declaresExactOrderedNineteenCommandSurface()
+    public void Extension_declaresExactOrderedTwentyOneCommandSurface()
     {
         var manifest = File.ReadAllText(Path.Combine(ExtensionRoot, "extension.yml"));
         var ids = Regex.Matches(manifest, @"^\s*-\s*name:\s*""?(speckit\.engloop\.[\w-]+)""?", RegexOptions.Multiline)
@@ -127,13 +129,39 @@ public sealed class BundleConformanceTests
         Assert.Contains("REMOVE-OVERLAY:<repository-id>@<base-revision>", remove, StringComparison.Ordinal);
         Assert.Contains("restore", remove, StringComparison.OrdinalIgnoreCase);
 
-        var presentation = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.60-powerpnt-create.md"));
+        var sixPager = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.60-six-pager-create.md"));
+        Assert.Contains("exactly six rendered pages", sixPager, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Introduction", sixPager, StringComparison.Ordinal);
+        Assert.Contains("Goals", sixPager, StringComparison.Ordinal);
+        Assert.Contains("Tenets", sixPager, StringComparison.Ordinal);
+        Assert.Contains("State of the business/system", sixPager, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Lessons learned", sixPager, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Strategic priorities", sixPager, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Pandoc", sixPager, StringComparison.Ordinal);
+        Assert.Contains("DOCX", sixPager, StringComparison.Ordinal);
+
+        var presentation = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.61-powerpnt-create.md"));
         Assert.Contains("North Star", presentation, StringComparison.Ordinal);
         Assert.Contains("boxes-and-lines", presentation, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("7 +/- 2 nodes", presentation, StringComparison.Ordinal);
         Assert.Contains("straight-line", presentation, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("@marp-team/marp-cli", presentation, StringComparison.Ordinal);
         Assert.Contains("powerpnt-create", presentation, StringComparison.Ordinal);
+        Assert.Contains("Connector-label geometry", presentation, StringComparison.Ordinal);
+        Assert.Contains("must not intersect any node bounding box", presentation, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("dedicated label lane", presentation, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Export every generated graph slide to PNG", presentation, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Every graph connector label is collision-free", presentation, StringComparison.OrdinalIgnoreCase);
+
+        var paper = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.62-academic-paper-create.md"));
+        Assert.Contains("High-level architecture", paper, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Evaluation methodology", paper, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("**Results.**", paper, StringComparison.Ordinal);
+        Assert.Contains("limitations, threats to validity", paper, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Related work", paper, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Pandoc", paper, StringComparison.Ordinal);
+        Assert.Contains("citeproc", paper, StringComparison.Ordinal);
+        Assert.Contains("PDF", paper, StringComparison.Ordinal);
     }
 
     [Fact]

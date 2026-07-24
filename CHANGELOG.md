@@ -3,6 +3,26 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0] - 2026-07-24
+
+### Added
+
+- `/speckit.engloop.60-six-pager-create`: authors an evidence-backed Amazon-style
+  six-page narrative in Markdown, converts it to DOCX with Pandoc, and validates the
+  actual rendered six-page body plus appendices.
+- `/speckit.engloop.62-academic-paper-create`: authors an original systems research paper
+  in Markdown/BibTeX with architecture/mechanism/evaluation rigor, converts it to PDF,
+  and validates claims, citations, figures, experiments, and rendered pages.
+- `SIXxxx` and `PAPxxx` numbering/artifact roots.
+
+### Changed
+
+- Renumbered PowerPoint creation to `/speckit.engloop.61-powerpnt-create`.
+- PowerPoint graph contracts now treat connector labels as first-class geometry, require
+  collision preflight, and require visual inspection of PNGs rendered from the actual PPTX.
+- Expanded the exact agent surface from 19 to 21 commands; the handoff graph remains 27
+  edges because all Stage 60–62 publication agents are natural terminals.
+
 ## [1.11.3] - 2026-07-24
 
 ### Changed

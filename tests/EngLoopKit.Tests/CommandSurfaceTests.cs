@@ -62,7 +62,7 @@ public sealed class CommandSurfaceTests
                 }
             }
 
-            if (id is "speckit.engloop.09-debugger-walk-thru" or "speckit.engloop.31-learnings-pyramid" or "speckit.engloop.40-pomodoro-create" or "speckit.engloop.51-overlay-remove" or "speckit.engloop.60-powerpnt-create")
+            if (id is "speckit.engloop.09-debugger-walk-thru" or "speckit.engloop.31-learnings-pyramid" or "speckit.engloop.40-pomodoro-create" or "speckit.engloop.51-overlay-remove" or "speckit.engloop.60-six-pager-create" or "speckit.engloop.61-powerpnt-create" or "speckit.engloop.62-academic-paper-create")
             {
                 Assert.Empty(localEdges);
             }

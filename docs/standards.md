@@ -2,7 +2,7 @@
 
 **Workflow generation:** Ordered EngLoop v2.
 **Product SemVer:** EngLoopKit remains on the **1.x** line; this workflow ships as
-v1.11.3. “v2” describes the workflow generation, not a v2.0 release.
+v1.12.0. “v2” describes the workflow generation, not a v2.0 release.
 
 Durable workflow memory lives in exactly one tracked hidden root:
 
@@ -44,11 +44,13 @@ use `<PREFIX><NNN>_<short-title>.md`; Pomodoro notes use
 | `PM` | 21 Postmortem | `.engloop/postmortems/` | Analysis of deliberately selected stabilized incident sets. |
 | `REFACT` | 30 Refactor scan | `.engloop/refactors/` | One selected evolution decision or `none-this-cycle`. |
 | `DBG` | 09 Debugger walk-through | `.engloop/debugger-walkthroughs/` | Per-chunk breakpoint/trigger evidence plus explicit engineer attestation at an exact HEAD. |
-| `PPT` | 60 PowerPoint create | `.engloop/presentations/` | Markdown-first visual deck, generated PPTX, and evidence-derived graph assets. |
+| `SIX` | 60 Six-pager create | `.engloop/six-pagers/` | Six-page narrative Markdown, generated DOCX, appendices, feedback, and rendered-page validation. |
+| `PPT` | 61 PowerPoint create | `.engloop/presentations/` | Markdown-first visual deck, generated PPTX, evidence-derived graph assets, and rendered-slide validation. |
+| `PAP` | 62 Academic paper create | `.engloop/academic-papers/` | Research-paper Markdown/BibTeX, generated PDF, figures/data, claim evidence, and rendered-page validation. |
 | `POM` | 40 Pomodoro create | `.engloop/pomodoros/` | Brief evidence-backed note about the just-completed 30–60 minute session. |
 
 Compound utility command names use subject/action order (for example
-`pomodoro-create`, `powerpnt-create`, `overlay-pack`, and `overlay-remove`). Stable
+`pomodoro-create`, `six-pager-create`, `powerpnt-create`, `academic-paper-create`, `overlay-pack`, and `overlay-remove`). Stable
 single-word lifecycle command identities are not renamed merely to force a compound form.
 
 ## Local prefixes
