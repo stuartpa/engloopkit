@@ -3,7 +3,7 @@
   "isRoot": true,
   "tools": {
     "engloopkit": {
-      "version": "1.11.2",
+      "version": "1.11.3",
       "commands": [
         "engloopkit"
       ],

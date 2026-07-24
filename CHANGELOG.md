@@ -3,6 +3,15 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.3] - 2026-07-24
+
+### Changed
+
+- Stage 09 debugger walkthrough is advisory and never blocks Stage 10.
+- Stage 10 entry requires only the current, HEAD-bound Stage 08 readiness PASS.
+- Missing, stale, blocked, pending, or incomplete DBG evidence may be recorded as advisory
+  context but cannot prevent code-review preparation.
+
 ## [1.11.2] - 2026-07-23
 
 ### Fixed

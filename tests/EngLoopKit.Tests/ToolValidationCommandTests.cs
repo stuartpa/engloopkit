@@ -77,7 +77,7 @@ public sealed class ToolValidationCommandTests : IDisposable
     }
 
     [Fact]
-    public void DebuggerEntry_requiresRunway_whileReviewRequiresEmittedReadinessAndCurrentAttestation()
+    public void DebuggerEntry_requiresRunway_whileReviewRequiresOnlyCurrentReadiness()
     {
         CreateCanonicalFixture(modulePath: "module.csproj");
         File.WriteAllText(Path.Combine(_fixture, "module.csproj"), "<Project />");
@@ -100,47 +100,18 @@ public sealed class ToolValidationCommandTests : IDisposable
         File.WriteAllText(evidencePath, "# Readiness\n\n## Readiness Gate verdict\n\n- [x] **PASS** — complete\n");
         Assert.Equal(0, ValidationCommands.ExecuteReadiness(["emit", "--root", _fixture, "--verdict", "pass", "--evidence", evidenceRelative]));
         Assert.True(File.Exists(Path.Combine(_fixture, ".engloop", "readiness", "current.json")));
-        Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
-
-        var head = RunGitOutput("rev-parse", "HEAD").Trim();
-        var directory = Path.Combine(_fixture, ".engloop", "debugger-walkthroughs");
-        Directory.CreateDirectory(directory);
-        var ledgerPath = Path.Combine(directory, "DBG001_fixture.md");
-        string Ledger(string ledgerHead, string status, string checklist, string chunkStatus, string attestation) => $$"""
-        # DBG001 — fixture
-        - **Head revision:** {{ledgerHead}}
-        - **Status:** {{status}}
-        | DBG-CHUNK-001 | path | {{chunkStatus}} |
-        - **Engineer attestation:** {{attestation}}
-        {{checklist}}
-        """;
-
-        File.WriteAllText(ledgerPath, Ledger("0000000000000000000000000000000000000000", "COMPLETE", "- [x] Every chunk is attested", "attested", "I personally stepped through it."));
-        Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
-        File.WriteAllText(ledgerPath, Ledger(head, "IN PROGRESS", "- [x] Every chunk is attested", "attested", "I personally stepped through it."));
-        Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
-        File.WriteAllText(ledgerPath, Ledger(head, "COMPLETE", "- [ ] Every chunk is attested", "attested", "I personally stepped through it."));
-        Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
-        foreach (var incomplete in new[] { "pending", "blocked", "stale" })
-        {
-            File.WriteAllText(ledgerPath, Ledger(head, "COMPLETE", "- [x] Every chunk is attested", incomplete, "I personally stepped through it."));
-            Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
-        }
-        File.WriteAllText(ledgerPath, Ledger(head, "COMPLETE", "- [x] Every chunk is attested", "attested", "<exact response>"));
-        Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
-        File.WriteAllText(ledgerPath, Ledger(head, "COMPLETE", "- [x] Every chunk is attested", "attested", ""));
-        Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
-
-        File.WriteAllText(ledgerPath, Ledger(head, "COMPLETE", "- [x] Every chunk is attested", "attested", "I personally stepped through this chunk line by line in the recorded debugger."));
         Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
 
         File.AppendAllText(evidencePath, "changed\n");
         Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
         File.WriteAllText(evidencePath, "# Readiness\n\n## Readiness Gate verdict\n\n- [x] **PASS** — complete\n");
         Assert.Equal(0, ValidationCommands.ExecuteReadiness(["emit", "--root", _fixture, "--verdict", "pass", "--evidence", evidenceRelative]));
+        Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
 
-        File.AppendAllText(ledgerPath, "\n| DBG-CHUNK-002 | path | pending |\n");
-        Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
+        var directory = Path.Combine(_fixture, ".engloop", "debugger-walkthroughs");
+        Directory.CreateDirectory(directory);
+        File.WriteAllText(Path.Combine(directory, "DBG001_incomplete.md"), "# incomplete\n- **Status:** BLOCKED\n- [ ] pending\n");
+        Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
 
         File.WriteAllText(Path.Combine(_fixture, "new-product-change.txt"), "new head");
         RunGit("add", "new-product-change.txt");

@@ -42,11 +42,11 @@ public sealed class BundleConformanceTests
         using var catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "catalog.json")));
 
         Assert.Contains("id: \"engloop\"", extension);
-        Assert.Contains("version: \"1.11.2\"", extension);
+        Assert.Contains("version: \"1.11.3\"", extension);
         Assert.Contains("id: \"engloopkit\"", bundle);
-        Assert.Contains("version: \"1.11.2\"", bundle);
+        Assert.Contains("version: \"1.11.3\"", bundle);
         Assert.Equal("engloop", catalog.RootElement.GetProperty("extensions")[0].GetProperty("id").GetString());
-        Assert.Equal("1.11.2", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
+        Assert.Equal("1.11.3", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
         Assert.Equal(19, catalog.RootElement.GetProperty("extensions")[0].GetProperty("provides").GetProperty("commands").GetInt32());
     }
 
@@ -109,11 +109,14 @@ public sealed class BundleConformanceTests
         Assert.Contains("SKILL.md", debugger, StringComparison.Ordinal);
         Assert.Contains("Do not infer a debugger", debugger, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("explicit `--debugger` choice", debugger, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("recommended engineering practice, not a transition gate", debugger, StringComparison.OrdinalIgnoreCase);
 
         var review = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.10-codereview-prepare.md"));
         Assert.Contains("github", review, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("azure-devops", review, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("no persistent personal profile", review, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Do not reject Stage 10", review, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Stage 09 is recommended but non-blocking", review, StringComparison.OrdinalIgnoreCase);
 
         var pom = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.40-pomodoro-create.md"));
         Assert.Contains("POM0000", pom, StringComparison.Ordinal);

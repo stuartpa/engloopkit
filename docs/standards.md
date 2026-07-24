@@ -2,7 +2,7 @@
 
 **Workflow generation:** Ordered EngLoop v2.
 **Product SemVer:** EngLoopKit remains on the **1.x** line; this workflow ships as
-v1.11.0. “v2” describes the workflow generation, not a v2.0 release.
+v1.11.3. “v2” describes the workflow generation, not a v2.0 release.
 
 Durable workflow memory lives in exactly one tracked hidden root:
 

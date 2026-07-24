@@ -3,7 +3,7 @@ param(
     [string]$Root = (Join-Path $PSScriptRoot '..'),
     [string]$ToolNupkg,
     [string]$ExtensionArchive,
-    [string]$Version = '1.11.2',
+    [string]$Version = '1.11.3',
     [switch]$KeepWork
 )
 

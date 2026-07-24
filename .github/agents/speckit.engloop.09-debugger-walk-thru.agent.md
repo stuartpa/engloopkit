@@ -1,7 +1,7 @@
 ---
 name: speckit.engloop.09-debugger-walk-thru
-description: Prepare and track an engineer-led, line-by-line debugger walkthrough
-  of every executable code chunk intended for review.
+description: Recommend, prepare, and track an engineer-led line-by-line debugger walkthrough
+  without blocking review preparation.
 argument-hint: --base <revision> [--debugger <explicit-choice>] [--trigger <test-command>]
 target: vscode
 user-invocable: true
@@ -18,12 +18,6 @@ hooks:
     command: dotnet tool run engloopkit validate agent-entry --stage speckit.engloop.09-debugger-walk-thru
       --root .
     timeout: 30
-handoffs:
-- label: Prepare code review
-  agent: speckit.engloop.10-codereview-prepare
-  prompt: Use the current fully attested debugger-walkthrough ledger above to minimize
-    and prepare the exact same HEAD for code review.
-  send: false
 ---
 
 
@@ -63,9 +57,12 @@ output, or agent observation is not attestation.
 
 Any product-code edit changes HEAD and makes prior completion evidence stale. Preserve
 earlier ledgers as historical observations, but never carry their attestations forward as
-current. The engineer may immediately invoke Stage 09 again at the new HEAD. Before Stage
-10, the final current HEAD must have one complete ledger covering the complete final diff
-and Stage 08 must have emitted current readiness.
+current. The engineer may immediately invoke Stage 09 again at the new HEAD.
+
+Stage 09 is recommended engineering practice, not a transition gate. Missing, incomplete,
+blocked, or stale DBG evidence must never prevent Stage 10 from starting. Stage 10 relies
+on the current Stage 08 readiness PASS; it may record and use debugger findings when they
+exist without claiming that an incomplete walkthrough was completed.
 
 ## Scope inventory
 
@@ -129,4 +126,4 @@ completion.
 - [ ] Every chunk has explicit per-chunk engineer attestation
 - [ ] Non-executable changed code has explicit line-by-line engineer-read attestation
 - [ ] No chunk is pending, blocked, stale, or self-certified by the agent
-- [ ] The current attested HEAD is handed to Stage 10 without modification
+- [ ] Any current findings are offered to Stage 10 as advisory evidence; absence or incompleteness does not block the handoff

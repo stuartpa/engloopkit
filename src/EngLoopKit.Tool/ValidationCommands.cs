@@ -304,7 +304,7 @@ public static class ValidationCommands
                 return 1;
             }
 
-            if (commandId is "speckit.engloop.31-learnings-pyramid" or "speckit.engloop.40-pomodoro-create" or "speckit.engloop.51-overlay-remove" or "speckit.engloop.60-powerpnt-create")
+            if (commandId is "speckit.engloop.09-debugger-walk-thru" or "speckit.engloop.31-learnings-pyramid" or "speckit.engloop.40-pomodoro-create" or "speckit.engloop.51-overlay-remove" or "speckit.engloop.60-powerpnt-create")
             {
                 if (map.ContainsKey("handoffs"))
                 {
@@ -412,11 +412,6 @@ public static class ValidationCommands
                 }
             }
 
-            if (stage == "speckit.engloop.10-codereview-prepare" && !HasCurrentDebuggerWalkthrough(rootResult.RepositoryRoot))
-            {
-                Console.Error.WriteLine("missing-current-debugger-walkthrough");
-                return 2;
-            }
         }
         catch (Exception ex)
         {
@@ -518,7 +513,7 @@ public static class ValidationCommands
             }
         }
 
-        if (totalHandoffs != 28)
+        if (totalHandoffs != 27)
         {
             Console.Error.WriteLine($"wrong-handoff-count:{totalHandoffs}");
             return 1;
@@ -573,34 +568,6 @@ public static class ValidationCommands
             throw new InvalidOperationException("readiness-evidence-path-invalid");
         }
         return relative;
-    }
-
-    private static bool HasCurrentDebuggerWalkthrough(string root)
-    {
-        var head = GitHead(root);
-        if (head is null) return false;
-        var directory = Path.Combine(root, ".engloop", "debugger-walkthroughs");
-        if (!Directory.Exists(directory)) return false;
-
-        foreach (var path in Directory.GetFiles(directory, "DBG*.md", SearchOption.TopDirectoryOnly))
-        {
-            var text = File.ReadAllText(path).Replace("\r\n", "\n", StringComparison.Ordinal);
-            if (!text.Contains($"- **Head revision:** {head}", StringComparison.Ordinal)
-                || !text.Contains("- **Status:** COMPLETE", StringComparison.Ordinal)
-                || text.Contains("- [ ]", StringComparison.Ordinal)
-                || text.Contains("| pending |", StringComparison.OrdinalIgnoreCase)
-                || text.Contains("| blocked |", StringComparison.OrdinalIgnoreCase)
-                || text.Contains("| stale |", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-            var attestations = text.Split("**Engineer attestation:**", StringSplitOptions.None).Skip(1).ToArray();
-            if (attestations.Length > 0 && attestations.All(value => !string.IsNullOrWhiteSpace(value.Split('\n')[0].Trim()) && !value.Split('\n')[0].Contains('<')))
-            {
-                return true;
-            }
-        }
-        return false;
     }
 
     private static string? GitHead(string root)

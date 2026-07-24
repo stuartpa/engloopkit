@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$Root = (Join-Path $PSScriptRoot '..'),
-    [string]$Version = '1.11.2',
+    [string]$Version = '1.11.3',
     [string]$OutputPath = '',
     [switch]$SkipDisposableFixture
 )
@@ -112,6 +112,7 @@ $expectedIds = @(
     'speckit.engloop.60-powerpnt-create'
 )
 $terminalIds = @(
+    'speckit.engloop.09-debugger-walk-thru',
     'speckit.engloop.31-learnings-pyramid',
     'speckit.engloop.40-pomodoro-create',
     'speckit.engloop.51-overlay-remove',
@@ -238,10 +239,10 @@ try {
     }
 
     $report.deterministic.handoffs = [ordered]@{
-        expected = 28
+        expected = 27
         actual = $handoffCount
     }
-    if ($handoffCount -ne 28) {
+    if ($handoffCount -ne 27) {
         $mismatches.Add(@{ issue = 'wrong-handoff-count'; actual = $handoffCount }) | Out-Null
     }
 

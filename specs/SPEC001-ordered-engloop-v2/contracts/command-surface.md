@@ -1,7 +1,7 @@
 # Contract: Ordered v2 Command Surface
 
 - **Features:** SPEC001 ordered workflow + SPEC002 overlay utilities + POM session memory
-- **Contract version:** 1.11.0
+- **Contract version:** 1.11.3
 - **Owner:** first-party extension `engloopkit`
 
 ## Identity
@@ -22,7 +22,7 @@ ID maps to exactly one same-named Markdown file.
 | 6 | `speckit.engloop.06-explore` | `commands/speckit.engloop.06-explore.md` | delivery | `CORDxxx` + generated suite at proven destination |
 | 7 | `speckit.engloop.07-validate` | `commands/speckit.engloop.07-validate.md` | delivery | functional-only `COVxxx` and reachability |
 | 8 | `speckit.engloop.08-unittest` | `commands/speckit.engloop.08-unittest.md` | delivery | disposition + readiness `COVxxx` and verdict |
-| 9 | `speckit.engloop.09-debugger-walk-thru` | `commands/speckit.engloop.09-debugger-walk-thru.md` | review gate | numbered engineer-attested `DBGxxx` walkthrough ledger |
+| 9 | `speckit.engloop.09-debugger-walk-thru` | `commands/speckit.engloop.09-debugger-walk-thru.md` | review advisory | optional numbered engineer-attested `DBGxxx` walkthrough ledger |
 | 10 | `speckit.engloop.10-codereview-prepare` | `commands/speckit.engloop.10-codereview-prepare.md` | review | minimized current PR + transient evidence-linked review report |
 | 11 | `speckit.engloop.20-incident` | `commands/speckit.engloop.20-incident.md` | operations | `INxxx` + local `MITxxx` |
 | 12 | `speckit.engloop.21-postmortem` | `commands/speckit.engloop.21-postmortem.md` | operations | `PMxxx` + `PMxxx/LEARNxxx` + `RPIxxx` |
@@ -98,7 +98,7 @@ Every command file MUST satisfy ARCH002 and contain:
 
 The common header and stage-specific matrices are normative in SPEC001's
 **Custom-agent UX contract**. `infer` and `model` are absent. Every handoff uses
-`send: false` and no model override. Stages 31, 40, 51, and 60 have no handoffs. Generated prompt
+`send: false` and no model override. Stages 09, 31, 40, 51, and 60 have no handoffs. Generated prompt
 files identify the exact matching agent and contain no `tools` field.
 
 The source command frontmatter and installed `.agent.md` frontmatter must be
@@ -126,7 +126,7 @@ Every source command and generated agent has this common semantic projection:
 | `tools` | Exact row in the matrix below, with no duplicate/extra/missing value. |
 | `agents` | Exact row in the matrix below; `[Explore]` or `[]`, never `*`. |
 | `hooks.SessionStart` | One exact `EntryHook` below. |
-| `handoffs` | Exact ordered outgoing rows in the graph below; omitted only for Stages 31, 40, 51, and 60. |
+| `handoffs` | Exact ordered outgoing rows in the graph below; omitted only for Stages 09, 31, 40, 51, and 60. |
 | `infer` | Absent. |
 | `model` | Absent. |
 
@@ -267,8 +267,7 @@ handoff-level `model` field is absent. No other edge is allowed.
 | `speckit.engloop.08-unittest` | `speckit.engloop.05-model` | Model intended gap | Model the authoritative but functionally unreached behavior identified above before regenerating tests. | `false` | absent |
 | `speckit.engloop.08-unittest` | `speckit.engloop.07-validate` | Revalidate deletion | Rerun the complete generated functional validation after the coherent residue deletion set above. | `false` | absent |
 | `speckit.engloop.08-unittest` | `speckit.engloop.09-debugger-walk-thru` | Walk through review code in debugger | Use the current readiness PASS and exact base-to-HEAD diff to prepare an engineer-led debugger walkthrough ledger for every changed executable code chunk. | `false` | absent |
-| `speckit.engloop.09-debugger-walk-thru` | `speckit.engloop.10-codereview-prepare` | Prepare code review | Use the current fully attested debugger-walkthrough ledger above to minimize and prepare the exact same HEAD for code review. | `false` | absent |
-| `speckit.engloop.10-codereview-prepare` | `speckit.engloop.08-unittest` | Recompute readiness after review preparation | Re-run direct evidence and the sole readiness gate after the code-review preparation changes above; then repeat Stage 09 debugger walkthrough for the new HEAD. | `false` | absent |
+| `speckit.engloop.10-codereview-prepare` | `speckit.engloop.08-unittest` | Recompute readiness after review preparation | Re-run direct evidence and the sole readiness gate after the code-review preparation changes above; a new Stage 09 debugger walkthrough is recommended but not required. | `false` | absent |
 | `speckit.engloop.20-incident` | `speckit.engloop.21-postmortem` | Analyze stabilized incidents | Analyze the selected stabilized incident set above and produce source learnings and repair items. | `false` | absent |
 | `speckit.engloop.21-postmortem` | `speckit.engloop.22-repair` | Repair selected item | Route the selected RPI above through Stage 04 and all applicable Stage 05–08 gates. | `false` | absent |
 | `speckit.engloop.21-postmortem` | `speckit.engloop.31-learnings-pyramid` | Condense learnings when capacity exists | When spare stewardship capacity exists, condense the accepted learning backlog above and validate retrieval. | `false` | absent |
@@ -278,11 +277,11 @@ handoff-level `model` field is absent. No other edge is allowed.
 | `speckit.engloop.30-refactor-scan` | `speckit.engloop.04-refactor` | Implement selected refactor | Route the selected refactor above through the governed SPEC implementation loop. | `false` | absent |
 | `speckit.engloop.50-overlay-pack` | `speckit.engloop.01-northstar` | Define local direction | Define the overlay-local North Star after the private overlay verifies cleanly. | `false` | absent |
 
-Stages 31, 40, 51, and 60 have no `handoffs` field and are natural terminals.
+Stages 09, 31, 40, 51, and 60 have no `handoffs` field and are natural terminals.
 Stage 09 may be invoked after Stage 02 and repeatedly at later HEADs. Earlier DBG ledgers
-remain historical observations but do not satisfy Stage 10 after HEAD changes. Stage 10
-requires a final complete current-HEAD DBG ledger plus the generic current readiness record
-emitted by Stage 08.
+remain historical observations. Stage 09 is recommended but never gates Stage 10; missing,
+stale, pending, blocked, or incomplete DBG evidence is advisory. Stage 10 mechanically
+requires only the generic current readiness record emitted by Stage 08.
 Stages 08 and 30 retain their listed conditional branch buttons even though PASS/no-work
 can terminate naturally without a click. In particular, there is no 08→20, 08→30, or
 08→31 edge, and no numeric adjacency creates an implicit edge.
@@ -336,7 +335,7 @@ After the preservation experiment passes, a clean package test MUST:
 1. parse the source manifest and assert the exact ordered set;
 2. assert every declared file exists and every undeclared command file is absent;
 3. validate all 19 files against the command-loop shape, common header, exact
-   tool/subagent matrix, entry hook/body gate, and 28-edge handoff table;
+   tool/subagent matrix, entry hook/body gate, and 27-edge handoff table;
 4. build the release archive and inspect its payload for the same set;
 5. initialize a disposable single-root Spec Kit fixture;
 6. create its sole tracked `.engloop/config.json` contract and prove forbidden roots
@@ -368,9 +367,9 @@ it does not install a development source as an alternate success path.
 
 ## Version rule
 
-The current command-surface target is 1.11.0. “Ordered EngLoop v2” identifies this workflow
+The current command-surface target is 1.11.3. “Ordered EngLoop v2” identifies this workflow
 generation only and provides no authority for a 2.x product release. Bundle, extension,
-tool, catalog, archive names, and release notes MUST agree on 1.11.0. Catalog SHA-256
+tool, catalog, archive names, and release notes MUST agree on 1.11.3. Catalog SHA-256
 values are computed from final immutable artifacts. Rebuilding different bits under
-1.11.0 is forbidden. Any 2.x value is a release-blocking error unless a later explicit
+1.11.3 is forbidden. Any 2.x value is a release-blocking error unless a later explicit
 maintainer decision supersedes this contract.
