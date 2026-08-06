@@ -3,6 +3,15 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.1] - 2026-08-06
+
+### Fixed
+
+- Renamed internal PowerShell helpers to approved `ConvertTo-*` verbs so the shipped
+  token-efficiency scripts load without VS Code/PowerShell analyzer diagnostics.
+- Made overlay removal retry only transient Windows sharing violations and record each
+  child move immediately, so a mid-directory lock remains fully rollback-safe.
+
 ## [1.13.0] - 2026-08-05
 
 ### Added

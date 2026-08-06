@@ -57,7 +57,7 @@ function Get-RepositoryRoot {
     return $resolved
 }
 
-function Normalize-PolicyPath {
+function ConvertTo-NormalizedPolicyPath {
     param([Parameter(Mandatory = $true)][string]$Path)
     $normalized = $Path.Replace('\', '/').Trim()
     if ([string]::IsNullOrWhiteSpace($normalized) -or
@@ -76,7 +76,7 @@ function Normalize-PolicyPath {
 
 function Resolve-PolicyPath {
     param([string]$Root, [string]$RelativePath, [bool]$AllowMissing = $true)
-    $relative = Normalize-PolicyPath $RelativePath
+    $relative = ConvertTo-NormalizedPolicyPath $RelativePath
     $full = [IO.Path]::GetFullPath((Join-Path $Root $relative))
     $boundary = $Root.TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
     if (-not $full.StartsWith($boundary, [StringComparison]::OrdinalIgnoreCase)) {
@@ -110,7 +110,7 @@ function Get-GitHead {
 
 function Get-GitStatusDigest {
     param([string]$Root, [string[]]$ExcludedPaths = @())
-    $exclusions = @($ExcludedPaths | ForEach-Object { (Normalize-PolicyPath $_).ToLowerInvariant() })
+    $exclusions = @($ExcludedPaths | ForEach-Object { (ConvertTo-NormalizedPolicyPath $_).ToLowerInvariant() })
     $lines = @(& git -C $Root status --porcelain=v1 --untracked-files=all 2>$null)
     if ($LASTEXITCODE -ne 0) { throw 'git-status-unavailable' }
     $kept = foreach ($line in $lines) {
@@ -149,7 +149,7 @@ function Test-AnalysisObject {
         if (-not (Test-RepairId $id) -or -not $ids.Add($id)) { throw "analysis-repair-id-invalid:$id" }
         if ([string]::IsNullOrWhiteSpace([string]$repair.type) -or [string]::IsNullOrWhiteSpace([string]$repair.summary)) { throw "analysis-repair-description-invalid:$id" }
         if (@($repair.allowedPaths).Count -eq 0) { throw "analysis-repair-paths-missing:$id" }
-        foreach ($path in @($repair.allowedPaths) + @($repair.prohibitedPaths)) { [void](Normalize-PolicyPath ([string]$path)) }
+        foreach ($path in @($repair.allowedPaths) + @($repair.prohibitedPaths)) { [void](ConvertTo-NormalizedPolicyPath ([string]$path)) }
         foreach ($prerequisite in @($repair.prerequisites)) {
             if ([string]$prerequisite.id -notmatch '^TE-P[0-9]{3}$' -or [string]$prerequisite.status -notin @('resolved', 'unresolved') -or [string]::IsNullOrWhiteSpace([string]$prerequisite.evidence)) {
                 throw "analysis-prerequisite-invalid:$id"
@@ -221,18 +221,18 @@ function Convert-ToolPathToRelative {
         if (-not $full.StartsWith($boundary, [StringComparison]::OrdinalIgnoreCase)) { throw 'tool-path-outside-root' }
         return [IO.Path]::GetRelativePath($Root, $full).Replace('\', '/')
     }
-    return Normalize-PolicyPath $value
+    return ConvertTo-NormalizedPolicyPath $value
 }
 
 function Test-PathAllowed {
     param([string]$Path, [string[]]$Allowed, [string[]]$Prohibited)
-    $candidate = (Normalize-PolicyPath $Path).ToLowerInvariant()
+    $candidate = (ConvertTo-NormalizedPolicyPath $Path).ToLowerInvariant()
     foreach ($blocked in $Prohibited) {
-        $policy = (Normalize-PolicyPath $blocked).ToLowerInvariant()
+        $policy = (ConvertTo-NormalizedPolicyPath $blocked).ToLowerInvariant()
         if ($candidate -eq $policy -or ($policy.EndsWith('/') -and $candidate.StartsWith($policy, [StringComparison]::Ordinal))) { return $false }
     }
     foreach ($entry in $Allowed) {
-        $policy = (Normalize-PolicyPath $entry).ToLowerInvariant()
+        $policy = (ConvertTo-NormalizedPolicyPath $entry).ToLowerInvariant()
         if ($candidate -eq $policy -or ($policy.EndsWith('/') -and $candidate.StartsWith($policy, [StringComparison]::Ordinal))) { return $true }
     }
     return $false

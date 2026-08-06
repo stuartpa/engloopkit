@@ -52,7 +52,7 @@ function Get-Application {
     return Get-Command $Name -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
 }
 
-function Quote-CmdArgument {
+function ConvertTo-CmdArgument {
     param([string]$Value)
     if ($Value -notmatch '[\s"]') { return $Value }
     return '"' + ($Value.Replace('"', '\"')) + '"'
@@ -73,7 +73,7 @@ function Invoke-BoundedProcess {
         $start.ArgumentList.Add('/d')
         $start.ArgumentList.Add('/s')
         $start.ArgumentList.Add('/c')
-        $line = (Quote-CmdArgument $FilePath) + ' ' + (($Arguments | ForEach-Object { Quote-CmdArgument $_ }) -join ' ')
+        $line = (ConvertTo-CmdArgument $FilePath) + ' ' + (($Arguments | ForEach-Object { ConvertTo-CmdArgument $_ }) -join ' ')
         $start.ArgumentList.Add($line.Trim())
     }
     else {

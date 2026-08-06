@@ -271,26 +271,51 @@ public static class OverlayCommands
                 {
                     var target = Path.Combine(destination, Path.GetRelativePath(source, file));
                     Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                    File.Move(file, target);
+                    MoveFileWithSharingRetry(file, target);
+                    moved.Add((file, target, false));
                 }
                 foreach (var childDirectory in Directory.GetDirectories(source, "*", SearchOption.AllDirectories).OrderByDescending(path => path.Length))
                 {
                     Directory.Delete(childDirectory);
                 }
                 Directory.Delete(source);
+                moved.Add((source, destination, true));
             }
             else
             {
                 if (!File.Exists(source)) return;
                 Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-                File.Move(source, destination);
+                MoveFileWithSharingRetry(source, destination);
+                moved.Add((source, destination, false));
             }
-            moved.Add((source, destination, directory));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             throw new IOException($"overlay-remove-move-failed:path={Path.GetRelativePath(Path.GetDirectoryName(source) ?? source, source)};operation={(directory ? "directory-children-first" : "file")};exception={ex.GetType().Name}", ex);
         }
+    }
+
+    private static void MoveFileWithSharingRetry(string source, string destination)
+    {
+        var delays = new[] { 50, 100, 200, 400 };
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                File.Move(source, destination);
+                return;
+            }
+            catch (IOException ex) when (IsSharingViolation(ex) && attempt < delays.Length)
+            {
+                Thread.Sleep(delays[attempt]);
+            }
+        }
+    }
+
+    private static bool IsSharingViolation(IOException exception)
+    {
+        var errorCode = exception.HResult & 0xFFFF;
+        return errorCode is 32 or 33;
     }
 
     private static void RestoreMovedPaths(List<(string Source, string Quarantine, bool Directory)> moved)

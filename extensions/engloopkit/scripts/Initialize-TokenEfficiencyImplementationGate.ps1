@@ -48,7 +48,7 @@ try {
         throw 'Agent 31 approval must contain only explicit TE-Rddd IDs.'
     }
 
-    $analysisRelative = Normalize-PolicyPath $analysisArgument
+    $analysisRelative = ConvertTo-NormalizedPolicyPath $analysisArgument
     if ($analysisRelative -notmatch '^\.engloop/evidence/token-efficiency-analysis-[A-Za-z0-9._-]+\.json$') {
         throw 'Agent 31 analysis path is outside the governed evidence contract.'
     }
@@ -79,8 +79,8 @@ try {
     $allowedCommands = New-Object System.Collections.Generic.HashSet[string]([StringComparer]::Ordinal)
     foreach ($id in $approved) {
         $repair = $repairMap[$id]
-        foreach ($path in @($repair.allowedPaths)) { [void]$allowedPaths.Add((Normalize-PolicyPath ([string]$path))) }
-        foreach ($path in @($repair.prohibitedPaths)) { [void]$prohibitedPaths.Add((Normalize-PolicyPath ([string]$path))) }
+        foreach ($path in @($repair.allowedPaths)) { [void]$allowedPaths.Add((ConvertTo-NormalizedPolicyPath ([string]$path))) }
+        foreach ($path in @($repair.prohibitedPaths)) { [void]$prohibitedPaths.Add((ConvertTo-NormalizedPolicyPath ([string]$path))) }
         foreach ($step in @($repair.validationPlan)) { [void]$allowedCommands.Add((@($step.command) -join ' ')) }
     }
 

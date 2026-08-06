@@ -10,7 +10,7 @@ $ErrorActionPreference = 'Stop'
 try {
     $hook = [pscustomobject]@{ cwd = $RepositoryRoot }
     $root = Get-RepositoryRoot $hook $RepositoryRoot
-    $excluded = if ([string]::IsNullOrWhiteSpace($ExcludePath)) { @() } else { @((Normalize-PolicyPath $ExcludePath)) }
+    $excluded = if ([string]::IsNullOrWhiteSpace($ExcludePath)) { @() } else { @((ConvertTo-NormalizedPolicyPath $ExcludePath)) }
     [ordered]@{
         schemaVersion = '1.0'
         head = Get-GitHead $root

@@ -505,6 +505,40 @@ public sealed class OverlayCommandPrivateTests : IDisposable
         Assert.Contains("operation=directory-children-first", directoryError.Message);
     }
 
+    [Fact]
+    public async Task MoveToQuarantine_retriesSharingViolation_andRecordsRollbackImmediately()
+    {
+        var sourceDirectory = Path.Combine(_root, "sharing-source");
+        var destinationDirectory = Path.Combine(_root, ".git", "sharing-destination");
+        Directory.CreateDirectory(sourceDirectory);
+        var unlockedPath = Path.Combine(sourceDirectory, "a-unlocked.txt");
+        var lockedPath = Path.Combine(sourceDirectory, "z-locked.txt");
+        File.WriteAllText(unlockedPath, "unlocked");
+        File.WriteAllText(lockedPath, "locked");
+
+        var stream = new FileStream(lockedPath, FileMode.Open, FileAccess.Read, FileShare.None);
+        var release = Task.Run(async () =>
+        {
+            await Task.Delay(175);
+            stream.Dispose();
+        });
+        var moved = new List<(string Source, string Quarantine, bool Directory)>();
+
+        Invoke<object?>("MoveToQuarantine", sourceDirectory, destinationDirectory, true, moved);
+        await release;
+
+        Assert.False(Directory.Exists(sourceDirectory));
+        Assert.True(File.Exists(Path.Combine(destinationDirectory, "a-unlocked.txt")));
+        Assert.True(File.Exists(Path.Combine(destinationDirectory, "z-locked.txt")));
+        Assert.Contains(moved, item => item.Source == unlockedPath && !item.Directory);
+        Assert.Contains(moved, item => item.Source == lockedPath && !item.Directory);
+        Assert.Contains(moved, item => item.Source == sourceDirectory && item.Directory);
+
+        Invoke<object?>("RestoreMovedPaths", moved);
+        Assert.Equal("unlocked", File.ReadAllText(unlockedPath));
+        Assert.Equal("locked", File.ReadAllText(lockedPath));
+    }
+
     private static T Invoke<T>(string name, params object[] args)
     {
         var method = typeof(OverlayCommands).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Static)
