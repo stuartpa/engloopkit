@@ -1,4 +1,6 @@
 {
+    "chat.useCustomAgentHooks": true,
+    "github.copilot.chat.localIndex.enabled": true,
     "chat.promptFilesRecommendations": {
         "speckit.constitution": true,
         "speckit.specify": true,

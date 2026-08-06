@@ -7,7 +7,7 @@ release identity remain **`engloopkit`**.
 
 > **Versioning clarification:** “Ordered EngLoop v2” is the *workflow generation /
 > specification name*, not a SemVer major release. The product remains on the **1.x**
-> maturity runway: this package is **v1.12.0**; “v2” remains workflow terminology only,
+> maturity runway: this package is **v1.13.0**; “v2” remains workflow terminology only,
 > not v2.0.
 
 ## Ordered command lanes
@@ -18,12 +18,13 @@ release identity remain **`engloopkit`**.
 | Review advisory | `09-debugger-walk-thru` | Prepare and track a recommended engineer-led walkthrough without blocking Stage 10. |
 | Review | `10-codereview-prepare` | Minimize and validate the current PR after current Stage 08 readiness. |
 | Operations | `20-incident` → `22-repair` | Stabilize a real disruption, analyze stabilized incident sets, and route permanent repair back through delivery gates. |
-| Stewardship | `30-refactor-scan`, `31-learnings-pyramid` | Select one evidence-backed evolution decision or condense accepted source learnings when capacity exists. |
-| Session memory | `40-pomodoro-create` | Capture a concise note about the just-completed work session. |
-| Local utility | `50-overlay-pack`, `51-overlay-remove` | Pack or completely remove manifest-owned local overlay state. |
-| Publication | `60-six-pager-create` | Create a six-page narrative Markdown memo and validated Word document. |
-| Presentation | `61-powerpnt-create` | Create an evidence-backed Markdown-first PPTX with collision-checked architecture/model/test-path graphics. |
-| Publication | `62-academic-paper-create` | Create an evidence-backed systems research paper in Markdown/BibTeX and validated PDF. |
+| Token efficiency | `30-token-efficiency-analyze` → `31-token-efficiency-implement` | Diagnose VS Code Copilot chat speed/context waste, then implement only approved repairs. |
+| Stewardship | `40-refactor-scan`, `41-learnings-pyramid` | Select one evidence-backed evolution decision or condense accepted source learnings when capacity exists. |
+| Session memory | `50-pomodoro-create` | Capture a concise note about the just-completed work session. |
+| Local utility | `60-overlay-pack`, `61-overlay-remove` | Pack or completely remove manifest-owned local overlay state. |
+| Publication | `70-six-pager-create` | Create a six-page narrative Markdown memo and validated Word document. |
+| Presentation | `71-powerpnt-create` | Create an evidence-backed Markdown-first PPTX with collision-checked architecture/model/test-path graphics. |
+| Publication | `72-academic-paper-create` | Create an evidence-backed systems research paper in Markdown/BibTeX and validated PDF. |
 
 Every command is a Trigger · Goal · Actions · Verification · Memory loop with a
 versioned entry validator, exact least-privilege tools, and review-first handoffs.
@@ -34,7 +35,7 @@ Install the released extension archive through Spec Kit after installing the mat
 root-local `engloopkit` .NET tool manifest:
 
 ```powershell
-specify extension add engloop --from <release-dir>/engloopkit-extension-1.12.0.zip
+specify extension add engloop --from <release-dir>/engloopkit-extension-1.13.0.zip
 ```
 
 The selected root must have exactly one tracked `.engloop/` root, root `NORTHSTAR.md`,

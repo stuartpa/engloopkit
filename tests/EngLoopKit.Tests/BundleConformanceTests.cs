@@ -26,14 +26,16 @@ public sealed class BundleConformanceTests
         "speckit.engloop.20-incident",
         "speckit.engloop.21-postmortem",
         "speckit.engloop.22-repair",
-        "speckit.engloop.30-refactor-scan",
-        "speckit.engloop.31-learnings-pyramid",
-        "speckit.engloop.40-pomodoro-create",
-        "speckit.engloop.50-overlay-pack",
-        "speckit.engloop.51-overlay-remove",
-        "speckit.engloop.60-six-pager-create",
-        "speckit.engloop.61-powerpnt-create",
-        "speckit.engloop.62-academic-paper-create",
+        "speckit.engloop.30-token-efficiency-analyze",
+        "speckit.engloop.31-token-efficiency-implement",
+        "speckit.engloop.40-refactor-scan",
+        "speckit.engloop.41-learnings-pyramid",
+        "speckit.engloop.50-pomodoro-create",
+        "speckit.engloop.60-overlay-pack",
+        "speckit.engloop.61-overlay-remove",
+        "speckit.engloop.70-six-pager-create",
+        "speckit.engloop.71-powerpnt-create",
+        "speckit.engloop.72-academic-paper-create",
     ];
 
     [Fact]
@@ -44,16 +46,16 @@ public sealed class BundleConformanceTests
         using var catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "catalog.json")));
 
         Assert.Contains("id: \"engloop\"", extension);
-        Assert.Contains("version: \"1.12.0\"", extension);
+        Assert.Contains("version: \"1.13.0\"", extension);
         Assert.Contains("id: \"engloopkit\"", bundle);
-        Assert.Contains("version: \"1.12.0\"", bundle);
+        Assert.Contains("version: \"1.13.0\"", bundle);
         Assert.Equal("engloop", catalog.RootElement.GetProperty("extensions")[0].GetProperty("id").GetString());
-        Assert.Equal("1.12.0", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
-        Assert.Equal(21, catalog.RootElement.GetProperty("extensions")[0].GetProperty("provides").GetProperty("commands").GetInt32());
+        Assert.Equal("1.13.0", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
+        Assert.Equal(23, catalog.RootElement.GetProperty("extensions")[0].GetProperty("provides").GetProperty("commands").GetInt32());
     }
 
     [Fact]
-    public void Extension_declaresExactOrderedTwentyOneCommandSurface()
+    public void Extension_declaresExactOrderedTwentyThreeCommandSurface()
     {
         var manifest = File.ReadAllText(Path.Combine(ExtensionRoot, "extension.yml"));
         var ids = Regex.Matches(manifest, @"^\s*-\s*name:\s*""?(speckit\.engloop\.[\w-]+)""?", RegexOptions.Multiline)
@@ -95,7 +97,7 @@ public sealed class BundleConformanceTests
     [Fact]
     public void OverlayPackCommand_describesPrivateLocalOnlyContract()
     {
-        var command = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.50-overlay-pack.md"));
+        var command = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.60-overlay-pack.md"));
         Assert.Contains(".git/info/exclude", command);
         Assert.Contains("overlay pack", command);
         Assert.Contains("unencrypted", command);
@@ -120,16 +122,67 @@ public sealed class BundleConformanceTests
         Assert.Contains("Do not reject Stage 10", review, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Stage 09 is recommended but non-blocking", review, StringComparison.OrdinalIgnoreCase);
 
-        var pom = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.40-pomodoro-create.md"));
+        var analysis = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.30-token-efficiency-analyze.md"));
+        Assert.Contains("Non-negotiable read-only boundary", analysis, StringComparison.Ordinal);
+        Assert.Contains("copilot_sessionStoreSql", analysis, StringComparison.Ordinal);
+        Assert.Contains("Aggregate each one-to-many table independently", analysis, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("polling-duplication", analysis, StringComparison.Ordinal);
+        Assert.Contains("token-efficiency-analysis-", analysis, StringComparison.Ordinal);
+        Assert.Contains("nothing was implemented", analysis, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(".specify/scripts/", File.ReadAllText(Path.Combine(Root, ".github", "agents", "speckit.engloop.30-token-efficiency-analyze.agent.md")), StringComparison.OrdinalIgnoreCase);
+
+        var implementation = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.31-token-efficiency-implement.md"));
+        Assert.Contains("approved repair-ID list", implementation, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("corepack pnpm --version", implementation, StringComparison.Ordinal);
+        Assert.Contains("never disable signature", implementation, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("package-lock.json", implementation, StringComparison.Ordinal);
+        Assert.Contains("open-standard Agent Skill", implementation, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("focused validation", implementation, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Never commit or push", implementation, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(".specify/scripts/", File.ReadAllText(Path.Combine(Root, ".github", "agents", "speckit.engloop.31-token-efficiency-implement.agent.md")), StringComparison.OrdinalIgnoreCase);
+
+        var analysisTemplate = File.ReadAllText(Path.Combine(ExtensionRoot, "templates", "TOKEN-EFFICIENCY-ANALYSIS-template.json"));
+        Assert.Contains("token-efficiency-analysis", analysisTemplate, StringComparison.Ordinal);
+        Assert.Contains("dataAvailability", analysisTemplate, StringComparison.Ordinal);
+        Assert.Contains("recommendedRepoRepairs", analysisTemplate, StringComparison.Ordinal);
+
+        var implementationTemplate = File.ReadAllText(Path.Combine(ExtensionRoot, "templates", "TOKEN-EFFICIENCY-IMPLEMENTATION-template.json"));
+        Assert.Contains("approvedRepairIds", implementationTemplate, StringComparison.Ordinal);
+        Assert.Contains("unavailableToolDecisions", implementationTemplate, StringComparison.Ordinal);
+
+        var skillTemplate = File.ReadAllText(Path.Combine(ExtensionRoot, "templates", "TOKEN-EFFICIENCY-SKILL-template.md"));
+        Assert.Contains("scripts/", skillTemplate, StringComparison.Ordinal);
+        Assert.Contains("references/", skillTemplate, StringComparison.Ordinal);
+        Assert.Contains("progressively", skillTemplate, StringComparison.OrdinalIgnoreCase);
+
+        var preflight = File.ReadAllText(Path.Combine(ExtensionRoot, "scripts", "Resolve-DeclaredToolchain.ps1"));
+        Assert.Contains("corepack-pnpm-available", preflight, StringComparison.Ordinal);
+        Assert.Contains("integrityVerificationBypassAllowed", preflight, StringComparison.Ordinal);
+        Assert.DoesNotContain("npm install", preflight, StringComparison.OrdinalIgnoreCase);
+
+        using var analysisSchema = JsonDocument.Parse(File.ReadAllText(Path.Combine(ExtensionRoot, "schemas", "token-efficiency-analysis.schema.json")));
+        Assert.Equal("token-efficiency-analysis", analysisSchema.RootElement.GetProperty("properties").GetProperty("artifactType").GetProperty("const").GetString());
+        Assert.True(analysisSchema.RootElement.GetProperty("$defs").TryGetProperty("repoRepair", out _));
+
+        using var implementationSchema = JsonDocument.Parse(File.ReadAllText(Path.Combine(ExtensionRoot, "schemas", "token-efficiency-implementation.schema.json")));
+        Assert.Contains(implementationSchema.RootElement.GetProperty("required").EnumerateArray(), value => value.GetString() == "outcome");
+        Assert.Contains(implementationSchema.RootElement.GetProperty("required").EnumerateArray(), value => value.GetString() == "repairStatus");
+
+        foreach (var trustedScript in new[] { "TokenEfficiencyPolicy.ps1", "Guard-TokenEfficiencyAgent.ps1", "Initialize-TokenEfficiencyImplementationGate.ps1", "Get-TokenEfficiencySourceState.ps1" })
+        {
+            Assert.True(File.Exists(Path.Combine(ExtensionRoot, "scripts", trustedScript)), trustedScript);
+        }
+
+        var pom = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.50-pomodoro-create.md"));
         Assert.Contains("POM0000", pom, StringComparison.Ordinal);
         Assert.Contains("30–60", pom, StringComparison.Ordinal);
         Assert.Contains("POM<NNNN>-<brief-kebab-description>.md", pom, StringComparison.Ordinal);
 
-        var remove = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.51-overlay-remove.md"));
+        var remove = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.61-overlay-remove.md"));
         Assert.Contains("REMOVE-OVERLAY:<repository-id>@<base-revision>", remove, StringComparison.Ordinal);
         Assert.Contains("restore", remove, StringComparison.OrdinalIgnoreCase);
 
-        var sixPager = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.60-six-pager-create.md"));
+        var sixPager = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.70-six-pager-create.md"));
         Assert.Contains("exactly six rendered pages", sixPager, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Introduction", sixPager, StringComparison.Ordinal);
         Assert.Contains("Goals", sixPager, StringComparison.Ordinal);
@@ -140,7 +193,7 @@ public sealed class BundleConformanceTests
         Assert.Contains("Pandoc", sixPager, StringComparison.Ordinal);
         Assert.Contains("DOCX", sixPager, StringComparison.Ordinal);
 
-        var presentation = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.61-powerpnt-create.md"));
+        var presentation = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.71-powerpnt-create.md"));
         Assert.Contains("North Star", presentation, StringComparison.Ordinal);
         Assert.Contains("boxes-and-lines", presentation, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("7 +/- 2 nodes", presentation, StringComparison.Ordinal);
@@ -153,7 +206,7 @@ public sealed class BundleConformanceTests
         Assert.Contains("Export every generated graph slide to PNG", presentation, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Every graph connector label is collision-free", presentation, StringComparison.OrdinalIgnoreCase);
 
-        var paper = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.62-academic-paper-create.md"));
+        var paper = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.72-academic-paper-create.md"));
         Assert.Contains("High-level architecture", paper, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Evaluation methodology", paper, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("**Results.**", paper, StringComparison.Ordinal);

@@ -62,10 +62,11 @@ public static class OverlayCommands
         "speckit.engloop.07-validate", "speckit.engloop.08-unittest", "speckit.engloop.09-debugger-walk-thru",
         "speckit.engloop.10-codereview-prepare",
         "speckit.engloop.20-incident", "speckit.engloop.21-postmortem", "speckit.engloop.22-repair",
-        "speckit.engloop.30-refactor-scan", "speckit.engloop.31-learnings-pyramid",
-        "speckit.engloop.40-pomodoro-create", "speckit.engloop.50-overlay-pack", "speckit.engloop.51-overlay-remove",
-        "speckit.engloop.60-six-pager-create", "speckit.engloop.61-powerpnt-create",
-        "speckit.engloop.62-academic-paper-create",
+        "speckit.engloop.30-token-efficiency-analyze", "speckit.engloop.31-token-efficiency-implement",
+        "speckit.engloop.40-refactor-scan", "speckit.engloop.41-learnings-pyramid",
+        "speckit.engloop.50-pomodoro-create", "speckit.engloop.60-overlay-pack", "speckit.engloop.61-overlay-remove",
+        "speckit.engloop.70-six-pager-create", "speckit.engloop.71-powerpnt-create",
+        "speckit.engloop.72-academic-paper-create",
     ];
 
     private static string NormalizeHostMode(string mode)
@@ -1182,7 +1183,7 @@ HOOK_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
     private static void WriteInitialOverlayFiles(string root, string productId)
     {
         File.WriteAllText(Path.Combine(root, "NORTHSTAR.md"), "# Northstar\n\n- **Status:** overlay-local draft\n- **Product ID:** " + productId + "\n\nUse `/speckit.engloop.01-northstar` to establish evidence-backed direction.\n");
-        File.WriteAllText(Path.Combine(root, "LEARNINGS.md"), "# Learnings\n\n- **Status:** overlay-local draft\n\nUse `/speckit.engloop.31-learnings-pyramid` after accepted source learnings exist.\n");
+        File.WriteAllText(Path.Combine(root, "LEARNINGS.md"), "# Learnings\n\n- **Status:** overlay-local draft\n\nUse `/speckit.engloop.41-learnings-pyramid` after accepted source learnings exist.\n");
 
         var config = new
         {
@@ -1298,7 +1299,9 @@ HOOK_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 
     private static void RejectSecretLikePaths(IEnumerable<OverlayFile> files)
     {
-        var secret = new System.Text.RegularExpressions.Regex(@"(^|/)(\.env(?:\..*)?|.*\.(pem|key|pfx|p12)|.*(credential|secret|token).*)$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var secret = new System.Text.RegularExpressions.Regex(
+            @"(^|/)(\.env(?:\..*)?|.*\.(pem|key|pfx|p12)|(?:.*[-_.])?(credential|credentials|secret|secrets)(?:[-_.].*)?|(?:.*[-_.])?(token|tokens)(?:\.(json|ya?ml|txt|config|cfg|xml|ini|env)|$))$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         foreach (var file in files)
         {
             if (secret.IsMatch(file.RelativePath))

@@ -1,6 +1,6 @@
 # Academic paper artifacts
 
-Stage 62 creates original evidence-backed systems research papers.
+Stage 72 creates original evidence-backed systems research papers.
 
 - Reserve the next `PAP` number in `../numbering-registry.md` before creating artifacts.
 - Keep authoritative Markdown/BibTeX, generated PDF, figure/plot source and data, experiment provenance, and validation together.

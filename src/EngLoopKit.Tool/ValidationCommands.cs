@@ -23,14 +23,16 @@ public static class ValidationCommands
         "speckit.engloop.20-incident",
         "speckit.engloop.21-postmortem",
         "speckit.engloop.22-repair",
-        "speckit.engloop.30-refactor-scan",
-        "speckit.engloop.31-learnings-pyramid",
-        "speckit.engloop.40-pomodoro-create",
-        "speckit.engloop.50-overlay-pack",
-        "speckit.engloop.51-overlay-remove",
-        "speckit.engloop.60-six-pager-create",
-        "speckit.engloop.61-powerpnt-create",
-        "speckit.engloop.62-academic-paper-create",
+        "speckit.engloop.30-token-efficiency-analyze",
+        "speckit.engloop.31-token-efficiency-implement",
+        "speckit.engloop.40-refactor-scan",
+        "speckit.engloop.41-learnings-pyramid",
+        "speckit.engloop.50-pomodoro-create",
+        "speckit.engloop.60-overlay-pack",
+        "speckit.engloop.61-overlay-remove",
+        "speckit.engloop.70-six-pager-create",
+        "speckit.engloop.71-powerpnt-create",
+        "speckit.engloop.72-academic-paper-create",
     ];
 
     private static readonly Dictionary<string, string[]> ExpectedTools = new(StringComparer.Ordinal)
@@ -48,14 +50,16 @@ public static class ValidationCommands
         ["speckit.engloop.20-incident"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.21-postmortem"] = ["read", "search", "edit", "execute", "agent"],
         ["speckit.engloop.22-repair"] = ["read", "search", "edit", "execute"],
-        ["speckit.engloop.30-refactor-scan"] = ["read", "search", "edit", "execute", "agent"],
-        ["speckit.engloop.31-learnings-pyramid"] = ["read", "search", "edit", "execute", "agent"],
-        ["speckit.engloop.40-pomodoro-create"] = ["read", "search", "edit", "execute"],
-        ["speckit.engloop.50-overlay-pack"] = ["read", "search", "edit", "execute"],
-        ["speckit.engloop.51-overlay-remove"] = ["read", "search", "edit", "execute"],
-        ["speckit.engloop.60-six-pager-create"] = ["read", "search", "edit", "execute"],
-        ["speckit.engloop.61-powerpnt-create"] = ["read", "search", "edit", "execute"],
-        ["speckit.engloop.62-academic-paper-create"] = ["read", "search", "edit", "execute", "web"],
+        ["speckit.engloop.30-token-efficiency-analyze"] = ["read", "search", "edit", "execute", "agent", "copilot_sessionStoreSql"],
+        ["speckit.engloop.31-token-efficiency-implement"] = ["read", "search", "edit", "execute", "agent"],
+        ["speckit.engloop.40-refactor-scan"] = ["read", "search", "edit", "execute", "agent"],
+        ["speckit.engloop.41-learnings-pyramid"] = ["read", "search", "edit", "execute", "agent"],
+        ["speckit.engloop.50-pomodoro-create"] = ["read", "search", "edit", "execute"],
+        ["speckit.engloop.60-overlay-pack"] = ["read", "search", "edit", "execute"],
+        ["speckit.engloop.61-overlay-remove"] = ["read", "search", "edit", "execute"],
+        ["speckit.engloop.70-six-pager-create"] = ["read", "search", "edit", "execute"],
+        ["speckit.engloop.71-powerpnt-create"] = ["read", "search", "edit", "execute"],
+        ["speckit.engloop.72-academic-paper-create"] = ["read", "search", "edit", "execute", "web"],
     };
 
     private static readonly Dictionary<string, string[]> ExpectedAgents = new(StringComparer.Ordinal)
@@ -73,14 +77,43 @@ public static class ValidationCommands
         ["speckit.engloop.20-incident"] = [],
         ["speckit.engloop.21-postmortem"] = ["Explore"],
         ["speckit.engloop.22-repair"] = [],
-        ["speckit.engloop.30-refactor-scan"] = ["Explore"],
-        ["speckit.engloop.31-learnings-pyramid"] = ["Explore"],
-        ["speckit.engloop.40-pomodoro-create"] = [],
-        ["speckit.engloop.50-overlay-pack"] = [],
-        ["speckit.engloop.51-overlay-remove"] = [],
-        ["speckit.engloop.60-six-pager-create"] = [],
-        ["speckit.engloop.61-powerpnt-create"] = [],
-        ["speckit.engloop.62-academic-paper-create"] = [],
+        ["speckit.engloop.30-token-efficiency-analyze"] = ["Explore"],
+        ["speckit.engloop.31-token-efficiency-implement"] = ["Explore"],
+        ["speckit.engloop.40-refactor-scan"] = ["Explore"],
+        ["speckit.engloop.41-learnings-pyramid"] = ["Explore"],
+        ["speckit.engloop.50-pomodoro-create"] = [],
+        ["speckit.engloop.60-overlay-pack"] = [],
+        ["speckit.engloop.61-overlay-remove"] = [],
+        ["speckit.engloop.70-six-pager-create"] = [],
+        ["speckit.engloop.71-powerpnt-create"] = [],
+        ["speckit.engloop.72-academic-paper-create"] = [],
+    };
+
+    private static readonly Dictionary<string, string[]> ExpectedHandoffTargets = new(StringComparer.Ordinal)
+    {
+        ["speckit.engloop.01-northstar"] = ["speckit.engloop.02-scaffold", "speckit.engloop.03-architect", "speckit.engloop.04-refactor"],
+        ["speckit.engloop.02-scaffold"] = ["speckit.engloop.09-debugger-walk-thru", "speckit.engloop.03-architect"],
+        ["speckit.engloop.03-architect"] = ["speckit.engloop.04-refactor"],
+        ["speckit.engloop.04-refactor"] = ["speckit.engloop.05-model"],
+        ["speckit.engloop.05-model"] = ["speckit.engloop.06-explore"],
+        ["speckit.engloop.06-explore"] = ["speckit.engloop.05-model", "speckit.engloop.07-validate"],
+        ["speckit.engloop.07-validate"] = ["speckit.engloop.04-refactor", "speckit.engloop.05-model", "speckit.engloop.06-explore", "speckit.engloop.08-unittest"],
+        ["speckit.engloop.08-unittest"] = ["speckit.engloop.04-refactor", "speckit.engloop.05-model", "speckit.engloop.07-validate", "speckit.engloop.09-debugger-walk-thru"],
+        ["speckit.engloop.09-debugger-walk-thru"] = [],
+        ["speckit.engloop.10-codereview-prepare"] = ["speckit.engloop.08-unittest"],
+        ["speckit.engloop.20-incident"] = ["speckit.engloop.21-postmortem"],
+        ["speckit.engloop.21-postmortem"] = ["speckit.engloop.22-repair", "speckit.engloop.41-learnings-pyramid"],
+        ["speckit.engloop.22-repair"] = ["speckit.engloop.04-refactor"],
+        ["speckit.engloop.30-token-efficiency-analyze"] = ["speckit.engloop.31-token-efficiency-implement"],
+        ["speckit.engloop.31-token-efficiency-implement"] = [],
+        ["speckit.engloop.40-refactor-scan"] = ["speckit.engloop.01-northstar", "speckit.engloop.03-architect", "speckit.engloop.04-refactor"],
+        ["speckit.engloop.41-learnings-pyramid"] = [],
+        ["speckit.engloop.50-pomodoro-create"] = [],
+        ["speckit.engloop.60-overlay-pack"] = ["speckit.engloop.01-northstar"],
+        ["speckit.engloop.61-overlay-remove"] = [],
+        ["speckit.engloop.70-six-pager-create"] = [],
+        ["speckit.engloop.71-powerpnt-create"] = [],
+        ["speckit.engloop.72-academic-paper-create"] = [],
     };
 
     private static string GetOption(string[] args, string name, string defaultValue = ".")
@@ -310,7 +343,7 @@ public static class ValidationCommands
                 return 1;
             }
 
-            if (commandId is "speckit.engloop.09-debugger-walk-thru" or "speckit.engloop.31-learnings-pyramid" or "speckit.engloop.40-pomodoro-create" or "speckit.engloop.51-overlay-remove" or "speckit.engloop.60-six-pager-create" or "speckit.engloop.61-powerpnt-create" or "speckit.engloop.62-academic-paper-create")
+            if (commandId is "speckit.engloop.09-debugger-walk-thru" or "speckit.engloop.31-token-efficiency-implement" or "speckit.engloop.41-learnings-pyramid" or "speckit.engloop.50-pomodoro-create" or "speckit.engloop.61-overlay-remove" or "speckit.engloop.70-six-pager-create" or "speckit.engloop.71-powerpnt-create" or "speckit.engloop.72-academic-paper-create")
             {
                 if (map.ContainsKey("handoffs"))
                 {
@@ -481,19 +514,40 @@ public static class ValidationCommands
         {
             var path = Path.Combine(commandsDirectory, id + ".md");
             var frontmatter = SemanticProjection.ParseFrontmatter(File.ReadAllText(path));
-            if (frontmatter is not IDictionary<object, object> map || !map.TryGetValue("handoffs", out var handoffsValue))
+            if (frontmatter is not IDictionary<object, object> map)
             {
+                Console.Error.WriteLine($"missing-frontmatter:{id}");
+                return 1;
+            }
+
+            var actualTargets = new List<string>();
+            if (!map.TryGetValue("handoffs", out var handoffsValue))
+            {
+                if (ExpectedHandoffTargets[id].Length != 0)
+                {
+                    Console.Error.WriteLine($"wrong-handoff-targets:{id}");
+                    return 1;
+                }
                 continue;
             }
 
             if (handoffsValue is not IEnumerable<object> sequence)
             {
-                continue;
+                Console.Error.WriteLine($"invalid-handoff-shape:{id}");
+                return 1;
             }
 
-            foreach (var handoff in sequence.OfType<IDictionary<object, object>>())
+            foreach (var item in sequence)
             {
+                if (item is not IDictionary<object, object> handoff
+                    || !handoff.TryGetValue("agent", out var target)
+                    || string.IsNullOrWhiteSpace(target?.ToString()))
+                {
+                    Console.Error.WriteLine($"invalid-handoff-shape:{id}");
+                    return 1;
+                }
                 totalHandoffs++;
+                actualTargets.Add(target!.ToString()!);
                 if (!handoff.TryGetValue("send", out var send) || !string.Equals(send?.ToString(), "false", StringComparison.OrdinalIgnoreCase))
                 {
                     Console.Error.WriteLine($"invalid-handoff-send:{id}");
@@ -507,19 +561,23 @@ public static class ValidationCommands
                 }
 
                 if (id == "speckit.engloop.08-unittest" &&
-                    handoff.TryGetValue("agent", out var target) &&
-                    target is not null &&
                     (target.ToString() == "speckit.engloop.20-incident" ||
-                     target.ToString() == "speckit.engloop.30-refactor-scan" ||
-                     target.ToString() == "speckit.engloop.31-learnings-pyramid"))
+                     target.ToString() == "speckit.engloop.40-refactor-scan" ||
+                     target.ToString() == "speckit.engloop.41-learnings-pyramid"))
                 {
                     Console.Error.WriteLine("forbidden-stage08-edge");
                     return 1;
                 }
             }
+
+            if (!actualTargets.SequenceEqual(ExpectedHandoffTargets[id], StringComparer.Ordinal))
+            {
+                Console.Error.WriteLine($"wrong-handoff-targets:{id}");
+                return 1;
+            }
         }
 
-        if (totalHandoffs != 27)
+        if (totalHandoffs != 28)
         {
             Console.Error.WriteLine($"wrong-handoff-count:{totalHandoffs}");
             return 1;

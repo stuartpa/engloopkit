@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "1.0",
+  "artifactType": "token-efficiency-analysis",
+  "analysisId": "<session-id-or-UTC-date>",
+  "capturedAtUtc": "<ISO-8601>",
+  "scope": {
+    "session": "<id|current|recent>",
+    "repository": "<generic repository identity>",
+    "agentSurface": "VS Code Chat"
+  },
+  "dataAvailability": {
+    "backend": "local|cloud|visible-only",
+    "tokenData": "measured|unavailable",
+    "limitations": []
+  },
+  "evidence": [],
+  "findings": [],
+  "wasteEstimate": {
+    "basis": "measured|proxy|unavailable",
+    "value": null,
+    "unit": null,
+    "range": null,
+    "limitations": []
+  },
+  "recommendedRepoRepairs": [
+    {
+      "id": "TE-R001",
+      "type": "skill",
+      "summary": "<bounded repository repair>",
+      "allowedPaths": [".github/skills/example/"],
+      "prohibitedPaths": ["src/deployment/"],
+      "prerequisites": [
+        { "id": "TE-P001", "status": "resolved", "evidence": "<observed prerequisite evidence>" }
+      ],
+      "validationPlan": [
+        { "id": "TE-V001", "command": ["<executable>", "<arg>"], "scope": "focused", "purpose": "<proof>" }
+      ]
+    }
+  ],
+  "recommendedMachineRepairs": [
+    { "id": "TE-M001", "summary": "<machine-only repair>", "evidence": "<observed evidence>" }
+  ],
+  "confidence": "high|medium|low",
+  "sourceState": {
+    "head": "<current Git SHA>",
+    "gitStatusDigest": "<SHA-256 of sorted porcelain-v1 lines excluding this analysis path>"
+  }
+}

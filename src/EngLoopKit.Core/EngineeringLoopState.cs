@@ -49,16 +49,16 @@ public sealed record EngineeringLoopState(
     /// <summary>Stage 20 has captured verified stabilization evidence for the active incident set.</summary>
     public bool IncidentStabilized { get; init; }
 
-    /// <summary>Stage 30 selected work that changes the living Northstar.</summary>
+    /// <summary>Stage 40 selected work that changes the living Northstar.</summary>
     public bool DirectionChangePending { get; init; }
 
     /// <summary>Northstar consumed a selected direction-change scan and must now route through Refactor.</summary>
     public bool DirectionRefactorRequired { get; init; }
 
-    /// <summary>Stage 30 selected work that must return through architecture before refactor.</summary>
+    /// <summary>Stage 40 selected work that must return through architecture before refactor.</summary>
     public bool ArchitectureImpactPending { get; init; }
 
-    /// <summary>Stage that invoked independent Stage 31; used to resume legal context after learning refresh.</summary>
+    /// <summary>Stage that invoked independent Stage 41; used to resume legal context after learning refresh.</summary>
     public Stage? ReturnStage { get; init; }
 
     public static EngineeringLoopState Initial { get; } = new(

@@ -1,6 +1,6 @@
 # Six-pager artifacts
 
-Stage 60 creates evidence-backed six-page narrative decision memos.
+Stage 70 creates evidence-backed six-page narrative decision memos.
 
 - Reserve the next `SIX` number in `../numbering-registry.md` before creating artifacts.
 - Keep authoritative Markdown, generated DOCX, appendices/assets, feedback, and render validation together.

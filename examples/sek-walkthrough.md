@@ -115,7 +115,7 @@ by dropped comments):
 ## Stage 7 — Evolve (monthly)
 
 ```
-/speckit.engloop.30-refactor-scan  I have tokens left this month
+/speckit.engloop.40-refactor-scan  I have tokens left this month
 ```
 
 - Signals: recurring "constraint-extraction" cause-class (branch 1 fires) → REF001:

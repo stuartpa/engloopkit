@@ -82,7 +82,7 @@ public sealed class ToolSurfaceFailureTests : IDisposable
     }
 
     [Fact]
-    public void ValidateCommands_rejectsToolsAgentsAndStage31HandoffPolicy()
+    public void ValidateCommands_rejectsToolsAgentsAndTerminalHandoffPolicy()
     {
         CopyCommandSurface();
         var commands = Path.Combine(_root, "extensions", "engloopkit", "commands");
@@ -95,8 +95,13 @@ public sealed class ToolSurfaceFailureTests : IDisposable
         Assert.Equal(1, ValidationCommands.ValidateCommands(["--root", _root]));
 
         CopyCommandSurface();
-        var stage31 = Path.Combine(commands, "speckit.engloop.31-learnings-pyramid.md");
+        var stage31 = Path.Combine(commands, "speckit.engloop.31-token-efficiency-implement.md");
         File.WriteAllText(stage31, File.ReadAllText(stage31).Replace("\n---", "\nhandoffs: []\n---", StringComparison.Ordinal));
+        Assert.Equal(1, ValidationCommands.ValidateCommands(["--root", _root]));
+
+        CopyCommandSurface();
+        var stage41 = Path.Combine(commands, "speckit.engloop.41-learnings-pyramid.md");
+        File.WriteAllText(stage41, File.ReadAllText(stage41).Replace("\n---", "\nhandoffs: []\n---", StringComparison.Ordinal));
         Assert.Equal(1, ValidationCommands.ValidateCommands(["--root", _root]));
 
         CopyCommandSurface();
@@ -218,6 +223,36 @@ public sealed class ToolSurfaceFailureTests : IDisposable
         var marker = "handoffs:";
         var insertion = "handoffs:\n  - label: Forbidden\n    agent: speckit.engloop.20-incident\n    prompt: forbidden\n    send: false";
         File.WriteAllText(stage08, text.Replace(marker, insertion, StringComparison.Ordinal));
+        Assert.Equal(1, ValidationCommands.ValidateAgentSurfaces(["--root", _root]));
+    }
+
+    [Fact]
+    public void ValidateAgentSurfaces_rejectsWrongTargetWithUnchangedEdgeCount()
+    {
+        CopyCommandSurface();
+        CopyPromptSurface();
+        var analysis = Path.Combine(_root, "extensions", "engloopkit", "commands", "speckit.engloop.30-token-efficiency-analyze.md");
+        var text = File.ReadAllText(analysis);
+        File.WriteAllText(analysis, text.Replace(
+            "agent: speckit.engloop.31-token-efficiency-implement",
+            "agent: speckit.engloop.04-refactor",
+            StringComparison.Ordinal));
+
+        Assert.Equal(1, ValidationCommands.ValidateAgentSurfaces(["--root", _root]));
+    }
+
+    [Fact]
+    public void ValidateAgentSurfaces_rejectsHandoffMappingWithoutAgent()
+    {
+        CopyCommandSurface();
+        CopyPromptSurface();
+        var incident = Path.Combine(_root, "extensions", "engloopkit", "commands", "speckit.engloop.20-incident.md");
+        var text = File.ReadAllText(incident);
+        File.WriteAllText(incident, text.Replace(
+            "agent: speckit.engloop.21-postmortem",
+            "target: speckit.engloop.21-postmortem",
+            StringComparison.Ordinal));
+
         Assert.Equal(1, ValidationCommands.ValidateAgentSurfaces(["--root", _root]));
     }
 

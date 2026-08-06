@@ -122,9 +122,10 @@ public sealed class OverlayCommandPrivateTests : IDisposable
         {
             "01-northstar", "02-scaffold", "03-architect", "04-refactor", "05-model",
             "06-explore", "07-validate", "08-unittest", "09-debugger-walk-thru", "10-codereview-prepare",
-            "20-incident", "21-postmortem", "22-repair", "30-refactor-scan",
-            "31-learnings-pyramid", "40-pomodoro-create", "50-overlay-pack", "51-overlay-remove",
-            "60-six-pager-create", "61-powerpnt-create", "62-academic-paper-create",
+            "20-incident", "21-postmortem", "22-repair", "30-token-efficiency-analyze",
+            "31-token-efficiency-implement", "40-refactor-scan", "41-learnings-pyramid",
+            "50-pomodoro-create", "60-overlay-pack", "61-overlay-remove",
+            "70-six-pager-create", "71-powerpnt-create", "72-academic-paper-create",
         };
         foreach (var id in ids)
         {
@@ -182,6 +183,9 @@ public sealed class OverlayCommandPrivateTests : IDisposable
     {
         Assert.Throws<InvalidOperationException>(() => Invoke<object?>("RejectSecretLikePaths", (object)new[] { new OverlayFile(".env.local", 1, new string('a', 64)) }));
         Assert.Throws<InvalidOperationException>(() => Invoke<object?>("RejectSecretLikePaths", (object)new[] { new OverlayFile("credentials.json", 1, new string('a', 64)) }));
+        Assert.Throws<InvalidOperationException>(() => Invoke<object?>("RejectSecretLikePaths", (object)new[] { new OverlayFile("auth/api-token.json", 1, new string('a', 64)) }));
+        Assert.Throws<InvalidOperationException>(() => Invoke<object?>("RejectSecretLikePaths", (object)new[] { new OverlayFile("secrets/deploy.key", 1, new string('a', 64)) }));
+        Invoke<object?>("RejectSecretLikePaths", (object)new[] { new OverlayFile(".github/agents/speckit.engloop.30-token-efficiency-analyze.agent.md", 1, new string('a', 64)) });
         Invoke<object?>("RejectSecretLikePaths", (object)new[] { new OverlayFile(".engloop/config.json", 1, new string('a', 64)) });
 
         Assert.Throws<InvalidOperationException>(() => Invoke<string>("RequireOption", (object)Array.Empty<string>(), "--required"));

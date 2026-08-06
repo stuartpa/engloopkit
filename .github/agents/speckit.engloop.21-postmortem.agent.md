@@ -26,7 +26,7 @@ handoffs:
     gates.
   send: false
 - label: Condense learnings when capacity exists
-  agent: speckit.engloop.31-learnings-pyramid
+  agent: speckit.engloop.41-learnings-pyramid
   prompt: When spare stewardship capacity exists, condense the accepted learning backlog
     above and validate retrieval.
   send: false

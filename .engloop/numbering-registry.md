@@ -10,7 +10,7 @@ in the bundle's [document standards](../docs/standards.md). Artifact root is `.e
 |---|---|---|---|
 | `SPEC` | Specifications | `SPEC002` | SPEC001 = ordered workflow; SPEC002 = private overlay |
 | `SCAF` | Scaffold/test-runway records | `SCAF001` | SCAF001 = deterministic self-host test runway proof |
-| `ARCH` | Architecture decisions | `ARCH007` | latest = private overlay boundary |
+| `ARCH` | Architecture decisions | `ARCH008` | latest = governed token-efficiency utility lane |
 | `MODEL` | SEK model records | `MODEL001` | MODEL001 = engineering-loop state machine |
 | `CORD` | CORD exploration records | `CORD001` | CORD001 = loop conformance exploration |
 | `COV` | Coverage/validation/readiness records | `COV003` | COV001 = conformance; COV002 = functional; COV003 = readiness |

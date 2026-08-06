@@ -34,7 +34,7 @@ public sealed class AgentSurfaceValidationTests
     public void PromptFiles_selectExactAgents_andForbidTools()
     {
         var prompts = Directory.GetFiles(PromptsDir, "speckit.engloop.*.prompt.md", SearchOption.TopDirectoryOnly);
-        Assert.Equal(21, prompts.Length);
+        Assert.Equal(23, prompts.Length);
 
         foreach (var prompt in prompts)
         {
@@ -43,6 +43,21 @@ public sealed class AgentSurfaceValidationTests
             Assert.Contains($"agent: {id}", content);
             Assert.DoesNotContain("tools:", content);
         }
+    }
+
+    [Fact]
+    public void TokenEfficiencyPromptFiles_exposeRequiredArguments()
+    {
+        var analysis = File.ReadAllText(Path.Combine(PromptsDir, "speckit.engloop.30-token-efficiency-analyze.prompt.md"));
+        Assert.Contains("description:", analysis, StringComparison.Ordinal);
+        Assert.Contains("argument-hint:", analysis, StringComparison.Ordinal);
+        Assert.Contains("--session", analysis, StringComparison.Ordinal);
+
+        var implementation = File.ReadAllText(Path.Combine(PromptsDir, "speckit.engloop.31-token-efficiency-implement.prompt.md"));
+        Assert.Contains("description:", implementation, StringComparison.Ordinal);
+        Assert.Contains("argument-hint:", implementation, StringComparison.Ordinal);
+        Assert.Contains("--analysis", implementation, StringComparison.Ordinal);
+        Assert.Contains("--approve", implementation, StringComparison.Ordinal);
     }
 
     [Fact]

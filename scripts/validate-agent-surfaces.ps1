@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$Root = (Join-Path $PSScriptRoot '..'),
-    [string]$Version = '1.12.0',
+    [string]$Version = '1.13.0',
     [string]$OutputPath = '',
     [switch]$SkipDisposableFixture
 )
@@ -104,24 +104,52 @@ $expectedIds = @(
     'speckit.engloop.20-incident',
     'speckit.engloop.21-postmortem',
     'speckit.engloop.22-repair',
-    'speckit.engloop.30-refactor-scan',
-    'speckit.engloop.31-learnings-pyramid',
-    'speckit.engloop.40-pomodoro-create',
-    'speckit.engloop.50-overlay-pack',
-    'speckit.engloop.51-overlay-remove',
-    'speckit.engloop.60-six-pager-create',
-    'speckit.engloop.61-powerpnt-create',
-    'speckit.engloop.62-academic-paper-create'
+    'speckit.engloop.30-token-efficiency-analyze',
+    'speckit.engloop.31-token-efficiency-implement',
+    'speckit.engloop.40-refactor-scan',
+    'speckit.engloop.41-learnings-pyramid',
+    'speckit.engloop.50-pomodoro-create',
+    'speckit.engloop.60-overlay-pack',
+    'speckit.engloop.61-overlay-remove',
+    'speckit.engloop.70-six-pager-create',
+    'speckit.engloop.71-powerpnt-create',
+    'speckit.engloop.72-academic-paper-create'
 )
 $terminalIds = @(
     'speckit.engloop.09-debugger-walk-thru',
-    'speckit.engloop.31-learnings-pyramid',
-    'speckit.engloop.40-pomodoro-create',
-    'speckit.engloop.51-overlay-remove',
-    'speckit.engloop.60-six-pager-create',
-    'speckit.engloop.61-powerpnt-create',
-    'speckit.engloop.62-academic-paper-create'
+    'speckit.engloop.31-token-efficiency-implement',
+    'speckit.engloop.41-learnings-pyramid',
+    'speckit.engloop.50-pomodoro-create',
+    'speckit.engloop.61-overlay-remove',
+    'speckit.engloop.70-six-pager-create',
+    'speckit.engloop.71-powerpnt-create',
+    'speckit.engloop.72-academic-paper-create'
 )
+$expectedHandoffTargets = @{
+    'speckit.engloop.01-northstar' = @('speckit.engloop.02-scaffold', 'speckit.engloop.03-architect', 'speckit.engloop.04-refactor')
+    'speckit.engloop.02-scaffold' = @('speckit.engloop.09-debugger-walk-thru', 'speckit.engloop.03-architect')
+    'speckit.engloop.03-architect' = @('speckit.engloop.04-refactor')
+    'speckit.engloop.04-refactor' = @('speckit.engloop.05-model')
+    'speckit.engloop.05-model' = @('speckit.engloop.06-explore')
+    'speckit.engloop.06-explore' = @('speckit.engloop.05-model', 'speckit.engloop.07-validate')
+    'speckit.engloop.07-validate' = @('speckit.engloop.04-refactor', 'speckit.engloop.05-model', 'speckit.engloop.06-explore', 'speckit.engloop.08-unittest')
+    'speckit.engloop.08-unittest' = @('speckit.engloop.04-refactor', 'speckit.engloop.05-model', 'speckit.engloop.07-validate', 'speckit.engloop.09-debugger-walk-thru')
+    'speckit.engloop.09-debugger-walk-thru' = @()
+    'speckit.engloop.10-codereview-prepare' = @('speckit.engloop.08-unittest')
+    'speckit.engloop.20-incident' = @('speckit.engloop.21-postmortem')
+    'speckit.engloop.21-postmortem' = @('speckit.engloop.22-repair', 'speckit.engloop.41-learnings-pyramid')
+    'speckit.engloop.22-repair' = @('speckit.engloop.04-refactor')
+    'speckit.engloop.30-token-efficiency-analyze' = @('speckit.engloop.31-token-efficiency-implement')
+    'speckit.engloop.31-token-efficiency-implement' = @()
+    'speckit.engloop.40-refactor-scan' = @('speckit.engloop.01-northstar', 'speckit.engloop.03-architect', 'speckit.engloop.04-refactor')
+    'speckit.engloop.41-learnings-pyramid' = @()
+    'speckit.engloop.50-pomodoro-create' = @()
+    'speckit.engloop.60-overlay-pack' = @('speckit.engloop.01-northstar')
+    'speckit.engloop.61-overlay-remove' = @()
+    'speckit.engloop.70-six-pager-create' = @()
+    'speckit.engloop.71-powerpnt-create' = @()
+    'speckit.engloop.72-academic-paper-create' = @()
+}
 
 $commandsDir = Join-Path $repoRoot 'extensions/engloopkit/commands'
 $promptsDir = Join-Path $repoRoot '.github/prompts'
@@ -190,8 +218,8 @@ try {
         promptToolsCount = 0
     }
 
-    if ($actualCommandIds.Count -ne 21) { $mismatches.Add(@{ issue = 'wrong-command-count'; actual = $actualCommandIds.Count }) | Out-Null }
-    if ($actualPromptIds.Count -ne 21) { $mismatches.Add(@{ issue = 'wrong-prompt-count'; actual = $actualPromptIds.Count }) | Out-Null }
+    if ($actualCommandIds.Count -ne 23) { $mismatches.Add(@{ issue = 'wrong-command-count'; actual = $actualCommandIds.Count }) | Out-Null }
+    if ($actualPromptIds.Count -ne 23) { $mismatches.Add(@{ issue = 'wrong-prompt-count'; actual = $actualPromptIds.Count }) | Out-Null }
 
     foreach ($id in $expectedIds) {
         if (-not ($actualCommandIds -contains $id)) { $mismatches.Add(@{ issue = 'missing-command'; id = $id }) | Out-Null }
@@ -216,6 +244,7 @@ try {
         }
 
         $hasHandoffs = $commandFm.Contains('handoffs')
+        $actualTargets = @()
         if ($terminalIds -contains $id) {
             if ($hasHandoffs) {
             $mismatches.Add(@{ issue = 'terminal-handoffs-forbidden'; id = $id }) | Out-Null
@@ -230,23 +259,28 @@ try {
 
         foreach ($handoff in $commandFm.handoffs) {
             $handoffCount++
+            $actualTargets += [string]$handoff.agent
             if (-not ($handoff.Contains('send')) -or ($handoff.send -ne $false)) {
                 $mismatches.Add(@{ issue = 'handoff-send-not-false'; id = $id; target = $handoff.agent }) | Out-Null
             }
             if ($handoff.Contains('model')) {
                 $mismatches.Add(@{ issue = 'handoff-model-forbidden'; id = $id; target = $handoff.agent }) | Out-Null
             }
-            if ($id -eq 'speckit.engloop.08-unittest' -and ($handoff.agent -in @('speckit.engloop.20-incident', 'speckit.engloop.30-refactor-scan', 'speckit.engloop.31-learnings-pyramid'))) {
+            if ($id -eq 'speckit.engloop.08-unittest' -and ($handoff.agent -in @('speckit.engloop.20-incident', 'speckit.engloop.40-refactor-scan', 'speckit.engloop.41-learnings-pyramid'))) {
                 $mismatches.Add(@{ issue = 'forbidden-stage08-edge'; target = $handoff.agent }) | Out-Null
             }
+        }
+
+        if ((ConvertTo-CanonicalJson $actualTargets) -ne (ConvertTo-CanonicalJson @($expectedHandoffTargets[$id]))) {
+            $mismatches.Add(@{ issue = 'wrong-handoff-targets'; id = $id; expected = @($expectedHandoffTargets[$id]); actual = $actualTargets }) | Out-Null
         }
     }
 
     $report.deterministic.handoffs = [ordered]@{
-        expected = 27
+        expected = 28
         actual = $handoffCount
     }
-    if ($handoffCount -ne 27) {
+    if ($handoffCount -ne 28) {
         $mismatches.Add(@{ issue = 'wrong-handoff-count'; actual = $handoffCount }) | Out-Null
     }
 
@@ -264,8 +298,8 @@ try {
         $report.deterministic.fixture.installedAgents = $installedAgents.Count
         $report.deterministic.fixture.installedPrompts = $installedPrompts.Count
 
-        if ($installedAgents.Count -ne 21) { $mismatches.Add(@{ issue = 'fixture-wrong-agent-count'; actual = $installedAgents.Count }) | Out-Null }
-        if ($installedPrompts.Count -ne 21) { $mismatches.Add(@{ issue = 'fixture-wrong-prompt-count'; actual = $installedPrompts.Count }) | Out-Null }
+        if ($installedAgents.Count -ne 23) { $mismatches.Add(@{ issue = 'fixture-wrong-agent-count'; actual = $installedAgents.Count }) | Out-Null }
+        if ($installedPrompts.Count -ne 23) { $mismatches.Add(@{ issue = 'fixture-wrong-prompt-count'; actual = $installedPrompts.Count }) | Out-Null }
 
         foreach ($id in $expectedIds) {
             $sourceFm = Get-FrontmatterObject -Path (Join-Path $commandsDir ($id + '.md'))
@@ -287,6 +321,18 @@ try {
             foreach ($forbidden in @('infer','model')) {
                 if ($sourceFm.Contains($forbidden) -or $agentFm.Contains($forbidden)) {
                     $mismatches.Add(@{ issue = 'forbidden-field-present'; id = $id; field = $forbidden }) | Out-Null
+                }
+            }
+
+            if ($id -in @('speckit.engloop.30-token-efficiency-analyze', 'speckit.engloop.31-token-efficiency-implement')) {
+                $installedBody = Get-Content (Join-Path $fixtureRoot ('.github/agents/' + $id + '.agent.md')) -Raw -Encoding UTF8
+                if ($installedBody -match '(?i)\.specify/scripts/') {
+                    $mismatches.Add(@{ issue = 'installed-body-skill-path-corruption'; id = $id }) | Out-Null
+                }
+                foreach ($marker in @('TOKEN_EFFICIENCY_')) {
+                    if ($installedBody -notmatch $marker) {
+                        $mismatches.Add(@{ issue = 'installed-body-required-marker-missing'; id = $id; marker = $marker }) | Out-Null
+                    }
                 }
             }
         }

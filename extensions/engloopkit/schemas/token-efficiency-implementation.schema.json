@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/stuartpa/engloopkit/schemas/token-efficiency-implementation.schema.json",
+  "title": "EngLoopKit token-efficiency implementation evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "artifactType",
+    "capturedAtUtc",
+    "revision",
+    "outcome",
+    "analysis",
+    "approvedRepairIds",
+    "repairStatus",
+    "changedFiles",
+    "customizationDecisions",
+    "toolchainPreflight",
+    "validation",
+    "unavailableToolDecisions",
+    "failure",
+    "residualRisks",
+    "sourceState"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "artifactType": { "const": "token-efficiency-implementation" },
+    "capturedAtUtc": { "type": "string", "format": "date-time" },
+    "revision": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "outcome": { "enum": ["in-progress", "passed", "blocked", "failed"] },
+    "analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "analysisId"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^\\.engloop/evidence/token-efficiency-analysis-[A-Za-z0-9._-]+\\.json$" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "analysisId": { "type": "string", "minLength": 1, "maxLength": 160 }
+      }
+    },
+    "approvedRepairIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^TE-R[0-9]{3}$" } },
+    "repairStatus": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status", "detail"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^TE-R[0-9]{3}$" },
+          "status": { "enum": ["pending", "implemented", "blocked", "failed"] },
+          "detail": { "type": "string", "maxLength": 1000 }
+        }
+      }
+    },
+    "changedFiles": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 500 } },
+    "customizationDecisions": { "type": "array", "items": { "type": "object" } },
+    "toolchainPreflight": { "type": "array", "items": { "type": "object" } },
+    "validation": { "type": "array", "items": { "type": "object" } },
+    "unavailableToolDecisions": { "type": "array", "items": { "type": "object" } },
+    "failure": { "type": ["object", "null"] },
+    "residualRisks": { "type": "array", "items": { "type": "string", "maxLength": 1000 } },
+    "sourceState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["initialHead", "finalHead", "initialStatusDigest", "finalStatusDigest"],
+      "properties": {
+        "initialHead": { "type": "string", "minLength": 1 },
+        "finalHead": { "type": "string", "minLength": 1 },
+        "initialStatusDigest": { "type": "string", "minLength": 1 },
+        "finalStatusDigest": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

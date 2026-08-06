@@ -27,6 +27,7 @@ The planned required config is `.engloop/config.json`; ignored transient output 
 ├── postmortems/            # PMxxx — post-mortems with local LEARN/RPI entries
 ├── refactors/              # REFACTxxx — refactor decisions
 ├── debugger-walkthroughs/  # DBGxxx — engineer-attested debugger walkthrough ledgers
+├── evidence/               # compact utility evidence (token-efficiency analysis/implementation JSON)
 ├── six-pagers/             # SIXxxx — six-page narrative Markdown/DOCX and validation
 ├── presentations/          # PPTxxx — Markdown decks, PPTX files, and graph assets
 ├── academic-papers/        # PAPxxx — research Markdown/PDF, bibliography, figures/data
@@ -44,11 +45,12 @@ docs here point at it. Spec Kit's own `specify` outputs (`SPECxxx`) live at `spe
 | Direction | living | [NORTHSTAR.md](../NORTHSTAR.md) |
 | Specification | ready for tasks | [SPEC001](../specs/SPEC001-ordered-engloop-v2/spec.md) |
 | Scaffold/test runway | pending | none; registry remains `SCAF000` |
-| Architecture | current baseline | [ARCH001](architecture/ARCH001_bundle-composition.md), [ARCH002](architecture/ARCH002_command-loop-contract.md), [ARCH003](architecture/ARCH003_numbering-memory.md), [ARCH004](architecture/ARCH004_executable-core.md), [ARCH005](architecture/ARCH005_component-pattern.md) |
+| Architecture | current baseline | [ARCH001](architecture/ARCH001_bundle-composition.md) through [ARCH008](architecture/ARCH008_token-efficiency-utility-lane.md) |
 | Model | historical baseline | [MODEL001](models/MODEL001_engineering-loop.md) |
 | Explore / Coverage | historical baseline | [CORD001](cord/CORD001_loop-conformance.md), [COV001](coverage/COV001_conformance.md) |
 | Operations | historical evidence | [IN001–IN004](incidents/), [PM001–PM004](postmortems/INDEX.md) |
 | Evolution | current decision | [REFACT001](refactors/REFACT001_ordered-engloop-v2.md) |
+| Utility evidence | current contract | [evidence/README.md](evidence/README.md) defines compact Agent 30/31 JSON and ignored detailed logs. |
 
 `COV001` preserves prior conformance evidence; it is not a current v2 readiness
 verdict. Only the ratified complete readiness gate may authorize operation.

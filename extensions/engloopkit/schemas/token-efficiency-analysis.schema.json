@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/stuartpa/engloopkit/schemas/token-efficiency-analysis.schema.json",
+  "title": "EngLoopKit token-efficiency analysis evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "artifactType",
+    "analysisId",
+    "capturedAtUtc",
+    "scope",
+    "dataAvailability",
+    "evidence",
+    "findings",
+    "wasteEstimate",
+    "recommendedRepoRepairs",
+    "recommendedMachineRepairs",
+    "confidence",
+    "sourceState"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "artifactType": { "const": "token-efficiency-analysis" },
+    "analysisId": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,160}$" },
+    "capturedAtUtc": { "type": "string", "format": "date-time" },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["session", "repository", "agentSurface"],
+      "properties": {
+        "session": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "repository": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "agentSurface": { "enum": ["VS Code Chat", "GitHub Copilot Chat"] }
+      }
+    },
+    "dataAvailability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["backend", "tokenData", "limitations"],
+      "properties": {
+        "backend": { "enum": ["local", "cloud", "visible-only", "fixture-proxy"] },
+        "tokenData": { "enum": ["measured", "unavailable"] },
+        "limitations": { "type": "array", "items": { "type": "string", "maxLength": 500 } }
+      }
+    },
+    "evidence": { "type": "array", "items": { "type": "object" } },
+    "findings": { "type": "array", "items": { "type": "object" } },
+    "wasteEstimate": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["basis", "limitations"],
+      "properties": {
+        "basis": { "enum": ["measured", "proxy", "unavailable"] },
+        "limitations": { "type": "array", "items": { "type": "string", "maxLength": 500 } }
+      }
+    },
+    "recommendedRepoRepairs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/repoRepair" }
+    },
+    "recommendedMachineRepairs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/machineRepair" }
+    },
+    "confidence": { "enum": ["high", "medium", "low"] },
+    "sourceState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["head", "gitStatusDigest"],
+      "properties": {
+        "head": { "type": "string", "pattern": "^(?:[0-9a-fA-F]{40,64}|unavailable)$" },
+        "gitStatusDigest": { "type": "string", "pattern": "^(?:[0-9a-f]{64}|unavailable)$" }
+      }
+    }
+  },
+  "$defs": {
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "not": { "pattern": "(^[A-Za-z]:|^/|^\\\\|(?:^|/)\\.\\.(?:/|$))" }
+    },
+    "prerequisite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "evidence"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^TE-P[0-9]{3}$" },
+        "status": { "enum": ["resolved", "unresolved"] },
+        "evidence": { "type": "string", "minLength": 1, "maxLength": 1000 }
+      }
+    },
+    "validationStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "command", "scope", "purpose"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^TE-V[0-9]{3}$" },
+        "command": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1, "maxLength": 1000 }
+        },
+        "scope": { "enum": ["focused", "broad"] },
+        "purpose": { "type": "string", "minLength": 1, "maxLength": 1000 }
+      }
+    },
+    "repoRepair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "summary", "allowedPaths", "prohibitedPaths", "prerequisites", "validationPlan"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^TE-R[0-9]{3}$" },
+        "type": { "type": "string", "enum": ["existing-skill", "skill", "script", "task", "targeted-instruction", "custom-agent", "hook", "prompt", "configuration", "validation"] },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "allowedPaths": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/path" } },
+        "prohibitedPaths": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/path" } },
+        "prerequisites": { "type": "array", "items": { "$ref": "#/$defs/prerequisite" } },
+        "validationPlan": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/validationStep" } }
+      }
+    },
+    "machineRepair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "summary", "evidence"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^TE-M[0-9]{3}$" },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "evidence": { "type": "string", "minLength": 1, "maxLength": 1000 }
+      }
+    }
+  }
+}

@@ -1,7 +1,7 @@
 # Contract: Ordered v2 Command Surface
 
 - **Features:** SPEC001 ordered workflow + SPEC002 overlay utilities + POM session memory
-- **Contract version:** 1.12.0
+- **Contract version:** 1.13.0
 - **Owner:** first-party extension `engloopkit`
 
 ## Identity
@@ -27,14 +27,16 @@ ID maps to exactly one same-named Markdown file.
 | 11 | `speckit.engloop.20-incident` | `commands/speckit.engloop.20-incident.md` | operations | `INxxx` + local `MITxxx` |
 | 12 | `speckit.engloop.21-postmortem` | `commands/speckit.engloop.21-postmortem.md` | operations | `PMxxx` + `PMxxx/LEARNxxx` + `RPIxxx` |
 | 13 | `speckit.engloop.22-repair` | `commands/speckit.engloop.22-repair.md` | operations | repair obligation + Stage 04/05–08/release/target evidence |
-| 14 | `speckit.engloop.30-refactor-scan` | `commands/speckit.engloop.30-refactor-scan.md` | stewardship | one `REFACTxxx`, including no-work decisions |
-| 15 | `speckit.engloop.31-learnings-pyramid` | `commands/speckit.engloop.31-learnings-pyramid.md` | stewardship | source-linked cards, root index, instruction, validation/retrieval result |
-| 16 | `speckit.engloop.40-pomodoro-create` | `commands/speckit.engloop.40-pomodoro-create.md` | session memory | one `POM<NNNN>-<description>.md` note |
-| 17 | `speckit.engloop.50-overlay-pack` | `commands/speckit.engloop.50-overlay-pack.md` | local utility | portable registered overlay archive |
-| 18 | `speckit.engloop.51-overlay-remove` | `commands/speckit.engloop.51-overlay-remove.md` | local utility | complete manifest-owned overlay removal |
-| 19 | `speckit.engloop.60-six-pager-create` | `commands/speckit.engloop.60-six-pager-create.md` | publication | `SIXxxx` Markdown/DOCX, appendices, feedback, and render validation |
-| 20 | `speckit.engloop.61-powerpnt-create` | `commands/speckit.engloop.61-powerpnt-create.md` | presentation | `PPTxxx` Markdown/PPTX, graph source/assets, geometry and rendered-slide validation |
-| 21 | `speckit.engloop.62-academic-paper-create` | `commands/speckit.engloop.62-academic-paper-create.md` | publication | `PAPxxx` Markdown/BibTeX/PDF, figures/data, claim evidence, and review validation |
+| 14 | `speckit.engloop.30-token-efficiency-analyze` | `commands/speckit.engloop.30-token-efficiency-analyze.md` | token efficiency | compact session analysis JSON plus ranked `TE-Rxxx` repair candidates; no source changes |
+| 15 | `speckit.engloop.31-token-efficiency-implement` | `commands/speckit.engloop.31-token-efficiency-implement.md` | token efficiency | explicitly approved scoped repairs plus compact implementation JSON |
+| 16 | `speckit.engloop.40-refactor-scan` | `commands/speckit.engloop.40-refactor-scan.md` | stewardship | one `REFACTxxx`, including no-work decisions |
+| 17 | `speckit.engloop.41-learnings-pyramid` | `commands/speckit.engloop.41-learnings-pyramid.md` | stewardship | source-linked cards, root index, instruction, validation/retrieval result |
+| 18 | `speckit.engloop.50-pomodoro-create` | `commands/speckit.engloop.50-pomodoro-create.md` | session memory | one `POM<NNNN>-<description>.md` note |
+| 19 | `speckit.engloop.60-overlay-pack` | `commands/speckit.engloop.60-overlay-pack.md` | local utility | portable registered overlay archive |
+| 20 | `speckit.engloop.61-overlay-remove` | `commands/speckit.engloop.61-overlay-remove.md` | local utility | complete manifest-owned overlay removal |
+| 21 | `speckit.engloop.70-six-pager-create` | `commands/speckit.engloop.70-six-pager-create.md` | publication | `SIXxxx` Markdown/DOCX, appendices, feedback, and render validation |
+| 22 | `speckit.engloop.71-powerpnt-create` | `commands/speckit.engloop.71-powerpnt-create.md` | presentation | `PPTxxx` Markdown/PPTX, graph source/assets, geometry and rendered-slide validation |
+| 23 | `speckit.engloop.72-academic-paper-create` | `commands/speckit.engloop.72-academic-paper-create.md` | publication | `PAPxxx` Markdown/BibTeX/PDF, figures/data, claim evidence, and review validation |
 
 Ordinal lexical sort of the full IDs MUST equal table order. The manifest order MUST
 also equal table order so integrations that preserve declaration order remain correct.
@@ -44,9 +46,9 @@ also equal table order so integrations that preserve declaration order remain co
 For every current v2 surface:
 
 ```text
-actual IDs == expected 21-ID set
-count(actual IDs) == 21
-count(distinct actual IDs) == 21
+actual IDs == expected 23-ID set
+count(actual IDs) == 23
+count(distinct actual IDs) == 23
 actual IDs sorted ordinal == expected order
 ```
 
@@ -100,7 +102,7 @@ Every command file MUST satisfy ARCH002 and contain:
 
 The common header and stage-specific matrices are normative in SPEC001's
 **Custom-agent UX contract**. `infer` and `model` are absent. Every handoff uses
-`send: false` and no model override. Stages 09, 31, 40, 51, 60, 61, and 62 have no handoffs. Generated prompt
+`send: false` and no model override. Stages 09, 31, 41, 50, 61, 70, 71, and 72 have no handoffs. Generated prompt
 files identify the exact matching agent and contain no `tools` field.
 
 The source command frontmatter and installed `.agent.md` frontmatter must be
@@ -128,7 +130,7 @@ Every source command and generated agent has this common semantic projection:
 | `tools` | Exact row in the matrix below, with no duplicate/extra/missing value. |
 | `agents` | Exact row in the matrix below; `[Explore]` or `[]`, never `*`. |
 | `hooks.SessionStart` | One exact `EntryHook` below. |
-| `handoffs` | Exact ordered outgoing rows in the graph below; omitted only for Stages 09, 31, 40, 51, 60, 61, and 62. |
+| `handoffs` | Exact ordered outgoing rows in the graph below; omitted only for Stages 09, 31, 41, 50, 61, 70, 71, and 72. |
 | `infer` | Absent. |
 | `model` | Absent. |
 
@@ -153,14 +155,16 @@ handoffs compare as an ordered sequence because button order is visible UX.
 | `speckit.engloop.20-incident` | `read, search, edit, execute` | `[]` |
 | `speckit.engloop.21-postmortem` | `read, search, edit, execute, agent` | `[Explore]` |
 | `speckit.engloop.22-repair` | `read, search, edit, execute` | `[]` |
-| `speckit.engloop.30-refactor-scan` | `read, search, edit, execute, agent` | `[Explore]` |
-| `speckit.engloop.31-learnings-pyramid` | `read, search, edit, execute, agent` | `[Explore]` |
-| `speckit.engloop.40-pomodoro-create` | `read, search, edit, execute` | `[]` |
-| `speckit.engloop.50-overlay-pack` | `read, search, edit, execute` | `[]` |
-| `speckit.engloop.51-overlay-remove` | `read, search, edit, execute` | `[]` |
-| `speckit.engloop.60-six-pager-create` | `read, search, edit, execute` | `[]` |
-| `speckit.engloop.61-powerpnt-create` | `read, search, edit, execute` | `[]` |
-| `speckit.engloop.62-academic-paper-create` | `read, search, edit, execute, web` | `[]` |
+| `speckit.engloop.30-token-efficiency-analyze` | `read, search, edit, execute, agent, copilot_sessionStoreSql` | `[Explore]` |
+| `speckit.engloop.31-token-efficiency-implement` | `read, search, edit, execute, agent` | `[Explore]` |
+| `speckit.engloop.40-refactor-scan` | `read, search, edit, execute, agent` | `[Explore]` |
+| `speckit.engloop.41-learnings-pyramid` | `read, search, edit, execute, agent` | `[Explore]` |
+| `speckit.engloop.50-pomodoro-create` | `read, search, edit, execute` | `[]` |
+| `speckit.engloop.60-overlay-pack` | `read, search, edit, execute` | `[]` |
+| `speckit.engloop.61-overlay-remove` | `read, search, edit, execute` | `[]` |
+| `speckit.engloop.70-six-pager-create` | `read, search, edit, execute` | `[]` |
+| `speckit.engloop.71-powerpnt-create` | `read, search, edit, execute` | `[]` |
+| `speckit.engloop.72-academic-paper-create` | `read, search, edit, execute, web` | `[]` |
 
 For every nonempty `agents` list, `tools` contains `agent`; for every empty list, it
 does not. The supported VS Code build must resolve every named tool and the `Explore`
@@ -184,7 +188,10 @@ are justified narrowly:
 | 05 | `agent` → `Explore` | Independent behavior/state inventory; no implementation delegation. |
 | 08 | `agent` → `Explore` | Independent reachability/authority classification review; no deletion delegation. |
 | 10 | `web` | Query the explicitly selected GitHub/Azure DevOps PR and source-linked reviewer comments; never infer PR identity. |
-| 62 | `web` | Retrieve and verify authoritative prior research, bibliographic metadata, venue/format rules, and primary sources; never invent or cite unverified work. |
+| 30 | `copilot_sessionStoreSql` | Query the approved Chronicle/session store read-only for bounded VS Code Chat usage/session evidence; absence produces an explicit visible-only/proxy limitation, never a fallback data source. |
+| 30 | `agent` → `Explore` | Isolate a bounded read-only customization/toolchain inventory when loading it into the main session would itself waste context; no session query or implementation delegation. |
+| 31 | `agent` → `Explore` | Isolate one bounded read-only impacted-path/pattern survey before an approved repair; no edit/validation delegation. |
+| 72 | `web` | Retrieve and verify authoritative prior research, bibliographic metadata, venue/format rules, and primary sources; never invent or cite unverified work. |
 | 21 | `agent` → `Explore` | Clean-context cross-incident pattern analysis; no repair implementation. |
 | 30 | `agent` → `Explore` | Independent signal scan before selecting at most one refactor. |
 | 31 | `agent` → `Explore` | Clean-context retrieval cases and subject grouping; no source-learning rewrite. |
@@ -275,14 +282,15 @@ handoff-level `model` field is absent. No other edge is allowed.
 | `speckit.engloop.10-codereview-prepare` | `speckit.engloop.08-unittest` | Recompute readiness after review preparation | Re-run direct evidence and the sole readiness gate after the code-review preparation changes above; a new Stage 09 debugger walkthrough is recommended but not required. | `false` | absent |
 | `speckit.engloop.20-incident` | `speckit.engloop.21-postmortem` | Analyze stabilized incidents | Analyze the selected stabilized incident set above and produce source learnings and repair items. | `false` | absent |
 | `speckit.engloop.21-postmortem` | `speckit.engloop.22-repair` | Repair selected item | Route the selected RPI above through Stage 04 and all applicable Stage 05–08 gates. | `false` | absent |
-| `speckit.engloop.21-postmortem` | `speckit.engloop.31-learnings-pyramid` | Condense learnings when capacity exists | When spare stewardship capacity exists, condense the accepted learning backlog above and validate retrieval. | `false` | absent |
+| `speckit.engloop.21-postmortem` | `speckit.engloop.41-learnings-pyramid` | Condense learnings when capacity exists | When spare stewardship capacity exists, condense the accepted learning backlog above and validate retrieval. | `false` | absent |
 | `speckit.engloop.22-repair` | `speckit.engloop.04-refactor` | Begin governed repair | Implement the repair item above through the governed SPEC loop before downstream verification. | `false` | absent |
-| `speckit.engloop.30-refactor-scan` | `speckit.engloop.01-northstar` | Update direction | Update the living Northstar for the evidence-backed direction change selected above. | `false` | absent |
-| `speckit.engloop.30-refactor-scan` | `speckit.engloop.03-architect` | Re-derive architecture | Re-derive governed architecture for the architecture-impacting refactor selected above. | `false` | absent |
-| `speckit.engloop.30-refactor-scan` | `speckit.engloop.04-refactor` | Implement selected refactor | Route the selected refactor above through the governed SPEC implementation loop. | `false` | absent |
-| `speckit.engloop.50-overlay-pack` | `speckit.engloop.01-northstar` | Define local direction | Define the overlay-local North Star after the private overlay verifies cleanly. | `false` | absent |
+| `speckit.engloop.30-token-efficiency-analyze` | `speckit.engloop.31-token-efficiency-implement` | Implement approved efficiency repairs | Review the token-efficiency analysis above, require an explicit approved repair-ID list, and implement only those approved repairs with focused validation. | `false` | absent |
+| `speckit.engloop.40-refactor-scan` | `speckit.engloop.01-northstar` | Update direction | Update the living Northstar for the evidence-backed direction change selected above. | `false` | absent |
+| `speckit.engloop.40-refactor-scan` | `speckit.engloop.03-architect` | Re-derive architecture | Re-derive governed architecture for the architecture-impacting refactor selected above. | `false` | absent |
+| `speckit.engloop.40-refactor-scan` | `speckit.engloop.04-refactor` | Implement selected refactor | Route the selected refactor above through the governed SPEC implementation loop. | `false` | absent |
+| `speckit.engloop.60-overlay-pack` | `speckit.engloop.01-northstar` | Define local direction | Define the overlay-local North Star after the private overlay verifies cleanly. | `false` | absent |
 
-Stages 09, 31, 40, 51, 60, 61, and 62 have no `handoffs` field and are natural terminals.
+Stages 09, 31, 41, 50, 61, 70, 71, and 72 have no `handoffs` field and are natural terminals.
 Stage 09 may be invoked after Stage 02 and repeatedly at later HEADs. Earlier DBG ledgers
 remain historical observations. Stage 09 is recommended but never gates Stage 10; missing,
 stale, pending, blocked, or incomplete DBG evidence is advisory. Stage 10 mechanically
@@ -294,13 +302,14 @@ can terminate naturally without a click. In particular, there is no 08→20, 08�
 ## Ownership constraints
 
 - The bundle composes; it contains no command logic.
-- All 21 commands are owned by the one `engloop` extension of the `engloopkit` product.
+- All 23 commands are owned by the one `engloop` extension of the `engloopkit` product.
 - Architecture-guard and tinyspec remain external, pinned capabilities. Stage 22 never
   routes through tinyspec; its presence is not a repair fallback.
 - Stage 07 owns functional conformance/reachability only.
 - Stage 08 alone owns final readiness.
 - Stage 08 PASS authorizes operation but creates no Stage 20, 30, or 31 invocation.
-- Stages 20–22 and 30–31 require their own explicit demand/capacity inputs.
+- Stages 20–22 and 40–41 require their own explicit demand/capacity inputs; Stages 30–31
+   require observed efficiency concern plus explicit repair approval.
 
 ## Package and generated-surface checks
 
@@ -333,13 +342,13 @@ production headers are released. An EngLoopKit-owned alternate generator,
 post-processing a partial installation, copying hidden fallback agents, or weakening
 this contract is forbidden.
 
-### Full 21-agent package/install acceptance
+### Full 23-agent package/install acceptance
 
 After the preservation experiment passes, a clean package test MUST:
 
 1. parse the source manifest and assert the exact ordered set;
 2. assert every declared file exists and every undeclared command file is absent;
-3. validate all 21 files against the command-loop shape, common header, exact
+3. validate all 23 files against the command-loop shape, common header, exact
    tool/subagent matrix, entry hook/body gate, and 27-edge handoff table;
 4. build the release archive and inspect its payload for the same set;
 5. initialize a disposable single-root Spec Kit fixture;
@@ -348,9 +357,9 @@ After the preservation experiment passes, a clean package test MUST:
 7. install the exact archive digest;
 8. inspect `.specify/extensions/.registry`, installed commands, generated agents, and
    generated prompts;
-9. assert 21 exact current entries, each once, and zero old entries;
+9. assert 23 exact current entries, each once, and zero old entries;
 10. parse source and installed YAML into a `GeneratedSurfaceSemanticComparison` and
-   prove all 21 common fields, absence rules, exact tool/subagent policies, exact hook
+   prove all 23 common fields, absence rules, exact tool/subagent policies, exact hook
     commands, and the exact ordered handoff edge/value set;
 11. prove all handoff and `Explore` targets resolve and every generated prompt selects
     its matching exact ID while omitting `tools`;
@@ -372,9 +381,9 @@ it does not install a development source as an alternate success path.
 
 ## Version rule
 
-The current command-surface target is 1.12.0. “Ordered EngLoop v2” identifies this workflow
+The current command-surface target is 1.13.0. “Ordered EngLoop v2” identifies this workflow
 generation only and provides no authority for a 2.x product release. Bundle, extension,
-tool, catalog, archive names, and release notes MUST agree on 1.12.0. Catalog SHA-256
+tool, catalog, archive names, and release notes MUST agree on 1.13.0. Catalog SHA-256
 values are computed from final immutable artifacts. Rebuilding different bits under
-1.12.0 is forbidden. Any 2.x value is a release-blocking error unless a later explicit
+1.13.0 is forbidden. Any 2.x value is a release-blocking error unless a later explicit
 maintainer decision supersedes this contract.

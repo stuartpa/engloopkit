@@ -1,69 +1,97 @@
-# Token Efficiency
+# Token and Chat-Speed Efficiency
 
-EngLoopKit is built for engineers who **pay for tokens**. Its design goal is not "use
-an LLM everywhere" — it is "use the LLM only where human-grade judgement is
-irreducible, and let deterministic engines do everything they can verify for free."
+EngLoopKit is built for engineers who pay for tokens and time. The objective is not
+merely shorter responses: it is faster verified work with less repeated context,
+rediscovery, command guessing, output capture, and polling.
 
-This document states the principle, then lists the concrete mechanisms.
+## Governed utility lane: 30 → 31
 
-## Principle: put deterministic engines on the Verification component
+Switch to `speckit.engloop.30-token-efficiency-analyze` whenever an active or completed
+VS Code GitHub Copilot chat shows likely waste: excessive turns, no compaction/checkpoint,
+oversized tool output, repeated reads/commands, unavailable command guessing, duplicated
+deployment polling, or slow serial work that could be parameterized.
 
-In Loop Engineering, every loop has a **Verification** step. The cheapest possible
-Verification is one a machine can decide with an exit code. EngLoopKit deliberately
-routes the *quality-determining* loops through engines instead of models:
+Agent 30 is read-only with one exception: it writes one compact analysis JSON under
+`.engloop/evidence/`. It uses the approved Chronicle/session-store path when available,
+separates real cloud token measurements from local proxies, aggregates one-to-many tables
+before joins, checks current customizations and declared/local toolchains, and returns
+stable repair IDs. It never implements, installs, polls, commits, pushes, or claims
+closure.
 
-| Loop | Verification engine | Tokens spent |
-|---|---|---|
-| Explore / Coverage | **SEK + Z3** enumerate behaviors and generate tests | ~0 per test case |
-| Architecture | `architecture-verify` (rule check) | ~0 per check |
-| CI regression | test runner + coverage thresholds | ~0 per run |
-| Repair (small) | `tinyspec` single-file flow | a fraction of full SDD |
+Agent 30 requires VS Code agent-scoped hooks (`chat.useCustomAgentHooks`) and the
+`TOKEN_EFFICIENCY_ANALYSIS_GUARD_ACTIVE` session marker. Its `PreToolUse` guard permits
+read/search/session-store work, bounded read-only probes, and exactly one create-new
+schema-valid analysis JSON; every other write or command is denied. Local Chronicle
+analysis requires `github.copilot.chat.localIndex.enabled`; without the index/tool, Agent
+30 records visible-only limitations rather than inventing session data.
 
-The LLM's tokens are then concentrated where they actually add value: distilling a
-SEED, writing a spec, doing 5-whys root-cause analysis, and choosing the next refactor.
+The review-first handoff (`send: false`) points to
+`speckit.engloop.31-token-efficiency-implement`. Agent 31 requires the analysis path and
+an explicit user-approved repair-ID list in the invocation. It rejects wildcards or
+inferred approval, implements only approved paths, preflights one authoritative tool
+command, validates the touched slice first, stores full logs under ignored
+`.engloop/out/token-efficiency/`, and writes one compact implementation JSON. It does not
+bypass Stages 04–08 or mutate deployments/global/user state.
 
-## Mechanisms
+Agent 31 also requires agent-scoped hooks. Its `UserPromptSubmit` initializer validates
+the analysis identity/hash, exact HEAD and canonical Git-status digest, repository repair
+IDs, resolved prerequisites, allowed/prohibited paths, and argument-array validation
+commands. `PreToolUse` then denies paths/commands outside that scope and permanently
+denies deployment/global mutation and commit/push. `Stop` requires a durable evidence
+artifact finalized as `passed`, `blocked`, or `failed`.
 
-### 1. Z3-driven test generation instead of LLM-written tests
+## Evidence hierarchy
 
-The single largest saving. Instead of asking a model to imagine test cases (expensive,
-and coverage is unverifiable), SEK explores CORD models with Z3 and **generates** test
-cases from the explored state space. Coverage becomes a *proof*, not a guess, and it
-costs solver time, not tokens. This is why Stage 5 targets "very good functional
-coverage but fast execution" — the solver finds the minimal, high-coverage set.
+1. **Cloud session usage:** actual `assistant.usage` input/output token events, scoped to
+	 `VS Code Chat` and aggregated by session before joins.
+2. **Local session store:** turn count, session duration, checkpoints, oversized messages,
+	 repeated files/tools, and polling/command-thrash proxies scoped to
+	 `GitHub Copilot Chat`.
+3. **Visible session/repository evidence:** only when the session-store tool/index is
+	 unavailable; limitations must be explicit.
 
-### 2. tinyspec for small repairs
+Never infer token counts from character counts or malformed joins. A proxy is reported as
+a proxy, with range/uncertainty; unavailable token data stays unavailable.
 
-Most repair items are small. Running the full `specify → plan → tasks → implement`
-loop on a five-line change produces "30+ files with < 20 lines of actual code". The
-`repair` command classifies each RPI and routes small ones to `tinyspec` — one file,
-under 80 lines, two commands. The full loop is reserved for changes that earn it.
+## Faster, lower-context implementation patterns
 
-### 3. YAGNI / "lazy senior developer" pragmatism
+- **Preflight once.** Read authoritative manifests/lockfiles/CI and test one declared
+	command path. For pnpm workspaces, use direct `pnpm` when available or a single
+	`corepack pnpm --version` check; signature failure is a prerequisite failure, not
+	authority to disable verification or use npm/package-lock.
+- **Parameterize repetition.** Prefer a terse script/task/skill with arguments and compact
+	exit output over repeated ad hoc commands.
+- **One monitor owns polling.** Use one long-running monitor with a compact final record;
+	other agents consume that evidence rather than issuing status loops.
+- **Keep logs out of chat.** Write full output to an ignored file, then return status,
+	key metrics, bounded diagnostics, and path.
+- **Validate by risk.** Run the narrowest deterministic check proving the touched slice;
+	broaden only when shared behavior or risk warrants it.
+- **Isolate heavy discovery.** Use a bounded read-only subagent or an explicitly supported
+	forked skill when intermediate context does not belong in the parent session.
+- **Compact or restart deliberately.** Long chats with growing input and no checkpoint
+	should compact at a meaningful boundary or hand durable state to a fresh session.
 
-architecture-guard's built-in Ponytail Pragmatism actively prevents over-engineered
-plans and needless dependencies during specification and implementation. Less
-generated scope means fewer tokens generating it and fewer tokens maintaining it.
+## Choose the open customization primitive
 
-### 4. Numbered documents as durable Memory
+Use existing authorities first. For new reusable multi-step capability, prefer the open
+Agent Skills standard in `.github/skills/<name>/SKILL.md`: concise discoverable metadata,
+stepwise instructions, and progressively loaded `scripts/`, `references/`, or `assets/`.
+Use targeted instructions for scoped conventions, custom agents for persistent roles and
+least-privilege tools, hooks for deterministic lifecycle enforcement, and prompt files for
+small explicit invocations. Do not duplicate the same workflow across all of them.
 
-Every stage writes a numbered doc (SEED/SP/ARC/MDL/CRD/COV/IN/PM/REF). Because context
-persists as greppable, cross-referenced Memory, later loops **re-load** decisions
-instead of **re-deriving** them. Re-derivation is the silent token sink loop
-engineering exists to remove.
+## Existing deterministic savings
 
-### 5. Bounded loops
+- SEK/Z3 explores behavior and generates tests without a token per test case.
+- Compilers, tests, coverage, architecture checks, Git, and renderers own objective gates.
+- The component pattern chooses unit/property versus model-based verification by artifact
+	class rather than forcing expensive hollow ceremony.
+- Durable numbered memory and the Learnings Pyramid avoid re-deriving accepted context.
+- Bounded loops and review-first handoffs keep autonomous work and scope explicit.
 
-Exploration and refinement loops carry hard iteration/budget caps. A loop that can't
-run away can't quietly burn a budget — a core loop-engineering guardrail.
+## Rule of thumb
 
-### 6. Right loop for the right clock
-
-The nested-loop structure (minutes / hours / days / month) means the frequent inner
-loops are the *cheap* ones (Z3, tests), and the expensive LLM-heavy work (specs,
-post-mortems, refactor decisions) happens on the slower clocks where it's amortized.
-
-## A rule of thumb
-
-> If a compiler, a test runner, or a solver can verify it, don't spend a token proving
-> it. Spend tokens on the decisions those engines can't make for you.
+> If a compiler, test runner, solver, script, preflight, or monitor can decide it, do not
+> spend repeated turns rediscovering or polling it. Spend tokens on the decision the
+> deterministic evidence cannot make.

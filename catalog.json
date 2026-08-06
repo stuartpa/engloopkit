@@ -4,11 +4,11 @@
     {
       "name": "EngLoopKit",
       "id": "engloop",
-      "description": "Ordered evidence-gated delivery, operations, stewardship, and private overlay workflow for Spec Kit.",
+      "description": "Ordered evidence-gated delivery, token efficiency, operations, stewardship, publication, and private overlay workflow for Spec Kit.",
       "author": "stuartpa",
-      "version": "1.12.0",
-      "download_url": "https://github.com/stuartpa/engloopkit/releases/download/v1.12.0/engloopkit-extension-1.12.0.zip",
-      "sha256": "2798705f884d7ea26a3d915220ffc5f866d7149bdf32439b3a04c015ade7324b",
+      "version": "1.13.0",
+      "download_url": "https://github.com/stuartpa/engloopkit/releases/download/v1.13.0/engloopkit-extension-1.13.0.zip",
+      "sha256": "39e6d050263e23c58bb4e10bb5a037e5242a223936abb917bf87397b0fee91cd",
       "repository": "https://github.com/stuartpa/engloopkit",
       "homepage": "https://github.com/stuartpa/engloopkit",
       "documentation": "https://github.com/stuartpa/engloopkit/blob/main/README.md",
@@ -19,7 +19,7 @@
         "tools": []
       },
       "provides": {
-        "commands": 21,
+        "commands": 23,
         "hooks": 0
       },
       "tags": [

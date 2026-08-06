@@ -3,6 +3,31 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.0] - 2026-08-05
+
+### Added
+
+- `/speckit.engloop.30-token-efficiency-analyze`: read-only VS Code Copilot chat-speed
+  and token/context analysis using Chronicle/session-store evidence when available,
+  labeled proxies otherwise, stable repair IDs, and one compact analysis JSON.
+- `/speckit.engloop.31-token-efficiency-implement`: implements only explicitly approved
+  Agent 30 repairs, favors open-standard Agent Skills, preflights one declared toolchain
+  path, stores full logs outside chat, validates the touched slice first, and never
+  commits/pushes without a separate user request.
+- Shipped compact JSON evidence templates, an open-standard `SKILL.md` template, and a
+  deterministic declared JavaScript package-manager preflight that selects
+  `corepack pnpm` only when direct pnpm is absent and Corepack verification succeeds.
+- Exact ordered handoff-target validation in both the trusted tool and release script.
+
+### Changed
+
+- Renumbered stewardship to `40-refactor-scan` / `41-learnings-pyramid`, session memory
+  to `50-pomodoro-create`, overlay utilities to `60-overlay-pack` /
+  `61-overlay-remove`, and publication agents to `70-six-pager-create`,
+  `71-powerpnt-create`, and `72-academic-paper-create`.
+- Expanded the current exact surface from 21 to 23 commands and the review-first
+  handoff graph from 27 to 28 edges.
+
 ## [1.12.0] - 2026-07-24
 
 ### Added

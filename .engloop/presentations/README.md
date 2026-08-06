@@ -1,6 +1,6 @@
 # Presentation artifacts
 
-Stage 60 creates evidence-backed Markdown-first PowerPoint decks.
+Stage 71 creates evidence-backed Markdown-first PowerPoint decks.
 
 - Reserve the next `PPT` number in `../numbering-registry.md` before creating artifacts.
 - Keep authoritative Markdown, generated PPTX, diagram sources, and rendered assets together.

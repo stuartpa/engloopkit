@@ -2,7 +2,7 @@
 
 **Workflow generation:** Ordered EngLoop v2.
 **Product versioning:** EngLoopKit remains on the **1.x** line; the ordered workflow
-ships in v1.7.0 and reusable debugger/readiness/publication support in v1.12.0. “v2” is not a v2.0 product release.
+ships in v1.7.0 and reusable debugger/readiness/publication/token-efficiency support in v1.13.0. “v2” is not a v2.0 product release.
 
 EngLoopKit has three independently invoked lifecycle lanes plus one local utility.
 Command ordinals give the picker a
@@ -29,16 +29,27 @@ regressions, artifact-appropriate verification, and measured **95% line + branch
 coverage. The stateful vertical additionally needs behavior-level SEK evidence with
 model-derived negative conformance and materially branching paths.
 
-## Session memory and overlay utilities: 40, 50–51
+## Token efficiency: 30–31
 
 | Stage | Command | Gate and durable output |
 |---:|---|---|
-| 40 | `speckit.engloop.40-pomodoro-create` | One brief `POM<NNNN>-<description>.md` note for the just-completed 30–60 minute session. |
-| 50 | `speckit.engloop.50-overlay-pack` | Pack the verified registered private overlay into one portable archive. |
-| 51 | `speckit.engloop.51-overlay-remove` | Confirm and remove every manifest-owned local path, restore prior hooks, and preserve unrelated host files. |
-| 60 | `speckit.engloop.60-six-pager-create` | Create a self-contained six-page narrative decision memo and validated Word document. |
-| 61 | `speckit.engloop.61-powerpnt-create` | Create a Markdown-first presentation with layered architecture, focused model graphs, collision-free labels, and rendered-PPTX validation. |
-| 62 | `speckit.engloop.62-academic-paper-create` | Create a rigorous systems research paper with citations, figures, reproducible evaluation, and validated PDF. |
+| 30 | `speckit.engloop.30-token-efficiency-analyze` | Read-only VS Code Copilot session-speed/context analysis plus one compact `.engloop/evidence/token-efficiency-analysis-*.json`; no repairs or closure claim. |
+| 31 | `speckit.engloop.31-token-efficiency-implement` | Only explicitly approved Agent 30 repair IDs; minimal customization/script changes, declared-tool preflight, focused validation, and one implementation JSON. |
+
+Use this lane whenever a chat shows repeated polling, oversized output, tool guessing,
+missing checkpoints, repeated context discovery, or slow serial work. Agent 30 hands off
+with `send: false`; Agent 31 requires the user to approve stable repair IDs again.
+
+## Session memory, overlay utilities, and publications: 50, 60–61, 70–72
+
+| Stage | Command | Gate and durable output |
+|---:|---|---|
+| 50 | `speckit.engloop.50-pomodoro-create` | One brief `POM<NNNN>-<description>.md` note for the just-completed 30–60 minute session. |
+| 60 | `speckit.engloop.60-overlay-pack` | Pack the verified registered private overlay into one portable archive. |
+| 61 | `speckit.engloop.61-overlay-remove` | Confirm and remove every manifest-owned local path, restore prior hooks, and preserve unrelated host files. |
+| 70 | `speckit.engloop.70-six-pager-create` | Create a self-contained six-page narrative decision memo and validated Word document. |
+| 71 | `speckit.engloop.71-powerpnt-create` | Create a Markdown-first presentation with layered architecture, focused model graphs, collision-free labels, and rendered-PPTX validation. |
+| 72 | `speckit.engloop.72-academic-paper-create` | Create a rigorous systems research paper with citations, figures, reproducible evaluation, and validated PDF. |
 
 ## Operations: 20–22
 
@@ -52,12 +63,12 @@ Operations is not created merely because a delivery lane completed.
    through Stage 04 and every applicable Stage 05–08 gate. It closes only after source,
    immutable release, exact target verification, and current readiness agree.
 
-## Stewardship: 30–31
+## Stewardship: 40–41
 
-- **30 Refactor scan** requires explicit spare capacity. It records exactly one REFACT
+- **40 Refactor scan** requires explicit spare capacity. It records exactly one REFACT
   decision or `none-this-cycle`; a selected direction/architecture change returns to
   01 and/or 03 before 04.
-- **31 Learnings Pyramid** requires capacity and an accepted-learning refresh demand. It
+- **41 Learnings Pyramid** requires capacity and an accepted-learning refresh demand. It
   validates source/card/index/retrieval evidence, then returns to its invoking context.
 
 ## Handoffs

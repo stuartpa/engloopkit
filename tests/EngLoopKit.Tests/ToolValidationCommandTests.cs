@@ -58,9 +58,11 @@ public sealed class ToolValidationCommandTests : IDisposable
         File.WriteAllText(configPath, valid.Replace("\"status\": \"proven\"", "\"status\": \"unproven\"", StringComparison.Ordinal));
         Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.09-debugger-walk-thru", "--root", _fixture]));
         Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
-        Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.40-pomodoro-create", "--root", _fixture]));
-        Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.50-overlay-pack", "--root", _fixture]));
-        Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.51-overlay-remove", "--root", _fixture]));
+        Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.30-token-efficiency-analyze", "--root", _fixture]));
+        Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.31-token-efficiency-implement", "--root", _fixture]));
+        Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.50-pomodoro-create", "--root", _fixture]));
+        Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.60-overlay-pack", "--root", _fixture]));
+        Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.61-overlay-remove", "--root", _fixture]));
         foreach (var stage in new[]
         {
             "speckit.engloop.05-model",

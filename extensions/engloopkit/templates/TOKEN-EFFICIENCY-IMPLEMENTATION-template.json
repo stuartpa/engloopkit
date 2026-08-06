@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0",
+  "artifactType": "token-efficiency-implementation",
+  "capturedAtUtc": "<ISO-8601>",
+  "revision": "<HEAD-or-worktree-identity>",
+  "outcome": "in-progress",
+  "analysis": {
+    "path": ".engloop/evidence/token-efficiency-analysis-<id>.json",
+    "sha256": "<analysis hash>",
+    "analysisId": "<analysis id>"
+  },
+  "approvedRepairIds": [],
+  "repairStatus": [],
+  "changedFiles": [],
+  "customizationDecisions": [],
+  "toolchainPreflight": [],
+  "validation": [],
+  "unavailableToolDecisions": [],
+  "failure": null,
+  "residualRisks": [],
+  "sourceState": {
+    "initialHead": "<sha>",
+    "finalHead": "<sha>",
+    "initialStatusDigest": "<digest>",
+    "finalStatusDigest": "<digest>"
+  }
+}
