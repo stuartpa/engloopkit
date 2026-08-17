@@ -5,19 +5,20 @@
     stage transitions; `sek explore` turns it into the loop graph and `sek generate`
     emits an xUnit conformance suite that replays legal stage sequences against the SUT
     (EngLoopKit.Core.Loop). Follows SEK's model-project conventions (Nullable/ImplicitUsings
-    disabled, AssemblyName Model, ProjectReference to Sek.Modeling).
+    disabled, AssemblyName Model, exact SpecExplorerKit.Modeling 0.1.3 package).
   -->
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>EngLoopKit.Model</RootNamespace>
     <AssemblyName>Model</AssemblyName>
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <RestoreAdditionalProjectSources>$(MSBuildThisFileDirectory)..\..\.engloop\out\sek-v0.1.3-assets</RestoreAdditionalProjectSources>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\SEK\src\Sek.Modeling\Sek.Modeling.csproj" />
+    <PackageReference Include="SpecExplorerKit.Modeling" Version="0.1.3" />
   </ItemGroup>
 
   <ItemGroup>

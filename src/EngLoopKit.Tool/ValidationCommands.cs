@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using System.Xml.Linq;
 using EngLoopKit.Core;
 using EngLoopKit.Components.DocumentValidation;
 
@@ -10,29 +11,15 @@ public static class ValidationCommands
     private const string CurrentReadinessRelativePath = ".engloop/readiness/current.json";
     private static readonly string[] ExpectedIds =
     [
-        "speckit.engloop.01-northstar",
-        "speckit.engloop.02-scaffold",
-        "speckit.engloop.03-architect",
-        "speckit.engloop.04-refactor",
-        "speckit.engloop.05-model",
-        "speckit.engloop.06-explore",
-        "speckit.engloop.07-validate",
-        "speckit.engloop.08-unittest",
-        "speckit.engloop.09-debugger-walk-thru",
-        "speckit.engloop.10-codereview-prepare",
-        "speckit.engloop.20-incident",
-        "speckit.engloop.21-postmortem",
-        "speckit.engloop.22-repair",
-        "speckit.engloop.30-token-efficiency-analyze",
-        "speckit.engloop.31-token-efficiency-implement",
-        "speckit.engloop.40-refactor-scan",
-        "speckit.engloop.41-learnings-pyramid",
-        "speckit.engloop.50-pomodoro-create",
-        "speckit.engloop.60-overlay-pack",
-        "speckit.engloop.61-overlay-remove",
-        "speckit.engloop.70-six-pager-create",
-        "speckit.engloop.71-powerpnt-create",
-        "speckit.engloop.72-academic-paper-create",
+        "speckit.engloop.01-northstar", "speckit.engloop.02-scaffold", "speckit.engloop.03-architect",
+        "speckit.engloop.04-refactor", "speckit.engloop.05-model", "speckit.engloop.06-explore",
+        "speckit.engloop.07-validate", "speckit.engloop.08-unittest", "speckit.engloop.09-debugger-walk-thru",
+        "speckit.engloop.10-codereview-prepare", "speckit.engloop.20-incident", "speckit.engloop.21-postmortem",
+        "speckit.engloop.22-repair", "speckit.engloop.30-token-efficiency-analyze", "speckit.engloop.31-token-efficiency-implement",
+        "speckit.engloop.40-refactor", "speckit.engloop.41-deadcode", "speckit.engloop.42-learnings-pyramid",
+        "speckit.engloop.50-handoff-create", "speckit.engloop.60-overlay-pack", "speckit.engloop.61-overlay-remove",
+        "speckit.engloop.70-six-pager-create", "speckit.engloop.71-powerpnt-create", "speckit.engloop.72-academic-paper-create",
+        "speckit.engloop.80-upgrade-elk",
     ];
 
     private static readonly Dictionary<string, string[]> ExpectedTools = new(StringComparer.Ordinal)
@@ -52,41 +39,33 @@ public static class ValidationCommands
         ["speckit.engloop.22-repair"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.30-token-efficiency-analyze"] = ["read", "search", "edit", "execute", "agent", "copilot_sessionStoreSql"],
         ["speckit.engloop.31-token-efficiency-implement"] = ["read", "search", "edit", "execute", "agent"],
-        ["speckit.engloop.40-refactor-scan"] = ["read", "search", "edit", "execute", "agent"],
-        ["speckit.engloop.41-learnings-pyramid"] = ["read", "search", "edit", "execute", "agent"],
-        ["speckit.engloop.50-pomodoro-create"] = ["read", "search", "edit", "execute"],
+        ["speckit.engloop.40-refactor"] = ["read", "search", "edit", "execute", "agent"],
+        ["speckit.engloop.41-deadcode"] = ["read", "search", "edit", "execute", "agent"],
+        ["speckit.engloop.42-learnings-pyramid"] = ["read", "search", "edit", "execute", "agent"],
+        ["speckit.engloop.50-handoff-create"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.60-overlay-pack"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.61-overlay-remove"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.70-six-pager-create"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.71-powerpnt-create"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.72-academic-paper-create"] = ["read", "search", "edit", "execute", "web"],
+        ["speckit.engloop.80-upgrade-elk"] = ["read", "search", "execute"],
     };
 
     private static readonly Dictionary<string, string[]> ExpectedAgents = new(StringComparer.Ordinal)
     {
-        ["speckit.engloop.01-northstar"] = ["Explore"],
-        ["speckit.engloop.02-scaffold"] = [],
-        ["speckit.engloop.03-architect"] = ["Explore"],
-        ["speckit.engloop.04-refactor"] = [],
-        ["speckit.engloop.05-model"] = ["Explore"],
-        ["speckit.engloop.06-explore"] = [],
-        ["speckit.engloop.07-validate"] = [],
-        ["speckit.engloop.08-unittest"] = ["Explore"],
-        ["speckit.engloop.09-debugger-walk-thru"] = [],
-        ["speckit.engloop.10-codereview-prepare"] = [],
-        ["speckit.engloop.20-incident"] = [],
-        ["speckit.engloop.21-postmortem"] = ["Explore"],
-        ["speckit.engloop.22-repair"] = [],
-        ["speckit.engloop.30-token-efficiency-analyze"] = ["Explore"],
-        ["speckit.engloop.31-token-efficiency-implement"] = ["Explore"],
-        ["speckit.engloop.40-refactor-scan"] = ["Explore"],
-        ["speckit.engloop.41-learnings-pyramid"] = ["Explore"],
-        ["speckit.engloop.50-pomodoro-create"] = [],
-        ["speckit.engloop.60-overlay-pack"] = [],
-        ["speckit.engloop.61-overlay-remove"] = [],
-        ["speckit.engloop.70-six-pager-create"] = [],
-        ["speckit.engloop.71-powerpnt-create"] = [],
-        ["speckit.engloop.72-academic-paper-create"] = [],
+        ["speckit.engloop.01-northstar"] = ["Explore"], ["speckit.engloop.02-scaffold"] = [],
+        ["speckit.engloop.03-architect"] = ["Explore"], ["speckit.engloop.04-refactor"] = [],
+        ["speckit.engloop.05-model"] = ["Explore"], ["speckit.engloop.06-explore"] = [],
+        ["speckit.engloop.07-validate"] = [], ["speckit.engloop.08-unittest"] = ["Explore"],
+        ["speckit.engloop.09-debugger-walk-thru"] = [], ["speckit.engloop.10-codereview-prepare"] = [],
+        ["speckit.engloop.20-incident"] = [], ["speckit.engloop.21-postmortem"] = ["Explore"],
+        ["speckit.engloop.22-repair"] = [], ["speckit.engloop.30-token-efficiency-analyze"] = ["Explore"],
+        ["speckit.engloop.31-token-efficiency-implement"] = ["Explore"], ["speckit.engloop.40-refactor"] = ["Explore"],
+        ["speckit.engloop.41-deadcode"] = ["Explore"], ["speckit.engloop.42-learnings-pyramid"] = ["Explore"],
+        ["speckit.engloop.50-handoff-create"] = [], ["speckit.engloop.60-overlay-pack"] = [],
+        ["speckit.engloop.61-overlay-remove"] = [], ["speckit.engloop.70-six-pager-create"] = [],
+        ["speckit.engloop.71-powerpnt-create"] = [], ["speckit.engloop.72-academic-paper-create"] = [],
+        ["speckit.engloop.80-upgrade-elk"] = [],
     };
 
     private static readonly Dictionary<string, string[]> ExpectedHandoffTargets = new(StringComparer.Ordinal)
@@ -102,18 +81,17 @@ public static class ValidationCommands
         ["speckit.engloop.09-debugger-walk-thru"] = [],
         ["speckit.engloop.10-codereview-prepare"] = ["speckit.engloop.08-unittest"],
         ["speckit.engloop.20-incident"] = ["speckit.engloop.21-postmortem"],
-        ["speckit.engloop.21-postmortem"] = ["speckit.engloop.22-repair", "speckit.engloop.41-learnings-pyramid"],
+        ["speckit.engloop.21-postmortem"] = ["speckit.engloop.22-repair", "speckit.engloop.42-learnings-pyramid"],
         ["speckit.engloop.22-repair"] = ["speckit.engloop.04-refactor"],
         ["speckit.engloop.30-token-efficiency-analyze"] = ["speckit.engloop.31-token-efficiency-implement"],
         ["speckit.engloop.31-token-efficiency-implement"] = [],
-        ["speckit.engloop.40-refactor-scan"] = ["speckit.engloop.01-northstar", "speckit.engloop.03-architect", "speckit.engloop.04-refactor"],
-        ["speckit.engloop.41-learnings-pyramid"] = [],
-        ["speckit.engloop.50-pomodoro-create"] = [],
+        ["speckit.engloop.40-refactor"] = ["speckit.engloop.01-northstar", "speckit.engloop.03-architect", "speckit.engloop.04-refactor", "speckit.engloop.41-deadcode"],
+        ["speckit.engloop.41-deadcode"] = [], ["speckit.engloop.42-learnings-pyramid"] = [],
+        ["speckit.engloop.50-handoff-create"] = [],
         ["speckit.engloop.60-overlay-pack"] = ["speckit.engloop.01-northstar"],
-        ["speckit.engloop.61-overlay-remove"] = [],
-        ["speckit.engloop.70-six-pager-create"] = [],
-        ["speckit.engloop.71-powerpnt-create"] = [],
-        ["speckit.engloop.72-academic-paper-create"] = [],
+        ["speckit.engloop.61-overlay-remove"] = [], ["speckit.engloop.70-six-pager-create"] = [],
+        ["speckit.engloop.71-powerpnt-create"] = [], ["speckit.engloop.72-academic-paper-create"] = [],
+        ["speckit.engloop.80-upgrade-elk"] = [],
     };
 
     private static string GetOption(string[] args, string name, string defaultValue = ".")
@@ -159,12 +137,7 @@ public static class ValidationCommands
             var relativeEvidence = NormalizeReadinessEvidencePath(rootResult.RepositoryRoot, evidence);
             var evidencePath = Path.Combine(rootResult.RepositoryRoot, relativeEvidence.Replace('/', Path.DirectorySeparatorChar));
             if (!File.Exists(evidencePath)) throw new FileNotFoundException("readiness-evidence-missing", evidencePath);
-            var evidenceText = File.ReadAllText(evidencePath).Replace("\r\n", "\n", StringComparison.Ordinal);
-            if (!evidenceText.Contains("## Readiness Gate verdict", StringComparison.Ordinal)
-                || !evidenceText.Contains("- [x] **PASS**", StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException("readiness-evidence-not-attested-pass");
-            }
+            ValidateStructuredReadinessEvidence(rootResult.RepositoryRoot, evidencePath);
 
             var head = GitHead(rootResult.RepositoryRoot) ?? throw new InvalidOperationException("readiness-git-head-unavailable");
             var record = new
@@ -175,6 +148,7 @@ public static class ValidationCommands
                 head,
                 evidencePath = relativeEvidence,
                 evidenceSha256 = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(evidencePath))).ToLowerInvariant(),
+                worktreeDigest = OperationsLearningPolicy.ComputeReadinessWorktreeDigest(rootResult.RepositoryRoot),
                 emittedAtUtc = DateTimeOffset.UtcNow,
             };
             var output = Path.Combine(rootResult.RepositoryRoot, CurrentReadinessRelativePath.Replace('/', Path.DirectorySeparatorChar));
@@ -188,6 +162,184 @@ public static class ValidationCommands
             Console.Error.WriteLine(ex.Message);
             return 1;
         }
+    }
+
+    private static void ValidateStructuredReadinessEvidence(string root, string evidencePath)
+    {
+        using var json = JsonDocument.Parse(File.ReadAllText(evidencePath));
+        var element = json.RootElement;
+        EnsureValidation(element.TryGetProperty("schemaVersion", out var schema) & schema.GetString() == "1.0", "readiness-evidence-schema-invalid");
+        EnsureValidation(element.TryGetProperty("artifactType", out var type) & type.GetString() == "whole-product-readiness", "readiness-evidence-type-invalid");
+        EnsureValidation(element.TryGetProperty("verdict", out var verdict) & verdict.GetString() == "PASS", "readiness-evidence-verdict-not-pass");
+        foreach (var gate in new[] { "generatedFunctionalPass", "directSuitePass", "architectureValidationPass" })
+        {
+            EnsureValidation(element.TryGetProperty(gate, out var value) & value.ValueKind == JsonValueKind.True, "readiness-evidence-gate-fail:" + gate);
+        }
+        EnsureValidation(element.TryGetProperty("failures", out var failures) & failures.ValueKind == JsonValueKind.Array & (failures.ValueKind != JsonValueKind.Array || failures.GetArrayLength() == 0), "readiness-evidence-failures-present");
+        EnsureValidation(element.TryGetProperty("modules", out var modules) & modules.ValueKind == JsonValueKind.Array, "readiness-evidence-modules-missing");
+        var coberturaRelative = element.TryGetProperty("coberturaReport", out var reportValue) && reportValue.ValueKind == JsonValueKind.String ? reportValue.GetString() ?? string.Empty : string.Empty;
+        var coberturaFull = ResolveOperationsOutput(root, coberturaRelative, ".engloop/out/readiness-coverage/", requireExisting: true);
+        var coberturaHash = element.TryGetProperty("coberturaSha256", out var hashValue) ? hashValue.GetString() ?? string.Empty : string.Empty;
+        EnsureValidation(string.Equals(coberturaHash, OperationsLearningPolicy.Sha256(coberturaFull), StringComparison.Ordinal), "readiness-evidence-cobertura-hash-mismatch");
+        var packages = XDocument.Load(coberturaFull).Descendants("package")
+            .Where(node => node.Attribute("name") is not null)
+            .ToDictionary(node => node.Attribute("name")!.Value, StringComparer.Ordinal);
+        var configured = Evidence.LoadConfiguration(root).ModuleInventory.Select(module => module.Id).OrderBy(id => id, StringComparer.Ordinal).ToArray();
+        var observed = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+        foreach (var module in modules.EnumerateArray())
+        {
+            var id = module.TryGetProperty("id", out var idValue) ? idValue.GetString() ?? string.Empty : string.Empty;
+            EnsureValidation(id.Length > 0 & observed.TryAdd(id, module.Clone()), "readiness-evidence-module-id-invalid-or-duplicate");
+        }
+        EnsureValidation(configured.SequenceEqual(observed.Keys.OrderBy(id => id, StringComparer.Ordinal), StringComparer.Ordinal), "readiness-evidence-module-set-mismatch");
+        foreach (var id in configured)
+        {
+            var module = observed[id];
+            var coverageIdentity = module.TryGetProperty("coverageIdentity", out var coverageValue) ? coverageValue.GetString() ?? string.Empty : string.Empty;
+            EnsureValidation(packages.TryGetValue(coverageIdentity, out var package), "readiness-evidence-cobertura-package-missing:" + id);
+            EnsureValidation(module.TryGetProperty("line", out var line) & (line.ValueKind != JsonValueKind.Number || line.GetDouble() >= 95.0), "readiness-evidence-line-below-threshold:" + id);
+            EnsureValidation(module.TryGetProperty("branch", out var branch) & (branch.ValueKind != JsonValueKind.Number || branch.GetDouble() >= 95.0), "readiness-evidence-branch-below-threshold:" + id);
+            var measuredLine = Math.Round(double.Parse(package!.Attribute("line-rate")!.Value, System.Globalization.CultureInfo.InvariantCulture) * 100, 2);
+            var measuredBranch = Math.Round(double.Parse(package.Attribute("branch-rate")!.Value, System.Globalization.CultureInfo.InvariantCulture) * 100, 2);
+            EnsureValidation(Math.Abs(measuredLine - line.GetDouble()) <= 0.001, "readiness-evidence-line-not-measured:" + id);
+            EnsureValidation(Math.Abs(measuredBranch - branch.GetDouble()) <= 0.001, "readiness-evidence-branch-not-measured:" + id);
+            foreach (var gate in new[] { "functionalPass", "directPass", "architecturePass", "pass" })
+            {
+                EnsureValidation(module.TryGetProperty(gate, out var value) & value.ValueKind == JsonValueKind.True, $"readiness-evidence-module-gate-fail:{id}:{gate}");
+            }
+        }
+    }
+
+    public static int ExecuteRepairGate(string[] args)
+    {
+        if (args.Length == 0 || !string.Equals(args[0], "execute", StringComparison.Ordinal))
+        {
+            Console.Error.WriteLine("Usage: engloopkit repair-gate execute --root <path> --postmortem <path> --rpi <RPIxxx> --rules <RULE:id,...> --route <route.json> --receipt <.engloop/out/repair-gates/*.receipt.json>");
+            return 1;
+        }
+        try
+        {
+            var root = Path.GetFullPath(GetOption(args, "--root"));
+            ValidateRootAndConfigForOperations(root);
+            var postmortemPath = RequireOption(args, "--postmortem");
+            var rpi = RequireOption(args, "--rpi");
+            var rules = RequireOption(args, "--rules").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var routePath = RequireOption(args, "--route").Replace('\\', '/');
+            var receiptPath = RequireOption(args, "--receipt").Replace('\\', '/');
+            EnsureValidation(int.TryParse(GetOption(args, "--timeout-seconds", "900"), out var timeoutSeconds) & timeoutSeconds is >= 1 and <= 3600, "repair-gate-timeout-invalid");
+            var pm = OperationsLearningPolicy.ValidatePostmortem(root, postmortemPath);
+            EnsureValidation(pm.Passed & pm.Contract is not null, "repair-gate-postmortem-invalid:" + string.Join(',', pm.Failures));
+            if (!pm.Contract!.Repairs.TryGetValue(rpi, out var repair) || repair is null)
+                throw new InvalidOperationException("repair-gate-rpi-missing");
+            var route = OperationsLearningPolicy.ValidateRepairAcceptance(root, postmortemPath, rpi, rules, routePath, "route", currentReadinessPass: false);
+            EnsureValidation(route.Passed, "repair-gate-route-invalid:" + string.Join(',', route.Failures));
+            var fullRoute = ResolveOperationsOutput(root, routePath, ".engloop/repairs/", requireExisting: true);
+            var fullReceipt = ResolveOperationsOutput(root, receiptPath, ".engloop/out/repair-gates/", requireExisting: false);
+            EnsureValidation(!File.Exists(fullReceipt), "repair-gate-receipt-exists");
+            Directory.CreateDirectory(Path.GetDirectoryName(fullReceipt)!);
+            var baseName = Path.GetFileNameWithoutExtension(fullReceipt).Replace(".receipt", string.Empty, StringComparison.Ordinal);
+            var stdoutRelative = ".engloop/out/repair-gates/" + baseName + ".stdout.log";
+            var stderrRelative = ".engloop/out/repair-gates/" + baseName + ".stderr.log";
+            var stdoutPath = ResolveOperationsOutput(root, stdoutRelative, ".engloop/out/repair-gates/", false);
+            var stderrPath = ResolveOperationsOutput(root, stderrRelative, ".engloop/out/repair-gates/", false);
+            EnsureValidation(!File.Exists(stdoutPath) & !File.Exists(stderrPath), "repair-gate-output-exists");
+            var excluded = new[] { receiptPath, stdoutRelative, stderrRelative };
+            var preGateStatusDigest = OperationsLearningPolicy.ComputeGitStatusDigest(root, excluded);
+            var preGateHead = OperationsLearningPolicy.GitHead(root) ?? throw new InvalidOperationException("repair-gate-head-unavailable");
+            var preGateIndexDigest = OperationsLearningPolicy.ComputeGitIndexDigest(root);
+
+            var start = new ProcessStartInfo(repair.ExecutableGate[0])
+            {
+                WorkingDirectory = root,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            foreach (var argument in repair.ExecutableGate.Skip(1)) start.ArgumentList.Add(argument);
+            using var process = Process.Start(start) ?? throw new InvalidOperationException("repair-gate-process-start-failed");
+            var stdoutTask = process.StandardOutput.ReadToEndAsync();
+            var stderrTask = process.StandardError.ReadToEndAsync();
+            var completed = process.WaitForExit(timeoutSeconds * 1000);
+            if (!completed)
+            {
+                try { process.Kill(entireProcessTree: true); } catch { }
+                process.WaitForExit();
+            }
+            var stdout = stdoutTask.GetAwaiter().GetResult();
+            var stderr = stderrTask.GetAwaiter().GetResult();
+            File.WriteAllText(stdoutPath, stdout);
+            File.WriteAllText(stderrPath, stderr);
+            var postGateStatusDigest = OperationsLearningPolicy.ComputeGitStatusDigest(root, excluded);
+            var postGateHead = OperationsLearningPolicy.GitHead(root) ?? string.Empty;
+            var postGateIndexDigest = OperationsLearningPolicy.ComputeGitIndexDigest(root);
+            var gatePassed = completed && process.ExitCode == 0 && preGateStatusDigest == postGateStatusDigest
+                && preGateHead == postGateHead && preGateIndexDigest == postGateIndexDigest;
+            var receipt = new
+            {
+                schemaVersion = "1.0",
+                artifactType = "repair-gate-receipt",
+                capturedAtUtc = DateTimeOffset.UtcNow,
+                verdict = gatePassed ? "PASS" : "FAIL",
+                postmortemPath = pm.Contract.RelativePath,
+                postmortemSha256 = pm.Contract.Sha256,
+                rpiId = rpi,
+                ruleIds = repair.RuleIds,
+                pyramidDigest = pm.Contract.PyramidDigest,
+                routePath,
+                routeSha256 = OperationsLearningPolicy.Sha256(fullRoute),
+                executableGate = repair.ExecutableGate,
+                executableGateDigest = repair.ExecutableGateDigest,
+                sekApplicability = repair.SekApplicability,
+                sekScenarioId = repair.SekScenarioId,
+                preGateHead,
+                sourceHead = postGateHead,
+                sourceStatusDigest = postGateStatusDigest,
+                preGateStatusDigest,
+                preGateIndexDigest,
+                sourceIndexDigest = postGateIndexDigest,
+                completed,
+                exitCode = completed ? process.ExitCode : -1,
+                stdoutPath = stdoutRelative,
+                stdoutSha256 = OperationsLearningPolicy.Sha256(stdoutPath),
+                stderrPath = stderrRelative,
+                stderrSha256 = OperationsLearningPolicy.Sha256(stderrPath),
+            };
+            File.WriteAllText(fullReceipt, JsonSerializer.Serialize(receipt, new JsonSerializerOptions { WriteIndented = true }));
+            if (!gatePassed)
+            {
+                Console.Error.WriteLine($"REPAIR_GATE_FAIL receipt={receiptPath} exit={(completed ? process.ExitCode : -1)} mutated={preGateStatusDigest != postGateStatusDigest || preGateHead != postGateHead || preGateIndexDigest != postGateIndexDigest}");
+                return 1;
+            }
+            Console.WriteLine($"REPAIR_GATE_PASS receipt={receiptPath}");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(ex.Message);
+            return 1;
+        }
+    }
+
+    private static string ResolveOperationsOutput(string root, string candidate, string requiredPrefix, bool requireExisting)
+    {
+        EnsureValidation(!string.IsNullOrWhiteSpace(candidate) & !Path.IsPathRooted(candidate), "operations-path-must-be-relative");
+        var relative = candidate.Trim().Replace('\\', '/');
+        var full = Path.GetFullPath(Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar)));
+        var normalized = Path.GetRelativePath(root, full).Replace('\\', '/');
+        EnsureValidation(normalized != ".." & !normalized.StartsWith("../", StringComparison.Ordinal) & normalized.StartsWith(requiredPrefix, StringComparison.Ordinal), "operations-path-outside-governed-root");
+        if (requireExisting && !File.Exists(full)) throw new FileNotFoundException("operations-file-missing", full);
+        var cursor = requireExisting ? full : Path.GetDirectoryName(full);
+        while (!string.IsNullOrWhiteSpace(cursor) && cursor.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+        {
+            if (File.Exists(cursor) || Directory.Exists(cursor))
+            {
+                if ((File.GetAttributes(cursor) & FileAttributes.ReparsePoint) != 0) throw new InvalidOperationException("operations-reparse-point-forbidden");
+            }
+            if (string.Equals(cursor, root, StringComparison.OrdinalIgnoreCase)) break;
+            cursor = Path.GetDirectoryName(cursor);
+        }
+        return full;
     }
 
     public static int ValidateRoot(string[] args)
@@ -343,7 +495,7 @@ public static class ValidationCommands
                 return 1;
             }
 
-            if (commandId is "speckit.engloop.09-debugger-walk-thru" or "speckit.engloop.31-token-efficiency-implement" or "speckit.engloop.41-learnings-pyramid" or "speckit.engloop.50-pomodoro-create" or "speckit.engloop.61-overlay-remove" or "speckit.engloop.70-six-pager-create" or "speckit.engloop.71-powerpnt-create" or "speckit.engloop.72-academic-paper-create")
+            if (commandId is "speckit.engloop.09-debugger-walk-thru" or "speckit.engloop.31-token-efficiency-implement" or "speckit.engloop.41-deadcode" or "speckit.engloop.42-learnings-pyramid" or "speckit.engloop.50-handoff-create" or "speckit.engloop.61-overlay-remove" or "speckit.engloop.70-six-pager-create" or "speckit.engloop.71-powerpnt-create" or "speckit.engloop.72-academic-paper-create" or "speckit.engloop.80-upgrade-elk")
             {
                 if (map.ContainsKey("handoffs"))
                 {
@@ -370,8 +522,99 @@ public static class ValidationCommands
 
     public static int ValidateLearnings(string[] args)
     {
+        var root = Path.GetFullPath(GetOption(args, "--root"));
+        var result = LearningsPyramidPolicy.Validate(
+            Path.Combine(root, "LEARNINGS.md"),
+            LearningsPyramidPolicy.ExtractSources(Path.Combine(root, ".engloop", "postmortems")),
+            LearningsPyramidPolicy.ExtractCards(Path.Combine(root, ".engloop", "learnings", "cards")));
+        if (!result.Passed)
+        {
+            foreach (var failure in result.Failures) Console.Error.WriteLine(failure);
+            return 1;
+        }
         Console.WriteLine("LEARNINGS_OK");
         return 0;
+    }
+
+    public static int ValidatePostmortemLearning(string[] args)
+    {
+        try
+        {
+            var root = Path.GetFullPath(GetOption(args, "--root"));
+            var postmortem = RequireOption(args, "--postmortem");
+            var incidents = RequireOption(args, "--incidents").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var result = OperationsLearningPolicy.ValidatePostmortem(root, postmortem, incidents);
+            if (!result.Passed)
+            {
+                foreach (var failure in result.Failures) Console.Error.WriteLine(failure);
+                return 1;
+            }
+            Console.WriteLine($"POSTMORTEM_LEARNING_OK postmortem={result.Contract!.PostmortemId} rules={string.Join(',', result.Contract.RuleDispositions.Select(item => item.RuleId))}");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(ex.Message);
+            return 1;
+        }
+    }
+
+    public static int ValidateIncidentContext(string[] args)
+    {
+        try
+        {
+            var root = Path.GetFullPath(GetOption(args, "--root"));
+            var incident = RequireOption(args, "--incident");
+            var allowDeferred = bool.TryParse(GetOption(args, "--allow-deferred", "false"), out var parsed) && parsed;
+            ValidateRootAndConfigForOperations(root);
+            var result = OperationsLearningPolicy.ValidateIncidentContext(root, incident, requireConsulted: !allowDeferred);
+            if (!result.Passed)
+            {
+                foreach (var failure in result.Failures) Console.Error.WriteLine(failure);
+                return 1;
+            }
+            Console.WriteLine($"INCIDENT_CONTEXT_OK incident={result.Contract!.IncidentId}");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(ex.Message);
+            return 1;
+        }
+    }
+
+    private static void ValidateRootAndConfigForOperations(string root)
+    {
+        var rootResult = Evidence.ValidateRootLayout(root);
+        if (!rootResult.Passed) throw new InvalidOperationException(rootResult.Reason);
+        var failures = Evidence.ValidateConfigurationSafety(Evidence.LoadConfiguration(root));
+        if (failures.Count > 0) throw new InvalidOperationException(failures[0]);
+    }
+
+    public static int ValidateRepairLearning(string[] args)
+    {
+        try
+        {
+            var root = Path.GetFullPath(GetOption(args, "--root"));
+            var postmortem = RequireOption(args, "--postmortem");
+            var rpi = RequireOption(args, "--rpi");
+            var rules = RequireOption(args, "--rules").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var acceptance = RequireOption(args, "--acceptance");
+            var phase = RequireOption(args, "--phase").ToLowerInvariant();
+            var result = OperationsLearningPolicy.ValidateRepairAcceptance(root, postmortem, rpi, rules, acceptance, phase, HasCurrentReadinessPass(root));
+            if (!result.Passed)
+            {
+                foreach (var failure in result.Failures) Console.Error.WriteLine(failure);
+                return 1;
+            }
+            Console.WriteLine($"REPAIR_LEARNING_OK phase={phase} rpi={rpi} rules={string.Join(',', rules)}");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(ex.Message);
+            return 1;
+        }
     }
 
     public static int ValidateInstallation(string[] args)
@@ -442,7 +685,7 @@ public static class ValidationCommands
                 return 2;
             }
 
-            if (stage == "speckit.engloop.10-codereview-prepare")
+            if (stage is "speckit.engloop.10-codereview-prepare" or "speckit.engloop.20-incident")
             {
                 if (!HasCurrentReadinessPass(rootResult.RepositoryRoot))
                 {
@@ -562,8 +805,9 @@ public static class ValidationCommands
 
                 if (id == "speckit.engloop.08-unittest" &&
                     (target.ToString() == "speckit.engloop.20-incident" ||
-                     target.ToString() == "speckit.engloop.40-refactor-scan" ||
-                     target.ToString() == "speckit.engloop.41-learnings-pyramid"))
+                     target.ToString() == "speckit.engloop.40-refactor" ||
+                     target.ToString() == "speckit.engloop.41-deadcode" ||
+                     target.ToString() == "speckit.engloop.42-learnings-pyramid"))
                 {
                     Console.Error.WriteLine("forbidden-stage08-edge");
                     return 1;
@@ -577,7 +821,7 @@ public static class ValidationCommands
             }
         }
 
-        if (totalHandoffs != 28)
+        if (totalHandoffs != 29)
         {
             Console.Error.WriteLine($"wrong-handoff-count:{totalHandoffs}");
             return 1;
@@ -603,14 +847,16 @@ public static class ValidationCommands
                 || !json.RootElement.TryGetProperty("head", out var head)
                 || !string.Equals(head.GetString(), GitHead(root), StringComparison.Ordinal)
                 || !json.RootElement.TryGetProperty("evidencePath", out var evidencePath)
-                || !json.RootElement.TryGetProperty("evidenceSha256", out var evidenceHash))
+                || !json.RootElement.TryGetProperty("evidenceSha256", out var evidenceHash)
+                || !json.RootElement.TryGetProperty("worktreeDigest", out var worktreeDigest))
             {
                 return false;
             }
             var relative = NormalizeReadinessEvidencePath(root, evidencePath.GetString() ?? string.Empty);
             var full = Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar));
             return File.Exists(full)
-                && string.Equals(evidenceHash.GetString(), Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(full))).ToLowerInvariant(), StringComparison.Ordinal);
+                && string.Equals(evidenceHash.GetString(), Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(full))).ToLowerInvariant(), StringComparison.Ordinal)
+                && string.Equals(worktreeDigest.GetString(), OperationsLearningPolicy.ComputeReadinessWorktreeDigest(root), StringComparison.Ordinal);
         }
         catch (Exception)
         {
@@ -650,5 +896,10 @@ public static class ValidationCommands
         var output = process.StandardOutput.ReadToEnd().Trim();
         process.WaitForExit();
         return process.ExitCode == 0 && output.Length > 0 ? output : null;
+    }
+
+    private static void EnsureValidation(bool condition, string message)
+    {
+        if (!condition) throw new InvalidOperationException(message);
     }
 }

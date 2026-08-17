@@ -36,6 +36,10 @@ public sealed class LoopModel : ModelProgram
     public bool DirectionChangePending { get; set; }
     public bool DirectionRefactorRequired { get; set; }
     public bool ArchitectureImpactPending { get; set; }
+    public bool DirectionConsulted { get; set; }
+    public bool LearningsConsulted { get; set; }
+    public bool PostmortemLearningValidated { get; set; }
+    public bool RepairLearningValidated { get; set; }
 
     [Rule("Loop.Northstar")]
     public void Northstar()
@@ -96,6 +100,43 @@ public sealed class LoopModel : ModelProgram
     {
         Require(Current == Cursor.Validate || Current == Cursor.Disposition, "UnitTest requires current functional validation");
         Current = Current == Cursor.Validate ? Cursor.Disposition : Cursor.Ready;
+        if (Current == Cursor.Ready)
+        {
+            DirectionConsulted = false;
+            LearningsConsulted = false;
+            PostmortemLearningValidated = false;
+            RepairLearningValidated = false;
+        }
+    }
+
+    [Rule("Loop.ConsultDirection")]
+    public void ConsultDirection()
+    {
+        Require(!DirectionConsulted, "Direction consultation is recorded once per ready revision");
+        DirectionConsulted = true;
+    }
+
+    [Rule("Loop.ConsultLearnings")]
+    public void ConsultLearnings()
+    {
+        Require(!LearningsConsulted, "Learning consultation is recorded once per ready revision");
+        LearningsConsulted = true;
+    }
+
+    [Rule("Loop.ValidatePostmortemLearning")]
+    public void ValidatePostmortemLearning()
+    {
+        Require(Current == Cursor.Incident && IncidentStabilized, "Postmortem learning validation requires a stabilized Incident");
+        Require(!PostmortemLearningValidated, "Postmortem learning validation is recorded once");
+        PostmortemLearningValidated = true;
+    }
+
+    [Rule("Loop.ValidateRepairLearning")]
+    public void ValidateRepairLearning()
+    {
+        Require(Current == Cursor.Postmortem, "Repair learning validation requires a Postmortem");
+        Require(!RepairLearningValidated, "Repair learning validation is recorded once");
+        RepairLearningValidated = true;
     }
 
     [Rule("Loop.Incident")]
@@ -103,6 +144,8 @@ public sealed class LoopModel : ModelProgram
     {
         Require(Current == Cursor.Ready || Current == Cursor.Incident, "Incident follows readiness or another Incident");
         Require(actualDemand, "Incident requires an actual operating disruption");
+        Require(DirectionConsulted, "Incident requires current North Star consultation");
+        Require(LearningsConsulted, "Incident requires relevant learning consultation or explicit deferral");
         Current = Cursor.Incident;
         IncidentActive = true;
         IncidentStabilized = true;
@@ -113,6 +156,9 @@ public sealed class LoopModel : ModelProgram
     {
         Require(Current == Cursor.Incident && IncidentActive && IncidentStabilized, "Postmortem follows one or more stabilized Incidents");
         Require(selectedStabilizedSet, "Postmortem requires a selected stabilized incident set");
+        Require(DirectionConsulted, "Postmortem requires current North Star consultation");
+        Require(LearningsConsulted, "Postmortem requires Learnings Pyramid consultation");
+        Require(PostmortemLearningValidated, "Postmortem requires validated pyramid disposition and provenance");
         Current = Cursor.Postmortem;
         LearningPending = true;
         RepairPending = true;
@@ -123,6 +169,7 @@ public sealed class LoopModel : ModelProgram
     {
         Require(Current == Cursor.Postmortem && RepairPending, "Repair follows Postmortem with a repair item");
         Require(repairItemDemand, "Repair requires a concrete repair item");
+        Require(RepairLearningValidated, "Repair requires current Rule IDs and executable-gate acceptance");
         Current = Cursor.Repair;
     }
 

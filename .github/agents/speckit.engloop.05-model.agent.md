@@ -45,14 +45,24 @@ Use exactly `.engloop/` with config at `.engloop/config.json`.
 
 - **Trigger:** implementation and architecture are current.
 - **Goal:** independent rich behavioral model updates.
-- **Actions:** explicitly register overlay-local model output paths, update model
-  state/guards/invariants, and validate model build.
+- **Actions:** load the installed SEK product skills, explicitly register overlay-local
+  model output paths, update the independent model and its scenario contract, and validate
+  the model build.
 - **Verification:** model compiles and captures required negative semantics.
 - **Memory:** `.engloop/models/` and `model/EngLoopKit.Model/`.
 
 Run before any action:
 
 `dotnet tool run engloopkit validate agent-entry --stage speckit.engloop.05-model --root .`
+
+## SEK product dependency
+
+SEK owns its language, binding, and generation guidance. Load the installed
+`.specify/extensions/sek/skills/sek-cord-authoring/SKILL.md` and
+`.specify/extensions/sek/skills/using-sek-to-generate-tests/SKILL.md`; if either is absent, stop and require the SEK
+extension. Do not copy SEK documentation into ELK.
+Use the root-local `sek` v0.1.3 tool directly; it and its Modeling package are
+native `net10.0` dependencies.
 
 ## Overlay ownership
 
@@ -68,6 +78,7 @@ overlay baseline.
 
 ## Done when
 
+- [ ] Installed SEK product skills governed model/scenario authoring
 - [ ] Model captures legal and rejection behavior requirements
 - [ ] Every overlay-local model output path is explicitly registered and ignored
 - [ ] Model build/validation passes

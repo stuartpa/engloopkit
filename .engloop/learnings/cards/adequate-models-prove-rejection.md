@@ -30,3 +30,8 @@ always-enabled positive action, the human—not the model—is validating the be
   — model-derived negative evidence is load-bearing.
 - [PM004/LEARN003](../../postmortems/PM004_selfmodel-negative-conformance-and-richness.md#learnings)
   — positive and negative conformance prove different guarantees.
+
+## Tensions
+
+None known. Direct tests can deepen implementation detail, but they do not supersede the
+requirement for model-derived legal and rejection behavior in the stateful vertical.

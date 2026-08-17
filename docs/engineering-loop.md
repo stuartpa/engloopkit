@@ -2,7 +2,7 @@
 
 **Workflow generation:** Ordered EngLoop v2.
 **Product versioning:** EngLoopKit remains on the **1.x** line; the ordered workflow
-ships in v1.7.0 and reusable debugger/readiness/publication/token-efficiency support in v1.13.1. “v2” is not a v2.0 product release.
+ships in v1.7.0 and reusable debugger/readiness/publication/token-efficiency plus direction/pyramid-bound operations support in v1.14.0. “v2” is not a v2.0 product release.
 
 EngLoopKit has three independently invoked lifecycle lanes plus one local utility.
 Command ordinals give the picker a
@@ -40,35 +40,45 @@ Use this lane whenever a chat shows repeated polling, oversized output, tool gue
 missing checkpoints, repeated context discovery, or slow serial work. Agent 30 hands off
 with `send: false`; Agent 31 requires the user to approve stable repair IDs again.
 
-## Session memory, overlay utilities, and publications: 50, 60–61, 70–72
+## Continuation, local utilities, and publications: 50, 60–61, 70–72, 80
 
 | Stage | Command | Gate and durable output |
 |---:|---|---|
-| 50 | `speckit.engloop.50-pomodoro-create` | One brief `POM<NNNN>-<description>.md` note for the just-completed 30–60 minute session. |
+| 50 | `speckit.engloop.50-handoff-create` | One `HANDOFF<NNN>-<description>.md` continuation packet for another chat or engineering team. |
 | 60 | `speckit.engloop.60-overlay-pack` | Pack the verified registered private overlay into one portable archive. |
 | 61 | `speckit.engloop.61-overlay-remove` | Confirm and remove every manifest-owned local path, restore prior hooks, and preserve unrelated host files. |
 | 70 | `speckit.engloop.70-six-pager-create` | Create a self-contained six-page narrative decision memo and validated Word document. |
 | 71 | `speckit.engloop.71-powerpnt-create` | Create a Markdown-first presentation with layered architecture, focused model graphs, collision-free labels, and rendered-PPTX validation. |
 | 72 | `speckit.engloop.72-academic-paper-create` | Create a rigorous systems research paper with citations, figures, reproducible evaluation, and validated PDF. |
+| 80 | `speckit.engloop.80-upgrade-elk` | Upgrade root-local ELK plus its pinned SEK dependency to the latest verified release, or report already current. |
 
 ## Operations: 20–22
 
 Operations is not created merely because a delivery lane completed.
 
 1. **20 Incident** requires an actual operating disruption and a current Stage 08 PASS.
-   It captures mitigations and stabilization only; it does not close a permanent repair.
+   It reads current North Star boundaries, consults only immediately relevant learning
+   cues when safe, and captures mitigations/stabilization only; it does not close a repair.
 2. **21 Post-mortem** requires a selected non-empty stabilized incident set. It emits
-   PM/LEARN/RPI evidence and may create a pending learning refresh.
+   PM/LEARN/RPI evidence only after current North Star/Learnings hashes, rule
+   dispositions, pyramid update/no-change, source-card/history coverage, retrieval impact,
+   and RPI Rule-ID/executable-gate contracts pass deterministic validation.
 3. **22 Repair** requires a concrete repair item and opens an obligation. It returns
-   through Stage 04 and every applicable Stage 05–08 gate. It closes only after source,
-   immutable release, exact target verification, and current readiness agree.
+   through Stage 04 and every applicable Stage 05–08 gate with exact PM Rule IDs and gate
+   carried into immutable route acceptance. A separate close record requires the versioned
+   tool's hashed process receipt for that gate, source, immutable release, exact target
+   verification, and current readiness.
 
-## Stewardship: 40–41
+## Stewardship: 40–42
 
-- **40 Refactor scan** requires explicit spare capacity. It records exactly one REFACT
+- **40 Refactor** requires explicit spare capacity. It records exactly one REFACT
   decision or `none-this-cycle`; a selected direction/architecture change returns to
   01 and/or 03 before 04.
-- **41 Learnings Pyramid** requires capacity and an accepted-learning refresh demand. It
+- **41 Dead code** records the single highest-certainty DEADCODE proposal only after
+   symbol, dynamic-use, public-contract, history, and isolated-deletion proof. It changes
+   no current source before explicit candidate-specific approval. Rejection is recorded
+   and starts a newly numbered candidate search.
+- **42 Learnings Pyramid** requires capacity and an accepted-learning refresh demand. It
   validates source/card/index/retrieval evidence, then returns to its invoking context.
 
 ## Handoffs

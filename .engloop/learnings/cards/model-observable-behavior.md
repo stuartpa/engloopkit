@@ -29,3 +29,8 @@ stage independently is usually tautological theatre.
   — verification criteria must state their granularity.
 - [PM003/LEARN002](../../postmortems/PM003_selfmodel-behavior-granularity.md#learnings)
   — model observable end-to-end behavior, not each internal pipeline stage.
+
+## Tensions
+
+None known. Per-module coverage remains required even when behavior modelling is
+end-to-end rather than assembly-by-assembly.

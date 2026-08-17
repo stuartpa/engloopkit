@@ -57,7 +57,7 @@ public sealed class EvidenceAndLearningTests : IDisposable
         Directory.CreateDirectory(postmortems);
         Directory.CreateDirectory(cards);
         File.WriteAllText(Path.Combine(postmortems, "PM001_example.md"), "## Learnings\n- PM001/LEARN001\n- PM001/LEARN002\n");
-        File.WriteAllText(Path.Combine(cards, "example.md"), "# Card\n## Tensions\nnone known\nPM001/LEARN001\nPM001/LEARN002\n");
+        File.WriteAllText(Path.Combine(cards, "example.md"), "# Card\n## Source learnings\nPM001/LEARN001\nPM001/LEARN002\n## Tensions\nnone known\n");
         var index = Path.Combine(_root, "LEARNINGS.md");
         File.WriteAllText(index, "[example](.engloop/learnings/cards/example.md)\n");
 
@@ -80,6 +80,41 @@ public sealed class EvidenceAndLearningTests : IDisposable
         Assert.False(bad.Passed);
         Assert.Contains(bad.Failures, value => value.StartsWith("retrieval-missing-id:case:PM001/LEARN001", StringComparison.Ordinal));
         Assert.Contains(bad.Failures, value => value.StartsWith("retrieval-false-provenance:case:PM001/LEARN002", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void LearningsPolicy_qualifiesBareHistoricalIds_onlyFromLearningsSection()
+    {
+        var postmortems = Path.Combine(_root, ".engloop", "postmortems");
+        Directory.CreateDirectory(postmortems);
+        File.WriteAllText(Path.Combine(postmortems, "PM007_example.md"), """
+        # PM007
+
+        Reference to PM999/LEARN999 outside the source section.
+
+        ## Learnings
+
+        - **LEARN001** — first
+        - **LEARN002 (`PM007/LEARN002`)** — second
+
+        ## Repair Items
+
+        PM008/LEARN001 is not a PM007 source.
+        """);
+
+        var sources = LearningsPyramidPolicy.ExtractSources(postmortems);
+
+        Assert.Equal(["PM007/LEARN001", "PM007/LEARN002"], sources.Select(source => source.Id).ToArray());
+    }
+
+    [Fact]
+    public void LearningsPolicy_ignoresCardProvenanceOutsideSourceSection()
+    {
+        var cards = Path.Combine(_root, "cards");
+        Directory.CreateDirectory(cards);
+        File.WriteAllText(Path.Combine(cards, "spoof.md"), "# Card\n\nPM001/LEARN001 outside source section\n\n## Tensions\nnone known\n");
+        var card = Assert.Single(LearningsPyramidPolicy.ExtractCards(cards));
+        Assert.Empty(card.SourceIds);
     }
 
     private void CreateCanonicalRoot()

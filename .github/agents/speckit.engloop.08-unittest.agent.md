@@ -62,7 +62,7 @@ Use exactly `.engloop/` with config at `.engloop/config.json`.
 - **Goal:** complete disposition then sole readiness PASS/FAIL emission.
 - **Actions:** classify unreached paths, enforce delete/revalidate sequence, add direct tests only after disposition, and emit the generic HEAD-bound readiness record after PASS.
 - **Verification:** per-module 95/95 with full inventory and current evidence.
-- **Memory:** `.engloop/coverage/COV003_ordered-engloop-v2-readiness.md`.
+- **Memory:** paired `.engloop/coverage/COVxxx-readiness.md` narrative and structured `.json` evidence.
 
 Run before any action:
 
@@ -70,18 +70,20 @@ Run before any action:
 
 ## Readiness-state emission
 
-After the Stage 08 evidence document has an explicit checked PASS verdict, emit the
-generic current readiness record consumed by Stage 10:
+After Stage 08 produces structured whole-product PASS evidence from measured coverage,
+emit the generic current readiness record consumed by Stages 10 and 20:
 
-`dotnet tool run engloopkit -- readiness emit --root . --evidence <.engloop/coverage/COVxxx-readiness.md> --verdict pass`
+`dotnet tool run engloopkit -- readiness emit --root . --evidence <.engloop/coverage/COVxxx-readiness.json> --verdict pass`
 
-The command validates the evidence, hashes it, and binds `.engloop/readiness/current.json`
-to the exact Git HEAD. A product edit makes that record stale automatically. Do not copy
-the self-host `cov003-readiness.json` convention into consumer repositories.
+The command requires the exact configured module set, one row each, measured line/branch
+at least 95%, functional/direct/architecture PASS, empty failures, and a SHA-bound
+Cobertura package matching every row. It hashes the structured evidence and binds
+`.engloop/readiness/current.json` to exact HEAD plus content-sensitive product/config
+worktree state. Marker Markdown cannot emit readiness.
 
 ## Done when
 
 - [ ] Disposition precedes any new direct tests
 - [ ] Final readiness verdict is emitted only by Stage 08
-- [ ] A checked PASS emits `.engloop/readiness/current.json` for the exact current HEAD
+- [ ] Structured measured PASS emits `.engloop/readiness/current.json` for exact HEAD/worktree
 - [ ] A readiness PASS is handed to Stage 09 before code-review preparation

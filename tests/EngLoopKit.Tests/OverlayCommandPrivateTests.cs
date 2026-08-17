@@ -85,6 +85,104 @@ public sealed class OverlayCommandPrivateTests : IDisposable
     }
 
     [Fact]
+    public void OverlayHelpers_coverMissingExcludeRollbackAndFileComparisonAlternatives()
+    {
+        var missingExclude = Path.Combine(_root, "missing", "exclude");
+        Invoke<object?>("WriteOverlayExcludes", missingExclude, "clean");
+        Assert.Contains("ELK_OVERLAY_MANAGED", File.ReadAllText(missingExclude));
+
+        var first = new OverlayFile("a", 1, new string('a', 64));
+        var same = new OverlayFile("a", 1, new string('a', 64));
+        var changed = new OverlayFile("a", 2, new string('b', 64));
+        Assert.True(Invoke<bool>("SameFiles", (IReadOnlyList<OverlayFile>)[first], (IReadOnlyList<OverlayFile>)[same]));
+        Assert.False(Invoke<bool>("SameFiles", (IReadOnlyList<OverlayFile>)[first], Array.Empty<OverlayFile>()));
+        Assert.False(Invoke<bool>("SameFiles", (IReadOnlyList<OverlayFile>)[first], (IReadOnlyList<OverlayFile>)[changed]));
+
+        Directory.CreateDirectory(Path.Combine(_root, ".engloop"));
+        File.WriteAllText(Path.Combine(_root, ".engloop", "file.txt"), "managed");
+        var hook = Path.Combine(_root, ".git", "hooks", "pre-commit");
+        File.WriteAllText(hook, "ELK_OVERLAY_HOOK");
+        Invoke<object?>("RollbackInstall", _root, "original exclude", "clean");
+        Assert.False(Directory.Exists(Path.Combine(_root, ".engloop")));
+        Assert.False(File.Exists(hook));
+    }
+
+    [Fact]
+    public void HookBaselineAndSharedMetadataHelpers_coverEveryRestoreState()
+    {
+        var hooks = Path.Combine(_root, ".git", "hooks");
+        var baselineRoot = Path.Combine(_root, ".engloop-overlay", "hooks");
+        Directory.CreateDirectory(hooks);
+        Directory.CreateDirectory(baselineRoot);
+
+        var restored = "coverage-restored";
+        File.WriteAllText(Path.Combine(baselineRoot, restored + ".before"), "baseline");
+        Invoke<object?>("RestoreOverlayHooks", _root, (IReadOnlyList<string>)[restored]);
+        Assert.Equal("baseline", File.ReadAllText(Path.Combine(hooks, restored)));
+
+        var removed = "coverage-removed";
+        File.WriteAllText(Path.Combine(hooks, removed), "wrapper");
+        File.WriteAllText(Path.Combine(baselineRoot, removed + ".absent"), "absent");
+        Invoke<object?>("RestoreOverlayHooks", _root, (IReadOnlyList<string>)[removed]);
+        Assert.False(File.Exists(Path.Combine(hooks, removed)));
+
+        var legacy = "coverage-legacy";
+        File.WriteAllText(Path.Combine(hooks, legacy), "wrapper");
+        File.WriteAllText(Path.Combine(hooks, legacy + ".elk-prior"), "prior");
+        Invoke<object?>("RestoreOverlayHooks", _root, (IReadOnlyList<string>)[legacy]);
+        Assert.Equal("prior", File.ReadAllText(Path.Combine(hooks, legacy)));
+
+        var preserved = "coverage-preserved";
+        File.WriteAllText(Path.Combine(hooks, preserved), "old-wrapper");
+        Invoke<object?>("RestoreOverlayHooks", _root, (IReadOnlyList<string>)[preserved]);
+        Assert.Equal("old-wrapper", File.ReadAllText(Path.Combine(hooks, preserved)));
+
+        File.WriteAllText(Path.Combine(hooks, "pre-commit"), "first");
+        var presentSnapshots = Invoke<object>("CaptureHookSnapshots", _root);
+        Invoke<object?>("WriteHookBaselines", _root, presentSnapshots);
+        File.WriteAllText(Path.Combine(hooks, "pre-commit"), "second");
+        presentSnapshots = Invoke<object>("CaptureHookSnapshots", _root);
+        Invoke<object?>("WriteHookBaselines", _root, presentSnapshots);
+        Assert.Equal("second", File.ReadAllText(Path.Combine(baselineRoot, "pre-commit.before")));
+
+        var specify = Path.Combine(_root, ".specify");
+        var registry = Path.Combine(specify, "extensions", ".registry");
+        Directory.CreateDirectory(Path.GetDirectoryName(registry)!);
+        File.WriteAllText(registry, "before");
+        var snapshot = Invoke<object>("CaptureDirectorySnapshot", _root, ".specify");
+        File.WriteAllText(registry, "changed");
+        var extensionsYml = Path.Combine(specify, "extensions.yml");
+        File.WriteAllText(extensionsYml, "created-after-snapshot");
+        Invoke<object?>("RestoreSharedHostMetadata", _root, snapshot);
+        Assert.Equal("before", File.ReadAllText(registry));
+        Assert.False(File.Exists(extensionsYml));
+        Invoke<object?>("AssertSharedHostMetadataPreserved", _root, snapshot);
+    }
+
+    [Fact]
+    public void RegistrationAndPreflightHelpers_coverForbiddenTrackedHistoryAndFileConflictBranches()
+    {
+        Assert.Throws<InvalidOperationException>(() => Invoke<string>("NormalizeRegisteredPath", _root, ".git"));
+        Assert.Throws<InvalidOperationException>(() => Invoke<string>("NormalizeRegisteredPath", _root, ".git/config"));
+        Assert.Equal("safe/path", Invoke<string>("NormalizeRegisteredPath", _root, "safe/path"));
+
+        var head = RunGitOutput("rev-parse", "HEAD").Trim();
+        Assert.Throws<InvalidOperationException>(() => Invoke<object?>("RejectRegisteredLeakage", _root, head, (IEnumerable<string>)["README.md"]));
+
+        File.WriteAllText(Path.Combine(_root, "history-only.txt"), "history");
+        RunGit("add", "history-only.txt");
+        RunGit("commit", "-m", "history path");
+        Assert.Throws<InvalidOperationException>(() => Invoke<object?>("RejectRegisteredLeakage", _root, head, (IEnumerable<string>)["history-only.txt"]));
+
+        var foreignHook = Path.Combine(_root, ".git", "hooks", "coverage-clean-conflict");
+        File.WriteAllText(foreignHook, "foreign");
+        Assert.Throws<InvalidOperationException>(() => Invoke<object?>("InstallHook", _root, "coverage-clean-conflict", "staged", "clean"));
+
+        File.WriteAllText(Path.Combine(_root, ".engloop"), "file conflict");
+        Assert.Throws<InvalidOperationException>(() => Invoke<object?>("PreflightInstall", _root, "clean"));
+    }
+
+    [Fact]
     public void InitializationAndStableSurface_helpers_writeExplicitUnprovenOverlayState_andFailClosedWhenAbsent()
     {
         Assert.Throws<InvalidOperationException>(() => Invoke<object?>("WaitForGeneratedSurface", _root));
@@ -123,9 +221,9 @@ public sealed class OverlayCommandPrivateTests : IDisposable
             "01-northstar", "02-scaffold", "03-architect", "04-refactor", "05-model",
             "06-explore", "07-validate", "08-unittest", "09-debugger-walk-thru", "10-codereview-prepare",
             "20-incident", "21-postmortem", "22-repair", "30-token-efficiency-analyze",
-            "31-token-efficiency-implement", "40-refactor-scan", "41-learnings-pyramid",
-            "50-pomodoro-create", "60-overlay-pack", "61-overlay-remove",
-            "70-six-pager-create", "71-powerpnt-create", "72-academic-paper-create",
+            "31-token-efficiency-implement", "40-refactor", "41-deadcode", "42-learnings-pyramid",
+            "50-handoff-create", "60-overlay-pack", "61-overlay-remove",
+            "70-six-pager-create", "71-powerpnt-create", "72-academic-paper-create", "80-upgrade-elk",
         };
         foreach (var id in ids)
         {
@@ -512,14 +610,14 @@ public sealed class OverlayCommandPrivateTests : IDisposable
         var destinationDirectory = Path.Combine(_root, ".git", "sharing-destination");
         Directory.CreateDirectory(sourceDirectory);
         var unlockedPath = Path.Combine(sourceDirectory, "a-unlocked.txt");
-        var lockedPath = Path.Combine(sourceDirectory, "z-locked.txt");
+        var lockedPath = Path.Combine(sourceDirectory, "Update-EngLoopKit.ps1");
         File.WriteAllText(unlockedPath, "unlocked");
         File.WriteAllText(lockedPath, "locked");
 
         var stream = new FileStream(lockedPath, FileMode.Open, FileAccess.Read, FileShare.None);
         var release = Task.Run(async () =>
         {
-            await Task.Delay(175);
+            await Task.Delay(1800);
             stream.Dispose();
         });
         var moved = new List<(string Source, string Quarantine, bool Directory)>();
@@ -529,7 +627,7 @@ public sealed class OverlayCommandPrivateTests : IDisposable
 
         Assert.False(Directory.Exists(sourceDirectory));
         Assert.True(File.Exists(Path.Combine(destinationDirectory, "a-unlocked.txt")));
-        Assert.True(File.Exists(Path.Combine(destinationDirectory, "z-locked.txt")));
+        Assert.True(File.Exists(Path.Combine(destinationDirectory, "Update-EngLoopKit.ps1")));
         Assert.Contains(moved, item => item.Source == unlockedPath && !item.Directory);
         Assert.Contains(moved, item => item.Source == lockedPath && !item.Directory);
         Assert.Contains(moved, item => item.Source == sourceDirectory && item.Directory);

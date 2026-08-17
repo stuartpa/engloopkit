@@ -109,7 +109,7 @@ Every fixture requires no node/label, label/label, reserved-area, or view-box co
 
 ## Naming policy
 
-Compound command names use subject/action order. Therefore this command is `powerpnt-create`, consistent with `six-pager-create`, `academic-paper-create`, and `pomodoro-create`.
+Compound command names use subject/action order. Therefore this command is `powerpnt-create`, consistent with `six-pager-create`, `academic-paper-create`, and `handoff-create`.
 
 ## Done when
 

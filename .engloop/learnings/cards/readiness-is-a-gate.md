@@ -29,3 +29,8 @@ the agent may report that verdict but may not supply it as an opinion.
   existing tests is not whole-product readiness.
 - [PM001/LEARN003](../../postmortems/PM001_no-readiness-gate.md#learnings) — readiness is
   check output, never agent input.
+
+## Tensions
+
+None known. Later gate refinements change evidence method by artifact class; they do not
+supersede the rule that readiness is computed rather than narrated.

@@ -10,18 +10,19 @@ in the bundle's [document standards](../docs/standards.md). Artifact root is `.e
 |---|---|---|---|
 | `SPEC` | Specifications | `SPEC002` | SPEC001 = ordered workflow; SPEC002 = private overlay |
 | `SCAF` | Scaffold/test-runway records | `SCAF001` | SCAF001 = deterministic self-host test runway proof |
-| `ARCH` | Architecture decisions | `ARCH008` | latest = governed token-efficiency utility lane |
-| `MODEL` | SEK model records | `MODEL001` | MODEL001 = engineering-loop state machine |
-| `CORD` | CORD exploration records | `CORD001` | CORD001 = loop conformance exploration |
+| `ARCH` | Architecture decisions | `ARCH009` | latest = direction/pyramid-bound operations learning gate |
+| `MODEL` | SEK model records | `MODEL002` | latest = direction/pyramid-bound operations behavior |
+| `CORD` | CORD exploration records | `CORD002` | latest = operations learning/gate conformance exploration |
 | `COV` | Coverage/validation/readiness records | `COV003` | COV001 = conformance; COV002 = functional; COV003 = readiness |
 | `IN` | Incidents | `IN006` | latest = tracked SpecKit registry blocks private overlay coexistence |
 | `PM` | Post-mortems | `PM004` | PM001 = no readiness gate; PM002 = verification method by module class; PM003 = self-model criterion is behavior-level; PM004 = self-model must be behaviorally rich + prove negative conformance |
 | `REFACT` | Refactor decisions | `REFACT001` | REFACT001 = ordered EngLoop v2 workflow, Northstar, verification split, and Learnings Pyramid |
+| `DEADCODE` | High-certainty dead-code proposals | `DEADCODE000` | explicit user approval is required before current-source removal |
 | `DBG` | Debugger walkthrough ledgers | `DBG000` | engineer-attested per-chunk debugger walkthrough evidence |
 | `SIX` | Six-page narrative memos | `SIX000` | authoritative Markdown, generated DOCX, appendices, and render validation |
 | `PPT` | Presentation decks | `PPT000` | Markdown-first evidence-backed presentation and generated PPTX |
 | `PAP` | Academic systems papers | `PAP000` | authoritative Markdown/BibTeX, generated PDF, figures/data, and review validation |
-| `POM` | Pomodoro session notes | `POM0000` | four-digit global counter; first note is POM0001 |
+| `HANDOFF` | Chat/team continuation packets | `HANDOFF000` | three-digit global counter; first handoff is HANDOFF001 |
 
 ## Local counters
 

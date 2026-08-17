@@ -75,12 +75,11 @@ parent lookup, or fallback path survives.
 ## Technical Context
 
 **Language/Version:** C# with repository `LangVersion=latest`; all executable/model/test
-projects target .NET 8 (`net8.0`). PowerShell 7 scripts orchestrate reproducible local/CI
+projects target .NET 10 (`net10.0`). PowerShell 7 scripts orchestrate reproducible local/CI
 validation. Markdown, YAML, and JSON remain product/config artifact formats.
 
-**SDK:** Repository currently has no `global.json`; CI requests `8.0.x`; this machine has
-8.0.128 and 8.0.422. Implementation pins SDK 8.0.422 in `global.json` and CI so Stage 02
-uses one selected build runway rather than the machine-default 10.0.301 SDK.
+**SDK:** `global.json` and CI pin SDK 10.0.303. `EngLoopKit.slnx` is the sole solution
+graph for build/test; no legacy `.sln` or hand-maintained alternate graph is authoritative.
 
 **Primary dependencies:**
 
@@ -91,21 +90,18 @@ uses one selected build runway rather than the machine-default 10.0.301 SDK.
   `>=0.12.0` only if compatibility is proven);
 - architecture-guard 1.11.0 and tinyspec 1.0.0 remain pinned external bundle
   capabilities; tinyspec is not a Stage 22 route;
-- SEK source pinned by exact Git revision, with `Sek.Modeling` project reference,
-  stateful path replay, model-derived negative edges, `RequireBound`, and a portable
-  single-path generated binding;
+- SEK v0.1.3 release pinned by exact tool/Modeling/extension artifact SHA-256 values,
+  with stateful path replay, model-derived parameterized negative edges, per-path reset,
+  `RequireBound`, and a portable single-path generated binding;
 - YamlDotNet 18.1.0, pinned in the physically separate domain-free document-validation
   component, parses nested source/generated custom-agent frontmatter into canonical
   semantic projections; generic Markdown links, budgets, and set checks otherwise use
   the BCL.
 
-**Current SEK evidence:** local HEAD
-`2bf8d3dc7993d9bd93fc167108f5f7de3c8d2196` contains model-derived negative edges and
-stateful path replay. Its CLI project declares 0.1.0 while repository guidance says
-0.1.1, and no global `sek` tool is installed. Implementation therefore pins a
-capability-bearing commit rather than inferring equivalence from a label. Portable
-single-path generated binding is a prerequisite gate; if absent, it lands in SEK first
-and the resulting exact revision is pinned.
+**Current SEK evidence:** released native .NET 10 v0.1.3 assets. The root-local tool manifest pins
+`SpecExplorerKit.Tool` 0.1.3, the model references `SpecExplorerKit.Modeling` 0.1.3,
+the bundle requires extension `sek` 0.1.3, and generation/CI verify the published asset
+hashes before use. No sibling checkout or mutable branch supplies release evidence.
 
 **Storage:** Git-tracked durable process/config files under `.engloop/`; visible root
 Northstar/Learnings; JSON schemas and retrieval cases; C# source; CORD; generated xUnit
@@ -409,8 +405,8 @@ root migrations remain future, repository-local transactions.
 | `extensions/engloopkit/{extension.yml,README.md}` | Version 1.7.0, exact ordered 13 entries, v2 workflow ownership/lanes, no old current IDs. |
 | Retained ARCH/MODEL/CORD/IN/PM/REFACT templates | Stage numbers, evidence ownership, model rejection, repair full-loop closure, no numbered-direction/tinyspec repair route. |
 | `bundle.yml`, `catalog.json` | Version/release text/counts/checksums; bundle remains composition-only. Move tool requirement under supported `requires.tools`; do not claim it is auto-installed. |
-| `README.md`, `CHANGELOG.md`, all six current `docs/*.md`, `examples/sek-walkthrough.md` | Coherent v2 narrative, exact lanes/order, Northstar, Stage 02 proof, Stage 05–08 split, learning/release/workspace guidance. Preserve clearly historical changelog evidence. |
-| `.github/skills/using-sek-to-generate-tests/SKILL.md` | Pinned/source usage, portable binding, stable destination, Stage 07-only reachability, PM001–PM004. |
+| `README.md`, `CHANGELOG.md`, all current `docs/*.md` | Coherent v2 narrative, exact lanes/order, Northstar, Stage 02 proof, Stage 05–08 split, learning/release/workspace guidance. Preserve clearly historical changelog evidence; consume SEK through its installed product skills rather than an ELK walkthrough. |
+| External SEK product dependency (`.specify/extensions/sek/skills/{using-sek-to-generate-tests,sek-cord-authoring}/SKILL.md` after install) | Consume only; never modify or package these paths in ELK. ELK retains its PM001–PM004 readiness policy in the ordered stages. |
 | `.engloop/README.md`, `.engloop/numbering-registry.md` | Preserve checkpoint root/links; increment SCAF/ARCH/MODEL/CORD/COV exactly before future files are created. |
 | `docs/numbering-registry.md`, `docs/standards.md` | Preserve exact final prefix set and living-document exception while adding executable config/gate detail. |
 | ARCH001–ARCH005 | Add minimal explicit “refined/superseded in part by ARCH006/SPEC001” references where current rules changed; retain rationale. |
@@ -690,7 +686,7 @@ complete inventory PASS. Anything else is NOT READY and blocks release/migration
   paths and digests used by the migration quickstart; its existence alone is not proof.
 
 **Checkpoint P9:** Learning static/retrieval PASS; all 13 installed agents and prompts
-match source semantics, all 23 handoffs and seven `Explore` references resolve, strict-
+match source semantics, all 28 handoffs and seven `Explore` references resolve, strict-
 hook and reduced-assurance body/durable-gate entry evidence pass, and EngLoop-owned
 customization diagnostics are empty; docs/manifests/executable/model/tests agree;
 immutable release candidate passes all local gates.
@@ -967,7 +963,7 @@ workflow.
 | FR-AGT-001, FR-AGT-002 | P0/P4/P9 | Canary then all 13 source/installed semantic projections prove explicit names, descriptions, hints, VS Code targets, visibility, and model-invocation protection. |
 | FR-AGT-003, FR-AGT-013 | P0/P4/P9 | Exact per-stage tool/subagent sets, `agent` iff `Explore`, all targets resolved, focused context, and nesting disabled. |
 | FR-AGT-004 | P0/P4/P9 | All 13 prompts select the matching exact agent and structurally omit `tools`; official precedence cannot widen policy. |
-| FR-AGT-005, FR-AGT-006 | P0/P4/P9 | Stage 31 alone omits handoffs; installed ordered edge set equals all 23 exact target/label/prompt/`send: false` rows with no model. |
+| FR-AGT-005, FR-AGT-006 | P0/P4/P9 | Terminal stages omit handoffs; installed ordered edge set equals all 28 exact target/label/prompt/`send: false` rows with no model. |
 | FR-AGT-007 | P4/P5/P9 | UI and model tests prove no 08→20/30/31 edge, Stage 21 capacity wording, conditional natural ends, and zero handoff state mutation/scheduling. |
 | FR-AGT-008, FR-AGT-009 | P4/P9/P10 | Exact stage-expanded 30-second `SessionStart`, unconditional body check, and trusted durable gate; versioned local tool, validated input, no secret/editable script, cross-platform strict/reduced-assurance evidence. |
 | FR-AGT-010 | P0/P4/P9 | Semantic absence assertions find zero `infer`, agent `model`, or handoff `model`. |
@@ -1045,7 +1041,7 @@ workflow.
 | SC-016 | P1/P4/P10 | Each of four roots reports process-root set `{.engloop}`, source-control-tracked root count 1, config count 1, ignored output, current `engloop/` count 0, `.engloopkit/` count 0, and visible Northstar/Learnings count 1 each. |
 | SC-017 | Checkpoint/P4/P9/P10 | Case-sensitive current-surface scan returns only the exact FR-NOM-001 vocabulary and living docs; no alias, translation, fallback, or active old-prefixed filename. |
 | SC-018 | P0/P4/P9/P10 | Disposable/focused install: 13/13 visible agents preserve every common field; Stage 31 has zero handoffs, all others have at least one, and EngLoop-owned diagnostic errors/warnings are both zero. |
-| SC-019 | P4/P9/P10 | Installed ordered graph equals all 23 ratified edges; 23/23 targets resolve, 23/23 use `send: false`, zero model overrides, and Stage 08 has zero operations/stewardship edges. |
+| SC-019 | P4/P9/P10 | Installed ordered graph equals all 28 ratified edges; 28/28 targets resolve, 28/28 use `send: false`, zero model overrides, and Stage 08 has zero operations/stewardship edges. |
 | SC-020 | P4/P9/P10 | All 13 justified tool/subagent rows and hooks match; 13 prompts have zero tool overrides; strict hook blocking, reduced-assurance body rejection, and trusted durable-gate rejection all pass. |
 
 ## Plan Completion Gate

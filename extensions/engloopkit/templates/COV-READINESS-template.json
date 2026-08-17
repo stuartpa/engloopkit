@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "1.0",
+  "artifactType": "whole-product-readiness",
+  "capturedAtUtc": "<ISO-8601>",
+  "verdict": "PASS",
+  "coberturaReport": ".engloop/out/readiness-coverage/<run>/coverage.cobertura.xml",
+  "coberturaSha256": "<sha256>",
+  "generatedFunctionalPass": true,
+  "directSuitePass": true,
+  "architectureValidationPass": true,
+  "modules": [
+    {
+      "id": "<exact config module id>",
+      "coverageIdentity": "<exact Cobertura package name>",
+      "line": 95.0,
+      "branch": 95.0,
+      "functionalPass": true,
+      "directPass": true,
+      "architecturePass": true,
+      "pass": true
+    }
+  ],
+  "failures": []
+}

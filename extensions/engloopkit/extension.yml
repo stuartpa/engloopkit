@@ -5,8 +5,8 @@ extension:
   # the ordered speckit.engloop picker namespace.
   id: "engloop"
   name: "EngLoopKit"
-  version: "1.13.1"
-  description: "Ordered evidence-gated delivery, token efficiency, operations, stewardship, publication, and private overlay workflow for Spec Kit."
+  version: "1.14.0"
+  description: "Ordered evidence-gated delivery, operations learning, handoffs, verified ELK/SEK upgrades, stewardship, publication, and private overlay workflow for Spec Kit."
   author: "stuartpa"
   repository: "https://github.com/stuartpa/engloopkit"
   license: "MIT"
@@ -14,6 +14,13 @@ extension:
 
 requires:
   speckit_version: ">=0.12.0"
+  tools:
+    - name: "dotnet"
+      version: ">=10.0"
+      required: true
+    - name: "sek"
+      version: "0.1.3"
+      required: true
 
 provides:
   commands:
@@ -49,28 +56,31 @@ provides:
       description: "Minimize and validate the current PR after the current Stage 08 readiness PASS."
     - name: "speckit.engloop.20-incident"
       file: "commands/speckit.engloop.20-incident.md"
-      description: "Stabilize real incidents and record mitigation-only operational evidence."
+      description: "Stabilize real incidents under current direction and relevant learning cues; record mitigation-only evidence."
     - name: "speckit.engloop.21-postmortem"
       file: "commands/speckit.engloop.21-postmortem.md"
-      description: "Analyze selected stabilized incidents into PM/LEARN/RPI outputs."
+      description: "Analyze stabilized incidents against current direction and pyramid rules into validated PM/LEARN/RPI contracts."
     - name: "speckit.engloop.22-repair"
       file: "commands/speckit.engloop.22-repair.md"
-      description: "Route repair obligations through governed implementation and verification gates."
+      description: "Route and close rule-bound repair obligations through exact executable and readiness gates."
     - name: "speckit.engloop.30-token-efficiency-analyze"
       file: "commands/speckit.engloop.30-token-efficiency-analyze.md"
       description: "Analyze VS Code Copilot chat speed and token waste with Chronicle/session evidence and no source changes."
     - name: "speckit.engloop.31-token-efficiency-implement"
       file: "commands/speckit.engloop.31-token-efficiency-implement.md"
       description: "Implement only explicitly approved token-efficiency repairs with scoped preflight and compact validation."
-    - name: "speckit.engloop.40-refactor-scan"
-      file: "commands/speckit.engloop.40-refactor-scan.md"
+    - name: "speckit.engloop.40-refactor"
+      file: "commands/speckit.engloop.40-refactor.md"
       description: "Select one REFACT decision or no-work outcome under explicit stewardship capacity."
-    - name: "speckit.engloop.41-learnings-pyramid"
-      file: "commands/speckit.engloop.41-learnings-pyramid.md"
+    - name: "speckit.engloop.41-deadcode"
+      file: "commands/speckit.engloop.41-deadcode.md"
+      description: "Propose and, only after explicit approval, remove one high-certainty dead-code candidate."
+    - name: "speckit.engloop.42-learnings-pyramid"
+      file: "commands/speckit.engloop.42-learnings-pyramid.md"
       description: "Validate source/card/index/retrieval learnings completeness and provenance."
-    - name: "speckit.engloop.50-pomodoro-create"
-      file: "commands/speckit.engloop.50-pomodoro-create.md"
-      description: "Capture concise evidence-backed notes about the just-completed work session."
+    - name: "speckit.engloop.50-handoff-create"
+      file: "commands/speckit.engloop.50-handoff-create.md"
+      description: "Create a numbered evidence-backed handoff for another chat window or engineering team."
     - name: "speckit.engloop.60-overlay-pack"
       file: "commands/speckit.engloop.60-overlay-pack.md"
       description: "Verify and pack a private ELK overlay into one portable local ZIP archive."
@@ -86,6 +96,9 @@ provides:
     - name: "speckit.engloop.72-academic-paper-create"
       file: "commands/speckit.engloop.72-academic-paper-create.md"
       description: "Create an evidence-backed systems research paper in Markdown and convert it to a validated PDF."
+    - name: "speckit.engloop.80-upgrade-elk"
+      file: "commands/speckit.engloop.80-upgrade-elk.md"
+      description: "Upgrade the root-local ELK tool and extension to the latest verified release, or report that both are current."
 
 tags:
   - "loop-engineering"

@@ -20,7 +20,7 @@ public sealed class CommandSurfaceTests
     }
 
     [Fact]
-    public void HandoffGraph_hasExact28Edges_withTokenEfficiencyHandoffAndTerminalAgents()
+    public void HandoffGraph_hasExact29Edges_withDeadCodeAndTerminalAgents()
     {
         var edges = 0;
 
@@ -62,7 +62,7 @@ public sealed class CommandSurfaceTests
                 }
             }
 
-            if (id is "speckit.engloop.09-debugger-walk-thru" or "speckit.engloop.31-token-efficiency-implement" or "speckit.engloop.41-learnings-pyramid" or "speckit.engloop.50-pomodoro-create" or "speckit.engloop.61-overlay-remove" or "speckit.engloop.70-six-pager-create" or "speckit.engloop.71-powerpnt-create" or "speckit.engloop.72-academic-paper-create")
+            if (id is "speckit.engloop.09-debugger-walk-thru" or "speckit.engloop.31-token-efficiency-implement" or "speckit.engloop.41-deadcode" or "speckit.engloop.42-learnings-pyramid" or "speckit.engloop.50-handoff-create" or "speckit.engloop.61-overlay-remove" or "speckit.engloop.70-six-pager-create" or "speckit.engloop.71-powerpnt-create" or "speckit.engloop.72-academic-paper-create" or "speckit.engloop.80-upgrade-elk")
             {
                 Assert.Empty(localEdges);
             }
@@ -71,8 +71,9 @@ public sealed class CommandSurfaceTests
             {
                 Assert.Contains("speckit.engloop.09-debugger-walk-thru", localEdges);
                 Assert.DoesNotContain("speckit.engloop.20-incident", localEdges);
-                Assert.DoesNotContain("speckit.engloop.40-refactor-scan", localEdges);
-                Assert.DoesNotContain("speckit.engloop.41-learnings-pyramid", localEdges);
+                Assert.DoesNotContain("speckit.engloop.40-refactor", localEdges);
+                Assert.DoesNotContain("speckit.engloop.41-deadcode", localEdges);
+                Assert.DoesNotContain("speckit.engloop.42-learnings-pyramid", localEdges);
             }
 
             if (id == "speckit.engloop.02-scaffold")
@@ -85,9 +86,14 @@ public sealed class CommandSurfaceTests
                 Assert.Equal(["speckit.engloop.31-token-efficiency-implement"], localEdges);
             }
 
+            if (id == "speckit.engloop.40-refactor")
+            {
+                Assert.Equal("speckit.engloop.41-deadcode", localEdges[^1]);
+            }
+
         }
 
-        Assert.Equal(28, edges);
+        Assert.Equal(29, edges);
     }
 
     [Fact]

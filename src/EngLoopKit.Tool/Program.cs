@@ -14,9 +14,19 @@ public static class Program
             return ValidationCommands.ExecuteReadiness(args[1..]);
         }
 
+        if (args.Length >= 1 && string.Equals(args[0], "repair-gate", StringComparison.Ordinal))
+        {
+            return ValidationCommands.ExecuteRepairGate(args[1..]);
+        }
+
+        if (args.Length >= 1 && string.Equals(args[0], "operations-hook", StringComparison.Ordinal))
+        {
+            return OperationsHookCommands.Execute(args[1..]);
+        }
+
         if (args.Length < 2 || !string.Equals(args[0], "validate", StringComparison.Ordinal))
         {
-            Console.Error.WriteLine("Usage: engloopkit validate <root|config|commands|reachability|learnings|installation|agent-entry|agent-surfaces> [--root <path>] [--stage <id>] | engloopkit readiness emit --root <path> --evidence <stage-08-evidence> --verdict pass | engloopkit overlay <install|register|verify|pack|unpack|remove|status>");
+            Console.Error.WriteLine("Usage: engloopkit validate <root|config|commands|reachability|learnings|incident-context|postmortem-learning|repair-learning|installation|agent-entry|agent-surfaces> [options] | engloopkit repair-gate execute [options] | engloopkit readiness emit [options] | engloopkit overlay <install|register|verify|pack|unpack|remove|status>");
             return 1;
         }
 
@@ -28,6 +38,9 @@ public static class Program
             "commands" => ValidationCommands.ValidateCommands(args),
             "reachability" => ValidationCommands.ValidateReachability(args),
             "learnings" => ValidationCommands.ValidateLearnings(args),
+            "incident-context" => ValidationCommands.ValidateIncidentContext(args),
+            "postmortem-learning" => ValidationCommands.ValidatePostmortemLearning(args),
+            "repair-learning" => ValidationCommands.ValidateRepairLearning(args),
             "installation" => ValidationCommands.ValidateInstallation(args),
             "agent-entry" => ValidationCommands.ValidateAgentEntry(args),
             "agent-surfaces" => ValidationCommands.ValidateAgentSurfaces(args),

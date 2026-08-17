@@ -9,16 +9,16 @@ Set-Location $root
 
 $destination = Join-Path $root 'tests/EngLoopKit.Loop.Generated'
 $temporary = Join-Path $root '.engloop/out/generated-suite-candidate'
-$sekProject = Join-Path (Split-Path $root -Parent) 'SEK/src/Sek.Cli/Sek.Cli.csproj'
+& (Join-Path $PSScriptRoot 'ensure-sek-v0.1.3.ps1') -Root $root
+if ($LASTEXITCODE -ne 0) { throw 'SEK v0.1.3 dependency preflight failed.' }
 
-if (-not (Test-Path $sekProject -PathType Leaf)) {
-    throw "Pinned sibling SEK source is missing: $sekProject"
-}
+dotnet build 'EngLoopKit.slnx' -c Debug --nologo
+if ($LASTEXITCODE -ne 0) { throw 'Current .slnx graph failed before SEK generation.' }
 
 if (Test-Path $temporary) { Remove-Item $temporary -Recurse -Force }
 New-Item -ItemType Directory -Path $temporary -Force | Out-Null
 
-dotnet run --project $sekProject -- generate ModelProgram --project $root --out $temporary --max 200
+dotnet tool run sek -- generate ModelProgram --project $root --out $temporary --max 200
 if ($LASTEXITCODE -ne 0) { throw 'SEK generation failed.' }
 
 $generatedSource = Join-Path $temporary 'ModelProgramTests.cs'
@@ -27,12 +27,34 @@ if (-not (Test-Path $generatedSource -PathType Leaf) -or -not (Test-Path $genera
     throw 'SEK generation did not produce the expected standalone project.'
 }
 
+$generatedProjectText = Get-Content $generatedProject -Raw -Encoding UTF8
+if (([regex]::Matches($generatedProjectText, '<TargetFramework>net10\.0</TargetFramework>')).Count -ne 1) {
+    throw 'SEK v0.1.3 generated project is not natively net10.0.'
+}
+
 $sourceText = Get-Content $generatedSource -Raw -Encoding UTF8
 if ($sourceText -match [regex]::Escape($root) -or $sourceText -match 'SEK_BINDING|DefaultBinding') {
     throw 'Generated source contains an absolute binding or environment fallback.'
 }
 if ($sourceText -notmatch 'BindingAssets' -or $sourceText -notmatch 'negative test\(s\)') {
     throw 'Generated source lacks the portable binding snapshot or negative conformance.'
+}
+$requiredOperationsEvidence = @(
+    'Loop.ConsultDirection',
+    'Loop.ConsultLearnings',
+    'Loop.ValidatePostmortemLearning',
+    'Loop.ValidateRepairLearning',
+    'Incident requires current North Star consultation',
+    'Incident requires relevant learning consultation or explicit deferral',
+    'Postmortem learning validation requires a stabilized Incident',
+    'Postmortem requires validated pyramid disposition and provenance',
+    'Repair learning validation requires a Postmortem',
+    'Repair requires current Rule IDs and executable-gate acceptance'
+)
+foreach ($required in $requiredOperationsEvidence) {
+    if (-not $sourceText.Contains($required, [StringComparison]::Ordinal)) {
+        throw "Generated source lacks required operations-learning negative conformance: $required"
+    }
 }
 
 dotnet test $generatedProject -c Debug --nologo
@@ -76,6 +98,9 @@ if (-not $positiveMatch.Success -or -not $negativeMatch.Success) {
 $report = [pscustomobject]@{
     capturedAtUtc = (Get-Date).ToUniversalTime().ToString('o')
     generatedProject = 'tests/EngLoopKit.Loop.Generated/ModelProgramTests.csproj'
+    sekVersion = '0.1.3'
+    targetFramework = 'net10.0'
+    sekToolSha256 = '5bda43161665fba562375023afe2c205fa2dfa3f765cf290336d32953f49ee36'
     sourceSha256 = $sourceHash
     bindingAssets = $bindingHashes
     positiveTests = [int]$positiveMatch.Groups[1].Value

@@ -11,6 +11,12 @@
 |---|---|
 | | |
 
+## Selected stabilized incidents
+
+| Incident ID | Path | SHA-256 |
+|---|---|---|
+| `IN<NNN>` | `.engloop/incidents/IN<NNN>_<title>.md` | `<sha256>` |
+
 ## Root causes
 
 ### Primary cause: <title>
@@ -41,9 +47,62 @@ makes the class mechanically impossible.
 - **Bug class:** …
 - **Structural fix (mechanical, class-preventing, verifiable):** …
 
+## SEK Test-Escape Analysis
+
+- **SEK applicability:** `<RELEVANT | NOT-RELEVANT>`
+- **SEK applicability rationale:** <why the incident cause should or should not have been captured by model-based testing>
+- **SEK version:** `<0.1.3 | NOT-REQUIRED>`
+- **SEK verification class:** `<STATEFUL-VERTICAL | NON-STATEFUL-COMPONENT | INFRASTRUCTURE | DOCUMENTATION | EXTERNAL-DEPENDENCY>`
+- **SEK escape class:** `<MODEL-GAP | CORD-DOMAIN-GAP | CORD-SLICE-GAP | CORD-BOUND-GAP | BINDING-GAP | ORACLE-GAP | STALE-GENERATION | SEK-ENGINE-GAP | NOT-RELEVANT>`
+- **SEK scenario ID:** `<SEK-SCENARIO:brief-kebab-id | NOT-REQUIRED>`
+- **SEK model paths:** `<comma-separated root-relative .cs paths | NOT-REQUIRED>`
+- **SEK CORD paths:** `<comma-separated root-relative .cord paths | NOT-REQUIRED>`
+- **SEK generated suite path:** `<root-relative generated test directory | NOT-REQUIRED>`
+- **Why SEK tests missed the incident:** <specific model, Cord, binding, oracle, freshness, engine, or artifact-class explanation>
+- **Required model/CORD repair:** <specific scenario/domain/slice/bound/oracle change | NOT-REQUIRED>
+
+Always decide applicability. When `RELEVANT`, inspect the installed SEK v0.1.3 skills,
+current model, Cord, exploration, generated source, and replay evidence. Identify the
+missing incident scenario and why the existing proof admitted the escape. Do not blame
+"coverage" generically. When `NOT-RELEVANT`, give the exact artifact-class reason.
+
+## Direction and Learning-Pyramid Consultation
+
+- **North Star path:** `NORTHSTAR.md`
+- **North Star SHA-256:** `<current-sha256>`
+- **Direction alignment:** `<ALIGNED | TENSION | GAP>`
+- **Direction decision:** <how the current North Star constrains this analysis/repair>
+- **Learnings index path:** `LEARNINGS.md`
+- **Learnings index SHA-256:** `<current-sha256>`
+- **Pyramid digest:** `<sha256 of current index, cards, and prior source PMs>`
+- **Pyramid decision:** `<UPDATED | NO-CHANGE>`
+- **Pyramid rationale:** <why the living pyramid changes or explicitly does not change>
+- **Historical coverage decision:** `<UPDATED | NO-CHANGE>`
+- **Historical coverage path:** `<.engloop/learnings/README.md | NOT-REQUIRED>`
+- **Changed pyramid paths:** `<comma-separated paths | NOT-REQUIRED>`
+- **Retrieval impact:** `<CHANGED | UNCHANGED>`
+- **Retrieval evidence:** `<.engloop/out/...json | NOT-REQUIRED>`
+- **Retrieval rationale:** <why retrieval changed or why provenance-only/no-change leaves queries stable>
+
+### Rule dispositions
+
+| Rule ID | Card ID | Source IDs | Disposition | Incident evidence | Pyramid action |
+|---|---|---|---|---|---|
+| `RULE:<card-slug>` | `<card-slug>` | `PMxxx/LEARNxxx` | `<REINFORCED | CONTRADICTED | MISSING>` | | |
+
+Use stable `RULE:<card-slug>` identities. Follow `LEARNINGS.md → card → PMxxx/LEARNxxx`.
+If a rule was missing and `NO-CHANGE` is explicitly chosen, Card ID may be `-`; otherwise
+updated cards/provenance must exist and deterministic pyramid validation must pass.
+
 ## Learnings
 
-- **LRN001** — <class-level insight, never instance-level>
+Choose exactly one form:
+
+- **LEARN001 (`PM<NNN>/LEARN001`)** — <class-level insight; requires Pyramid decision UPDATED and immediate living provenance coverage>
+
+or
+
+- **No accepted source learning:** <substantive reason the existing rule already captures the class; Pyramid decision must be NO-CHANGE>
 
 ## Repair Items
 
@@ -52,6 +111,16 @@ makes the class mechanically impossible.
 | RPI | Description (ONE-AND-DONE) | Size (tiny/full) | Spec/tinyspec | Status |
 |---|---|---|---|---|
 | RPI001 | | | (pending) | OPEN |
+
+### RPI001 learning contract
+
+- **Rule IDs:** `RULE:<card-slug>`
+- **Executable gate:** `["<executable>", "<arg1>", "<arg2>"]`
+- **Gate proves:** <observable invariant/rejection/outcome established by the command>
+- **SEK applicability:** `<RELEVANT | NOT-RELEVANT>`
+- **SEK scenario ID:** `<same SEK-SCENARIO:id | NOT-REQUIRED>`
+- **SEK repair requirement:** <specific model/CORD/generated-scenario correction | NOT-REQUIRED>
+- **SEK verification gate:** `<same JSON argument vector as Executable gate when relevant | NOT-REQUIRED>`
 
 ## Cause-class tags
 

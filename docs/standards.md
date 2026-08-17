@@ -2,7 +2,7 @@
 
 **Workflow generation:** Ordered EngLoop v2.
 **Product SemVer:** EngLoopKit remains on the **1.x** line; this workflow ships as
-v1.13.1. “v2” describes the workflow generation, not a v2.0 release.
+v1.14.0. “v2” describes the workflow generation, not a v2.0 release.
 
 Durable workflow memory lives in exactly one tracked hidden root:
 
@@ -26,8 +26,8 @@ archive.
 ## Naming and counters
 
 Numbered artifacts are monotonic, never reused, and incremented before creation. Most
-use `<PREFIX><NNN>_<short-title>.md`; Pomodoro notes use
-`POM<NNNN>-<brief-kebab-description>.md`. Increment the tracked
+use `<PREFIX><NNN>_<short-title>.md`; handoffs use
+`HANDOFF<NNN>-<brief-kebab-description>.md`. Increment the tracked
 `.engloop/numbering-registry.md` counter **before** creating the artifact.
 
 ## Global prefixes
@@ -42,15 +42,16 @@ use `<PREFIX><NNN>_<short-title>.md`; Pomodoro notes use
 | `COV` | 07 / 08 | `.engloop/coverage/` | Stage 07 functional evidence or Stage 08 whole-product readiness inventory. |
 | `IN` | 20 Incident | `.engloop/incidents/` | Actual operating disruption, timeline, and local mitigations. |
 | `PM` | 21 Postmortem | `.engloop/postmortems/` | Analysis of deliberately selected stabilized incident sets. |
-| `REFACT` | 40 Refactor scan | `.engloop/refactors/` | One selected evolution decision or `none-this-cycle`. |
+| `REFACT` | 40 Refactor | `.engloop/refactors/` | One selected evolution decision or `none-this-cycle`. |
+| `DEADCODE` | 41 Dead code | `.engloop/deadcode/` | One high-certainty deletion proposal, its isolated proof, and explicit user decision. |
 | `DBG` | 09 Debugger walk-through | `.engloop/debugger-walkthroughs/` | Per-chunk breakpoint/trigger evidence plus explicit engineer attestation at an exact HEAD. |
 | `SIX` | 70 Six-pager create | `.engloop/six-pagers/` | Six-page narrative Markdown, generated DOCX, appendices, feedback, and rendered-page validation. |
 | `PPT` | 71 PowerPoint create | `.engloop/presentations/` | Markdown-first visual deck, generated PPTX, evidence-derived graph assets, and rendered-slide validation. |
 | `PAP` | 72 Academic paper create | `.engloop/academic-papers/` | Research-paper Markdown/BibTeX, generated PDF, figures/data, claim evidence, and rendered-page validation. |
-| `POM` | 50 Pomodoro create | `.engloop/pomodoros/` | Brief evidence-backed note about the just-completed 30–60 minute session. |
+| `HANDOFF` | 50 Handoff create | `.engloop/handoffs/` | Evidence-backed continuation packet for another chat window or engineering team. |
 
 Compound utility command names use subject/action order (for example
-`pomodoro-create`, `six-pager-create`, `powerpnt-create`, `academic-paper-create`, `overlay-pack`, and `overlay-remove`). Stable
+`handoff-create`, `six-pager-create`, `powerpnt-create`, `academic-paper-create`, `overlay-pack`, `overlay-remove`, and `upgrade-elk`). Stable
 single-word lifecycle command identities are not renamed merely to force a compound form.
 
 ## Local prefixes
@@ -66,7 +67,7 @@ single-word lifecycle command identities are not renamed merely to force a compo
 - `NORTHSTAR.md` is one living, root-visible direction document. Git keeps its history;
   there is no numbered direction prefix.
 - `LEARNINGS.md` is the one-page root recall map. It links to source-traceable cards under
-  `.engloop/learnings/cards/`; Stage 41 clears a refresh obligation only after static and
+  `.engloop/learnings/cards/`; Stage 42 clears a refresh obligation only after static and
   retrieval evidence pass.
 
 ## The readiness gate
@@ -84,6 +85,14 @@ missing, stale, or failing row produces **NOT READY** and blocks Stage 20 operat
 > A live patch is a `MIT`, not a repair.
 
 Stage 20 mitigates only. Stage 21 analyzes a deliberately selected stabilized set. Stage
-22 opens a permanent repair obligation and returns through Stage 04 plus all applicable
-Stage 05–08 gates. Repair closure requires source, immutable release artifact, exact
-target application, target verification, and a current Stage 08 PASS.
+21 must consult current `NORTHSTAR.md` and the progressive
+`LEARNINGS.md → RULE:<card-slug> → PMxxx/LEARNxxx` path, classify reinforced,
+contradicted, and missing rules, and deterministically validate pyramid provenance and
+applicable retrieval before completion. `NO-CHANGE` means no new accepted source learning;
+any new `PMxxx/LEARNxxx` requires immediate living provenance coverage. Stage 22 opens a permanent repair obligation,
+carries exact Rule IDs plus an executable gate through Stage 04 and applicable Stage
+05–08 gates, and closes only when that gate passes with durable evidence plus source,
+immutable release artifact, exact target application/verification, and current readiness.
+Route and close are separate immutable records. Gate PASS comes only from the versioned
+tool's process receipt; readiness and receipts are invalidated by changed worktree bytes,
+not merely by a changed Git status shape.

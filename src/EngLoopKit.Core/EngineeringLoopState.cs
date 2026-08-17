@@ -19,12 +19,14 @@ public sealed record RepairObligation(
     bool SourceImplemented,
     bool ReleaseArtifactBuilt,
     bool TargetVerified,
-    bool Closed)
+    bool Closed,
+    bool RuleGateVerified)
 {
     public bool CanClose(EngineeringLoopState state)
         => SourceImplemented
            && ReleaseArtifactBuilt
            && TargetVerified
+           && RuleGateVerified
            && state.HasCurrentReadinessPass();
 }
 
@@ -58,7 +60,7 @@ public sealed record EngineeringLoopState(
     /// <summary>Stage 40 selected work that must return through architecture before refactor.</summary>
     public bool ArchitectureImpactPending { get; init; }
 
-    /// <summary>Stage that invoked independent Stage 41; used to resume legal context after learning refresh.</summary>
+    /// <summary>Stage that invoked independent Learnings Pyramid stewardship; used to resume legal context after refresh.</summary>
     public Stage? ReturnStage { get; init; }
 
     public static EngineeringLoopState Initial { get; } = new(

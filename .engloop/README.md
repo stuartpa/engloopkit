@@ -25,13 +25,15 @@ The planned required config is `.engloop/config.json`; ignored transient output 
 ├── coverage/               # COVxxx — coverage/validation/readiness records
 ├── incidents/              # INxxx — incidents with local MIT actions
 ├── postmortems/            # PMxxx — post-mortems with local LEARN/RPI entries
+├── repairs/                # PMxxx-RPIxxx — direction/rule/gate-bound route and close acceptance
 ├── refactors/              # REFACTxxx — refactor decisions
+├── deadcode/               # DEADCODExxx — proven deletion proposals and user decisions
 ├── debugger-walkthroughs/  # DBGxxx — engineer-attested debugger walkthrough ledgers
 ├── evidence/               # compact utility evidence (token-efficiency analysis/implementation JSON)
 ├── six-pagers/             # SIXxxx — six-page narrative Markdown/DOCX and validation
 ├── presentations/          # PPTxxx — Markdown decks, PPTX files, and graph assets
 ├── academic-papers/        # PAPxxx — research Markdown/PDF, bibliography, figures/data
-├── pomodoros/              # POMxxxx — brief completed-session notes
+├── handoffs/               # HANDOFFxxx — chat/team continuation packets
 └── learnings/cards/         # living cards with PM/LEARN provenance
 ```
 
@@ -45,7 +47,7 @@ docs here point at it. Spec Kit's own `specify` outputs (`SPECxxx`) live at `spe
 | Direction | living | [NORTHSTAR.md](../NORTHSTAR.md) |
 | Specification | ready for tasks | [SPEC001](../specs/SPEC001-ordered-engloop-v2/spec.md) |
 | Scaffold/test runway | pending | none; registry remains `SCAF000` |
-| Architecture | current baseline | [ARCH001](architecture/ARCH001_bundle-composition.md) through [ARCH008](architecture/ARCH008_token-efficiency-utility-lane.md) |
+| Architecture | current baseline | [ARCH001](architecture/ARCH001_bundle-composition.md) through [ARCH009](architecture/ARCH009_operations-learning-gate.md) |
 | Model | historical baseline | [MODEL001](models/MODEL001_engineering-loop.md) |
 | Explore / Coverage | historical baseline | [CORD001](cord/CORD001_loop-conformance.md), [COV001](coverage/COV001_conformance.md) |
 | Operations | historical evidence | [IN001–IN004](incidents/), [PM001–PM004](postmortems/INDEX.md) |

@@ -101,14 +101,15 @@ public sealed class CoreNegativeContractTests : IDisposable
     public void RepairObligation_requiresEveryClosureFactAndCurrentReadiness()
     {
         var notReady = EngineeringLoopState.Initial;
-        var complete = new RepairObligation("r", true, true, true, false);
+        var complete = new RepairObligation("r", true, true, true, false, true);
         Assert.False(complete.CanClose(notReady));
 
         var ready = notReady with { ProductRevision = "4", Readiness = new ReadinessEvidence(true, "4", DateTimeOffset.UtcNow) };
         Assert.True(complete.CanClose(ready));
-        Assert.False(new RepairObligation("r", false, true, true, false).CanClose(ready));
-        Assert.False(new RepairObligation("r", true, false, true, false).CanClose(ready));
-        Assert.False(new RepairObligation("r", true, true, false, false).CanClose(ready));
+        Assert.False(new RepairObligation("r", false, true, true, false, true).CanClose(ready));
+        Assert.False(new RepairObligation("r", true, false, true, false, true).CanClose(ready));
+        Assert.False(new RepairObligation("r", true, true, false, false, true).CanClose(ready));
+        Assert.False(new RepairObligation("r", true, true, true, false, false).CanClose(ready));
     }
 
     [Fact]
@@ -148,7 +149,7 @@ public sealed class CoreNegativeContractTests : IDisposable
         Directory.CreateDirectory(postmortems);
         Directory.CreateDirectory(cards);
         File.WriteAllText(Path.Combine(postmortems, "PM002.md"), "PM002/LEARN001\n");
-        File.WriteAllText(Path.Combine(cards, "card.md"), "## Tensions\nnone known\nPM002/LEARN001\n");
+        File.WriteAllText(Path.Combine(cards, "card.md"), "## Source learnings\nPM002/LEARN001\n## Tensions\nnone known\n");
         var index = Path.Combine(_root, "big.md");
         File.WriteAllText(index, string.Join("\n", Enumerable.Repeat("word", 501)) + "\n[card](.engloop/learnings/cards/card.md)");
         var sources = LearningsPyramidPolicy.ExtractSources(postmortems);

@@ -18,7 +18,7 @@ The installer is explicitly local-only:
 
 - Windows PowerShell 5.1 or PowerShell 7+
 - Git on `PATH`
-- .NET 8 SDK on `PATH`
+- .NET 10 SDK on `PATH`
 - An existing Git checkout selected at its repository root
 - Permission to create local files under `%LOCALAPPDATA%`
 

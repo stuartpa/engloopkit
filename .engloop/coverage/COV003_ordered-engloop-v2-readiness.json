@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "1.0",
+  "artifactType": "whole-product-readiness",
+  "capturedAtUtc": "2026-08-18T04:13:23.0707599Z",
+  "verdict": "PASS",
+  "coberturaReport": ".engloop\\out\\readiness-coverage\\overlay\\f79beac1-985d-4c66-a892-6e9ba295741c\\coverage.cobertura.xml",
+  "coberturaSha256": "2c1a19f1658a37709e77eba03b067246426087ba5704c6e8ce34fe82051d640a",
+  "generatedFunctionalPass": true,
+  "directSuitePass": true,
+  "architectureValidationPass": true,
+  "modules": [
+    {
+      "id": "components.numbering",
+      "coverageIdentity": "EngLoopKit.Components.Numbering",
+      "line": 100.0,
+      "branch": 100.0,
+      "functionalPass": true,
+      "directPass": true,
+      "architecturePass": true,
+      "pass": true
+    },
+    {
+      "id": "components.statemachine",
+      "coverageIdentity": "EngLoopKit.Components.StateMachine",
+      "line": 100.0,
+      "branch": 100.0,
+      "functionalPass": true,
+      "directPass": true,
+      "architecturePass": true,
+      "pass": true
+    },
+    {
+      "id": "components.documentvalidation",
+      "coverageIdentity": "EngLoopKit.Components.DocumentValidation",
+      "line": 97.14,
+      "branch": 96.87,
+      "functionalPass": true,
+      "directPass": true,
+      "architecturePass": true,
+      "pass": true
+    },
+    {
+      "id": "components.overlay",
+      "coverageIdentity": "EngLoopKit.Components.Overlay",
+      "line": 98.28,
+      "branch": 95.13,
+      "functionalPass": true,
+      "directPass": true,
+      "architecturePass": true,
+      "pass": true
+    },
+    {
+      "id": "core",
+      "coverageIdentity": "EngLoopKit.Core",
+      "line": 98.69,
+      "branch": 95.75,
+      "functionalPass": true,
+      "directPass": true,
+      "architecturePass": true,
+      "pass": true
+    },
+    {
+      "id": "tool",
+      "coverageIdentity": "engloopkit",
+      "line": 97.48,
+      "branch": 95.24,
+      "functionalPass": true,
+      "directPass": true,
+      "architecturePass": true,
+      "pass": true
+    }
+  ],
+  "failures": []
+}

@@ -1,10 +1,14 @@
 <Project>
   <!--
-    EngLoopKit stays on the same dev platform as SEK: .NET 8, C#, xUnit, no extra deps.
+    EngLoopKit and its external SEK v0.1.3 dependency run natively on .NET 10.
     Kept intentionally light so the SEK model project (Nullable/ImplicitUsings disabled)
     and the auto-generated xUnit project can set their own conventions without conflict.
   -->
   <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'ModelProgramTests'">
+    <PackageReference Include="coverlet.collector" Version="6.0.2" PrivateAssets="all" />
+  </ItemGroup>
 </Project>

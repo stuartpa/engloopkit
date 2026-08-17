@@ -41,6 +41,14 @@ foreach ($cardPath in Get-ChildItem $cardsRoot -File -Filter '*.md' | Sort-Objec
     $cue = ([regex]::Match($text, '(?m)^- \*\*Recall cue:\*\*\s*(.+)$')).Groups[1].Value
     $cardIndex[$slug] = [ordered]@{ cue = $cue; sources = $sources; text = $text }
 }
+$cardsDigestText = [Text.StringBuilder]::new()
+foreach ($cardPath in Get-ChildItem $cardsRoot -File -Filter '*.md' | Sort-Object Name) {
+    $hash = (Get-FileHash $cardPath.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+    [void]$cardsDigestText.Append($cardPath.Name).Append(':').Append($hash).Append("`n")
+}
+$cardsDigest = [Convert]::ToHexString(
+    [Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($cardsDigestText.ToString()))
+).ToLowerInvariant()
 
 function NormalizeSet([object[]]$values) {
     return @($values | ForEach-Object { $_.ToString() } | Sort-Object -Unique)
@@ -73,7 +81,7 @@ foreach ($case in $cases.cases) {
         }
         foreach ($source in $actualSources) {
             if ($cardIndex[$card].sources -notcontains $source) {
-                $failures.Add("source-not-cited-by-observed-card:$($case.id):$card:$source") | Out-Null
+                $failures.Add("source-not-cited-by-observed-card:$($case.id):${card}:$source") | Out-Null
             }
         }
     }
@@ -110,7 +118,11 @@ New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
 $payload = [ordered]@{
     capturedAtUtc = (Get-Date).ToUniversalTime().ToString('o')
     casesPath = [IO.Path]::GetRelativePath($repoRoot, $CasesPath)
+    casesSha256 = (Get-FileHash $CasesPath -Algorithm SHA256).Hash.ToLowerInvariant()
     observedResultsPath = [IO.Path]::GetRelativePath($repoRoot, $ObservedResultsPath)
+    observedResultsSha256 = (Get-FileHash $ObservedResultsPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    learningsSha256 = (Get-FileHash (Join-Path $repoRoot 'LEARNINGS.md') -Algorithm SHA256).Hash.ToLowerInvariant()
+    cardsDigest = $cardsDigest
     results = $results
     failures = @($failures | Sort-Object -Unique)
     verdict = if ($failures.Count -eq 0) { 'PASS' } else { 'FAIL' }

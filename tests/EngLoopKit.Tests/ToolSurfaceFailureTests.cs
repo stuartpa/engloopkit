@@ -100,8 +100,8 @@ public sealed class ToolSurfaceFailureTests : IDisposable
         Assert.Equal(1, ValidationCommands.ValidateCommands(["--root", _root]));
 
         CopyCommandSurface();
-        var stage41 = Path.Combine(commands, "speckit.engloop.41-learnings-pyramid.md");
-        File.WriteAllText(stage41, File.ReadAllText(stage41).Replace("\n---", "\nhandoffs: []\n---", StringComparison.Ordinal));
+        var stage42 = Path.Combine(commands, "speckit.engloop.42-learnings-pyramid.md");
+        File.WriteAllText(stage42, File.ReadAllText(stage42).Replace("\n---", "\nhandoffs: []\n---", StringComparison.Ordinal));
         Assert.Equal(1, ValidationCommands.ValidateCommands(["--root", _root]));
 
         CopyCommandSurface();
@@ -209,8 +209,10 @@ public sealed class ToolSurfaceFailureTests : IDisposable
         Assert.Equal(0, Program.Main(["validate", "learnings", "--root", SourceRoot]));
         Assert.Equal(0, Program.Main(["validate", "installation", "--root", SourceRoot]));
         Assert.Equal(0, Program.Main(["validate", "agent-surfaces", "--root", SourceRoot]));
+        Assert.Equal(1, Program.Main(["validate", "postmortem-learning", "--root", SourceRoot]));
+        Assert.Equal(1, Program.Main(["validate", "repair-learning", "--root", SourceRoot]));
         Assert.Equal(2, Program.Main(["validate", "agent-entry", "--root", SourceRoot]));
-        Assert.Equal(0, Program.Main(["validate", "agent-entry", "--stage", "speckit.engloop.20-incident", "--root", SourceRoot]));
+        Assert.Equal(2, Program.Main(["validate", "agent-entry", "--stage", "speckit.engloop.20-incident", "--root", SourceRoot]));
     }
 
     [Fact]

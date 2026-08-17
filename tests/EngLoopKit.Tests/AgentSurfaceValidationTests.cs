@@ -34,7 +34,7 @@ public sealed class AgentSurfaceValidationTests
     public void PromptFiles_selectExactAgents_andForbidTools()
     {
         var prompts = Directory.GetFiles(PromptsDir, "speckit.engloop.*.prompt.md", SearchOption.TopDirectoryOnly);
-        Assert.Equal(23, prompts.Length);
+        Assert.Equal(25, prompts.Length);
 
         foreach (var prompt in prompts)
         {
@@ -58,6 +58,23 @@ public sealed class AgentSurfaceValidationTests
         Assert.Contains("argument-hint:", implementation, StringComparison.Ordinal);
         Assert.Contains("--analysis", implementation, StringComparison.Ordinal);
         Assert.Contains("--approve", implementation, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void OperationsPromptFiles_exposeLearningBoundRepairArguments()
+    {
+        var postmortem = File.ReadAllText(Path.Combine(PromptsDir, "speckit.engloop.21-postmortem.prompt.md"));
+        Assert.Contains("description:", postmortem, StringComparison.Ordinal);
+        Assert.Contains("argument-hint:", postmortem, StringComparison.Ordinal);
+        Assert.Contains("--postmortem", postmortem, StringComparison.Ordinal);
+
+        var repair = File.ReadAllText(Path.Combine(PromptsDir, "speckit.engloop.22-repair.prompt.md"));
+        Assert.Contains("description:", repair, StringComparison.Ordinal);
+        Assert.Contains("argument-hint:", repair, StringComparison.Ordinal);
+        Assert.Contains("--postmortem", repair, StringComparison.Ordinal);
+        Assert.Contains("--rpi", repair, StringComparison.Ordinal);
+        Assert.Contains("--rules", repair, StringComparison.Ordinal);
+        Assert.Contains("verification requirement", repair, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

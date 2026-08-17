@@ -20,11 +20,12 @@ parent artifact and are tracked there.
 | `IN` | `IN000` | Actual incidents only. |
 | `PM` | `PM000` | Selected stabilized incident-set postmortems. |
 | `REFACT` | `REFACT000` | Stewardship refactor decisions or no-work records. |
+| `DEADCODE` | `DEADCODE000` | High-certainty dead-code proposals and user decisions. |
 | `DBG` | `DBG000` | Engineer-attested debugger walkthrough ledgers. |
 | `SIX` | `SIX000` | Six-page narrative memos, generated Word documents, appendices, and render evidence. |
 | `PPT` | `PPT000` | Markdown-first presentation decks and generated PowerPoint artifacts. |
 | `PAP` | `PAP000` | Academic systems papers, bibliography/figures/data, generated PDF, and validation. |
-| `POM` | `POM0000` | Brief four-digit records of completed 30–60 minute work sessions. |
+| `HANDOFF` | `HANDOFF000` | Evidence-backed continuation packets for another chat window or engineering team. |
 
 ## Local counters
 

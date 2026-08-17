@@ -82,6 +82,7 @@ computed readiness, strict operations, and loss-aware learning retrieval.
 - Follow Spec Kit bundle/extension folder norms; package/release per Spec Kit.
 - Every numbered artifact has a **prefix + monotonic number + brief title**.
 - **Token efficiency** is woven throughout.
-- When dogfooded on itself: **same dev platform as SEK** (.NET 8 / C# / xUnit, no new deps).
+- When dogfooded on itself: **.NET 10 / C# / xUnit**, with SEK consumed as an
+  independently versioned compatible product and no application-specific dependencies.
 - Process memory uses `.engloop/`; bundle verification includes conformance/artifact
   evidence; model and exploration remain separate responsibilities in one feedback loop.

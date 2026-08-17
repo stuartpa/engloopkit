@@ -8,7 +8,7 @@
 ## Symptom
 
 A completed or aborted .NET test run left an `testhost.exe` process holding copied ELK
-assemblies under `tests/EngLoopKit.Tests/bin/Debug/net8.0/`. Subsequent builds and
+assemblies under the then-current test output directory. Subsequent builds and
 coverage runs failed while copying `engloopkit.dll` and component assemblies, producing
 misleading build/coverage failure evidence.
 

@@ -43,12 +43,15 @@
 
 > "Ready for incidents" may be stated ONLY when this verdict is PASS (PM001 anti-narration rule).
 
-After checking PASS, emit the generic current readiness state for the exact current HEAD:
+After checking PASS, create the paired structured JSON from
+`COV-READINESS-template.json`, including exact module rows and the hashed Cobertura report,
+then emit the generic current readiness state:
 
-`dotnet tool run engloopkit -- readiness emit --root . --evidence <this-COV-path> --verdict pass`
+`dotnet tool run engloopkit -- readiness emit --root . --evidence <.engloop/coverage/COVxxx-readiness.json> --verdict pass`
 
-The emitted `.engloop/readiness/current.json` is invalidated by any HEAD or evidence
-change. Consumer repositories do not need a self-host-specific coverage JSON filename.
+The emitted `.engloop/readiness/current.json` is invalidated by HEAD, evidence, measured
+coverage, or product/config worktree byte changes. The Markdown verdict alone has no
+authority to emit readiness.
 
 ## Related
 

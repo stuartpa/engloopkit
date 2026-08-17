@@ -98,7 +98,7 @@ Record the exact Pandoc version and reference DOCX identity/hash (or the explici
 
 ## Naming policy
 
-Compound command names use subject/action order. Therefore this command is `six-pager-create`, consistent with `pomodoro-create`, `powerpnt-create`, and `academic-paper-create`.
+Compound command names use subject/action order. Therefore this command is `six-pager-create`, consistent with `handoff-create`, `powerpnt-create`, and `academic-paper-create`.
 
 ## Done when
 

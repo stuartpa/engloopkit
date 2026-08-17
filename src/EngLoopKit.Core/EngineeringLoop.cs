@@ -47,8 +47,12 @@ public static class TransitionReasons
     public const string MissingCurrentReadiness = "missing-current-readiness";
     public const string StaleReadiness = "stale-readiness";
     public const string NoIncidentDemand = "no-incident-demand";
+    public const string MissingDirectionConsultation = "missing-direction-consultation";
+    public const string MissingLearningConsultation = "missing-learning-consultation";
+    public const string MissingPostmortemLearningGate = "missing-postmortem-learning-gate";
     public const string NoPostmortemSelection = "no-postmortem-selection";
     public const string NoRepairDemand = "no-repair-demand";
+    public const string MissingRepairLearningContract = "missing-repair-learning-contract";
     public const string MissingRepairRouting = "missing-repair-routing";
     public const string RepairGateBypass = "repair-gate-bypass";
     public const string NoStewardshipCapacity = "no-stewardship-capacity";
@@ -77,8 +81,12 @@ public sealed record TransitionEvidence(
     bool ReadinessGatePass = false,
     bool IncidentDemand = false,
     bool IncidentStabilized = false,
+    bool DirectionConsulted = false,
+    bool LearningContextConsidered = false,
     bool SelectedIncidentSet = false,
+    bool PostmortemLearningGatePass = false,
     bool RepairItemDemand = false,
+    bool RepairLearningContractCurrent = false,
     bool StewardshipCapacity = false,
     bool LearningRefreshCurrent = false,
     bool DirectionChange = false,
@@ -292,12 +300,17 @@ public static class EngineeringLoop
                  && !s.ArchitectureImpactPending;
         var repeated = effectiveStage == Stage.Incident;
         if ((!steady && !repeated) || !s.HasCurrentReadinessPass()) return TransitionResult.Reject(s, s.Readiness is null ? TransitionReasons.MissingCurrentReadiness : TransitionReasons.StaleReadiness, TransitionReasons.MissingCurrentReadiness);
+        if (!e.DirectionConsulted) return TransitionResult.Reject(s, TransitionReasons.MissingDirectionConsultation, TransitionReasons.MissingDirectionConsultation);
+        if (!e.LearningContextConsidered) return TransitionResult.Reject(s, TransitionReasons.MissingLearningConsultation, TransitionReasons.MissingLearningConsultation);
         return TransitionResult.Accept(s with { LastAcceptedStage = Stage.Incident, IncidentDemandActive = true, IncidentStabilized = e.IncidentStabilized });
     }
 
     private static TransitionResult Postmortem(EngineeringLoopState s, TransitionEvidence e)
     {
         if (EffectiveLastStage(s) != Stage.Incident || !s.IncidentDemandActive || !s.IncidentStabilized || !e.SelectedIncidentSet) return TransitionResult.Reject(s, TransitionReasons.NoPostmortemSelection, TransitionReasons.NoPostmortemSelection);
+        if (!e.DirectionConsulted) return TransitionResult.Reject(s, TransitionReasons.MissingDirectionConsultation, TransitionReasons.MissingDirectionConsultation);
+        if (!e.LearningContextConsidered) return TransitionResult.Reject(s, TransitionReasons.MissingLearningConsultation, TransitionReasons.MissingLearningConsultation);
+        if (!e.PostmortemLearningGatePass) return TransitionResult.Reject(s, TransitionReasons.MissingPostmortemLearningGate, TransitionReasons.MissingPostmortemLearningGate);
         return TransitionResult.Accept(s with { LastAcceptedStage = Stage.Postmortem, SelectedIncidentSet = true, LearningRefreshPending = true, RepairItemDemand = e.RepairItemDemand });
     }
 
@@ -305,7 +318,8 @@ public static class EngineeringLoop
     {
         var effectiveStage = EffectiveLastStage(s);
         if (effectiveStage != Stage.Postmortem || !s.SelectedIncidentSet || !e.RepairItemDemand) return TransitionResult.Reject(s, TransitionReasons.NoRepairDemand, TransitionReasons.NoRepairDemand);
-        var obligation = new RepairObligation($"RPI-{s.RepairObligations.Count + 1:D3}", false, false, false, false);
+        if (!e.RepairLearningContractCurrent) return TransitionResult.Reject(s, TransitionReasons.MissingRepairLearningContract, TransitionReasons.MissingRepairLearningContract);
+        var obligation = new RepairObligation($"RPI-{s.RepairObligations.Count + 1:D3}", false, false, false, false, false);
         return TransitionResult.Accept(s with { LastAcceptedStage = Stage.Repair, RepairObligations = s.RepairObligations.Append(obligation).ToArray(), DeliveryCursor = DeliveryCursor.Architecture });
     }
 

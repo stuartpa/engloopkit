@@ -11,6 +11,8 @@ public sealed record LearningsValidationResult(bool Passed, IReadOnlyList<string
 public static class LearningsPyramidPolicy
 {
     private static readonly Regex SourceIdRegex = new(@"PM\d{3}/LEARN\d{3}", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex PostmortemIdRegex = new(@"^PM\d{3}", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex LocalLearningIdRegex = new(@"(?<!/)\bLEARN\d{3}\b", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     public static IReadOnlyList<LearningSource> ExtractSources(string postmortemsRoot)
     {
@@ -27,9 +29,10 @@ public static class LearningsPyramidPolicy
         foreach (var file in files)
         {
             var text = File.ReadAllText(file);
-            foreach (Match match in SourceIdRegex.Matches(text))
+            var postmortemId = PostmortemIdRegex.Match(Path.GetFileName(file)).Value;
+            if (string.IsNullOrWhiteSpace(postmortemId)) continue;
+            foreach (var id in ExtractSourceIds(postmortemId, text))
             {
-                var id = match.Value;
                 results.Add(new LearningSource(id, file, Path.GetFileName(file)));
             }
         }
@@ -39,6 +42,29 @@ public static class LearningsPyramidPolicy
             .Select(group => group.First())
             .OrderBy(source => source.Id, StringComparer.Ordinal)
             .ToArray();
+    }
+
+    public static IReadOnlyList<string> ExtractSourceIds(string postmortemId, string postmortemText)
+    {
+        if (!PostmortemIdRegex.IsMatch(postmortemId)) return [];
+        var learningSection = ExtractSection(postmortemText, "## Learnings");
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        foreach (Match match in SourceIdRegex.Matches(learningSection))
+        {
+            if (match.Value.StartsWith(postmortemId + "/", StringComparison.Ordinal)) ids.Add(match.Value);
+        }
+        foreach (Match match in LocalLearningIdRegex.Matches(learningSection)) ids.Add(postmortemId + "/" + match.Value);
+        return ids.OrderBy(id => id, StringComparer.Ordinal).ToArray();
+    }
+
+    private static string ExtractSection(string text, string heading)
+    {
+        var normalized = text.Replace("\r\n", "\n", StringComparison.Ordinal);
+        var start = normalized.IndexOf(heading, StringComparison.Ordinal);
+        if (start < 0) return string.Empty;
+        start += heading.Length;
+        var end = normalized.IndexOf("\n## ", start, StringComparison.Ordinal);
+        return end < 0 ? normalized[start..] : normalized[start..end];
     }
 
     public static IReadOnlyList<LearningCard> ExtractCards(string cardsRoot)
@@ -53,7 +79,7 @@ public static class LearningsPyramidPolicy
                      .OrderBy(path => path, StringComparer.Ordinal))
         {
             var text = File.ReadAllText(path);
-            var sourceIds = SourceIdRegex.Matches(text)
+            var sourceIds = SourceIdRegex.Matches(ExtractSection(text, "## Source learnings"))
                 .Select(match => match.Value)
                 .Distinct(StringComparer.Ordinal)
                 .OrderBy(id => id, StringComparer.Ordinal)
@@ -137,6 +163,12 @@ public static class LearningsPyramidPolicy
         }
 
         var coveredSourceIds = new HashSet<string>(cards.SelectMany(card => card.SourceIds), StringComparer.Ordinal);
+        var authoritativeSourceIds = new HashSet<string>(sources.Select(source => source.Id), StringComparer.Ordinal);
+        foreach (var card in cards)
+        {
+            foreach (var unknown in card.SourceIds.Where(sourceId => !authoritativeSourceIds.Contains(sourceId)))
+                failures.Add($"card-cites-unknown-source:{card.Slug}:{unknown}");
+        }
         foreach (var source in sources)
         {
             if (!coveredSourceIds.Contains(source.Id))

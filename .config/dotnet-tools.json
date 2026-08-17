@@ -3,9 +3,16 @@
   "isRoot": true,
   "tools": {
     "engloopkit": {
-      "version": "1.13.1",
+      "version": "1.14.0",
       "commands": [
         "engloopkit"
+      ],
+      "rollForward": false
+    },
+    "specexplorerkit.tool": {
+      "version": "0.1.3",
+      "commands": [
+        "sek"
       ],
       "rollForward": false
     }

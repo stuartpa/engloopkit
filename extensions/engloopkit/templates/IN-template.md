@@ -8,6 +8,9 @@
 - **Duration:** (fill when resolved)
 - **Cause-class (preliminary):** (fill during diagnosis)
 
+At completion set `Status` exactly to `STABILIZED` or `RESOLVED`; ambiguous values such
+as `NOT STABILIZED` are rejected.
+
 ## Symptom
 
 <What is broken, in the reporter's terms.>
@@ -33,6 +36,19 @@
 - [ ] Health checks passing: <evidence>
 - [ ] User workflows unblocked: <evidence>
 - [ ] No fresh errors in the watch window: <evidence>
+
+## Direction and learning context
+
+- **North Star SHA-256:** `<current-sha256>`
+- **Learning context:** `<CONSULTED | DEFERRED>`
+- **Rule IDs:** `<RULE:<card-slug>,... | NONE>`
+- **Source IDs:** `<PMxxx/LEARNxxx,... | NONE>`
+- **Deferral reason:** `<substantive emergency reason | NOT-REQUIRED>`
+
+Read current `NORTHSTAR.md` before mitigation. Follow only immediately relevant
+`LEARNINGS.md → card → source` cues when safe. `DEFERRED` is allowed to avoid delaying
+stabilization, but Stage 21 cannot select this incident until the fields are resolved to
+`CONSULTED` and the current North Star hash is recorded.
 
 ## Hand-off to Post-Mortem
 

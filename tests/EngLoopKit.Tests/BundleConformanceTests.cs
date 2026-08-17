@@ -28,14 +28,16 @@ public sealed class BundleConformanceTests
         "speckit.engloop.22-repair",
         "speckit.engloop.30-token-efficiency-analyze",
         "speckit.engloop.31-token-efficiency-implement",
-        "speckit.engloop.40-refactor-scan",
-        "speckit.engloop.41-learnings-pyramid",
-        "speckit.engloop.50-pomodoro-create",
+        "speckit.engloop.40-refactor",
+        "speckit.engloop.41-deadcode",
+        "speckit.engloop.42-learnings-pyramid",
+        "speckit.engloop.50-handoff-create",
         "speckit.engloop.60-overlay-pack",
         "speckit.engloop.61-overlay-remove",
         "speckit.engloop.70-six-pager-create",
         "speckit.engloop.71-powerpnt-create",
         "speckit.engloop.72-academic-paper-create",
+        "speckit.engloop.80-upgrade-elk",
     ];
 
     [Fact]
@@ -46,16 +48,20 @@ public sealed class BundleConformanceTests
         using var catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "catalog.json")));
 
         Assert.Contains("id: \"engloop\"", extension);
-        Assert.Contains("version: \"1.13.1\"", extension);
+        Assert.Contains("version: \"1.14.0\"", extension);
         Assert.Contains("id: \"engloopkit\"", bundle);
-        Assert.Contains("version: \"1.13.1\"", bundle);
+        Assert.Contains("version: \"1.14.0\"", bundle);
         Assert.Equal("engloop", catalog.RootElement.GetProperty("extensions")[0].GetProperty("id").GetString());
-        Assert.Equal("1.13.1", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
-        Assert.Equal(23, catalog.RootElement.GetProperty("extensions")[0].GetProperty("provides").GetProperty("commands").GetInt32());
+        Assert.Equal("1.14.0", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
+        Assert.Equal(25, catalog.RootElement.GetProperty("extensions")[0].GetProperty("provides").GetProperty("commands").GetInt32());
+
+        var changelog = File.ReadAllText(Path.Combine(Root, "CHANGELOG.md"));
+        Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.14\.0\] - 2026-08-17\r?$").Cast<Match>());
+        Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.13\.0\] - 2026-08-05\r?$").Cast<Match>());
     }
 
     [Fact]
-    public void Extension_declaresExactOrderedTwentyThreeCommandSurface()
+    public void Extension_declaresExactOrderedTwentyFiveCommandSurface()
     {
         var manifest = File.ReadAllText(Path.Combine(ExtensionRoot, "extension.yml"));
         var ids = Regex.Matches(manifest, @"^\s*-\s*name:\s*""?(speckit\.engloop\.[\w-]+)""?", RegexOptions.Multiline)
@@ -173,10 +179,21 @@ public sealed class BundleConformanceTests
             Assert.True(File.Exists(Path.Combine(ExtensionRoot, "scripts", trustedScript)), trustedScript);
         }
 
-        var pom = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.50-pomodoro-create.md"));
-        Assert.Contains("POM0000", pom, StringComparison.Ordinal);
-        Assert.Contains("30–60", pom, StringComparison.Ordinal);
-        Assert.Contains("POM<NNNN>-<brief-kebab-description>.md", pom, StringComparison.Ordinal);
+        var handoff = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.50-handoff-create.md"));
+        Assert.Contains("HANDOFF001", handoff, StringComparison.Ordinal);
+        Assert.Contains("another chat window or engineering team", handoff, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("HANDOFF<NNN>-<brief-kebab-description>.md", handoff, StringComparison.Ordinal);
+        Assert.True(File.Exists(Path.Combine(ExtensionRoot, "templates", "HANDOFF-template.md")));
+
+        var deadcode = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.41-deadcode.md"));
+        foreach (var marker in new[]
+        {
+            "DEADCODE<NNN>-<brief-kebab-description>.md", "Confidence: HIGH",
+            "no current source changes before approval", "explicit yes/approve/proceed",
+            "Status: REJECTED", "declined without reason", "next-best candidate",
+            "dotnet build EngLoopKit.slnx", "dotnet test EngLoopKit.slnx"
+        }) Assert.Contains(marker, deadcode, StringComparison.OrdinalIgnoreCase);
+        Assert.True(File.Exists(Path.Combine(ExtensionRoot, "templates", "DEADCODE-template.md")));
 
         var remove = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.61-overlay-remove.md"));
         Assert.Contains("REMOVE-OVERLAY:<repository-id>@<base-revision>", remove, StringComparison.Ordinal);
@@ -215,6 +232,22 @@ public sealed class BundleConformanceTests
         Assert.Contains("Pandoc", paper, StringComparison.Ordinal);
         Assert.Contains("citeproc", paper, StringComparison.Ordinal);
         Assert.Contains("PDF", paper, StringComparison.Ordinal);
+
+        var upgrade = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.80-upgrade-elk.md"));
+        Assert.Contains("Update-EngLoopKit.ps1", upgrade, StringComparison.Ordinal);
+        Assert.Contains("ELK_UPGRADE_CURRENT", upgrade, StringComparison.Ordinal);
+        Assert.Contains("ELK_UPGRADE_PASS", upgrade, StringComparison.Ordinal);
+        Assert.Contains("latest", upgrade, StringComparison.OrdinalIgnoreCase);
+        var updater = File.ReadAllText(Path.Combine(ExtensionRoot, "scripts", "Update-EngLoopKit.ps1"));
+        foreach (var marker in new[]
+        {
+            "/latest", "draft", "prerelease", "engloopkit-release-manifest-", "Assert-Hash",
+            "ELK_UPGRADE_CURRENT", "ELK_UPGRADE_AVAILABLE", "ELK_UPGRADE_PASS",
+            "ELK_UPGRADE_FAILED_ROLLED_BACK", "Restore-ManagedSnapshot", "Assert-RestoredSnapshot",
+            "Save-CachedToolPackage", "dotnet tool restore", "dependencies.sek", "sek-cord-authoring", "using-sek-to-generate-tests", "0.1.3",
+            "Assert-DotNetPlatform", "ELK_UPGRADE_DOTNET_TOO_OLD", "net10.0", "EngLoopKit.slnx"
+        }) Assert.Contains(marker, updater, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("dotnet tool install -g", updater, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

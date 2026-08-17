@@ -112,7 +112,7 @@ Use an approved CSL style/template only when the target venue/audience requires 
 
 ## Naming policy
 
-Compound command names use subject/action order. Therefore this command is `academic-paper-create`, consistent with `six-pager-create`, `powerpnt-create`, and `pomodoro-create`.
+Compound command names use subject/action order. Therefore this command is `academic-paper-create`, consistent with `six-pager-create`, `powerpnt-create`, and `handoff-create`.
 
 ## Done when
 

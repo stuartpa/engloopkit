@@ -3,18 +3,18 @@ schema_version: "1.0"
 bundle:
   id: "engloopkit"
   name: "EngLoopKit"
-  version: "1.13.1"
+  version: "1.14.0"
   role: "loop-engineer"
-  description: "Ordered evidence-gated delivery, token efficiency, operations, stewardship, publication, and private overlay workflow for Spec Kit."
+  description: "Ordered evidence-gated delivery, operations learning, handoffs, verified ELK/SEK upgrades, stewardship, publication, and private overlay workflow for Spec Kit."
   author: "stuartpa"
   license: "MIT"
 
 requires:
   speckit_version: ">=0.12.0"
 
-# EngLoopKit uses no runtime tools of its own. SEK (the Z3 model explorer) is an
-# optional external tool invoked by the model/explore/coverage commands; it is not
-# required to install the bundle.
+# The bundle installs the SEK Spec Kit extension at the exact release used by ELK's
+# model-based stages. The matching root-local tool/model packages are restored from the
+# v0.1.3 GitHub release with pinned SHA-256 values by ensure-sek-v0.1.3.ps1.
 tools: []
 mcp: []
 
@@ -22,7 +22,7 @@ provides:
   extensions:
     # EngLoopKit's exact lifecycle, review, session-memory, and overlay utility surface.
     - id: "engloop"
-      version: "1.13.1"
+      version: "1.14.0"
 
     # Architecture governance for the post-bridging architecture stage and for
     # honoring the long-lived architecture on every subsequent loop.
@@ -35,6 +35,10 @@ provides:
     # Resolves from the tinyspec catalog (see README > Install).
     - id: "tinyspec"
       version: "1.0.0"
+
+    # Independent model-based testing product and its product-owned Agent Skills.
+    - id: "sek"
+      version: "0.1.3"
 
 tags:
   - "loop-engineering"

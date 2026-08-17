@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using EngLoopKit.Tool;
 using Xunit;
@@ -60,7 +61,8 @@ public sealed class ToolValidationCommandTests : IDisposable
         Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
         Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.30-token-efficiency-analyze", "--root", _fixture]));
         Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.31-token-efficiency-implement", "--root", _fixture]));
-        Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.50-pomodoro-create", "--root", _fixture]));
+        Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.50-handoff-create", "--root", _fixture]));
+        Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.80-upgrade-elk", "--root", _fixture]));
         Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.60-overlay-pack", "--root", _fixture]));
         Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.61-overlay-remove", "--root", _fixture]));
         foreach (var stage in new[]
@@ -93,20 +95,21 @@ public sealed class ToolValidationCommandTests : IDisposable
         Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
 
         Assert.Equal(1, ValidationCommands.ExecuteReadiness([]));
-        Assert.Equal(1, ValidationCommands.ExecuteReadiness(["emit", "--root", _fixture, "--verdict", "fail", "--evidence", ".engloop/coverage/COV001_readiness.md"]));
+        Assert.Equal(1, ValidationCommands.ExecuteReadiness(["emit", "--root", _fixture, "--verdict", "fail", "--evidence", ".engloop/coverage/COV001_readiness.json"]));
         Directory.CreateDirectory(Path.Combine(_fixture, ".engloop", "coverage"));
-        var evidenceRelative = ".engloop/coverage/COV001_readiness.md";
-        var evidencePath = Path.Combine(_fixture, ".engloop", "coverage", "COV001_readiness.md");
-        File.WriteAllText(evidencePath, "# Readiness\n\n## Readiness Gate verdict\n\n- [ ] **PASS**\n");
+        var evidenceRelative = ".engloop/coverage/COV001_readiness.json";
+        var evidencePath = Path.Combine(_fixture, ".engloop", "coverage", "COV001_readiness.json");
+        File.WriteAllText(evidencePath, "{}");
         Assert.Equal(1, ValidationCommands.ExecuteReadiness(["emit", "--root", _fixture, "--verdict", "pass", "--evidence", evidenceRelative]));
-        File.WriteAllText(evidencePath, "# Readiness\n\n## Readiness Gate verdict\n\n- [x] **PASS** — complete\n");
+        WriteReadinessEvidence(evidencePath);
         Assert.Equal(0, ValidationCommands.ExecuteReadiness(["emit", "--root", _fixture, "--verdict", "pass", "--evidence", evidenceRelative]));
         Assert.True(File.Exists(Path.Combine(_fixture, ".engloop", "readiness", "current.json")));
         Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
+        Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.20-incident", "--root", _fixture]));
 
         File.AppendAllText(evidencePath, "changed\n");
         Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
-        File.WriteAllText(evidencePath, "# Readiness\n\n## Readiness Gate verdict\n\n- [x] **PASS** — complete\n");
+        WriteReadinessEvidence(evidencePath);
         Assert.Equal(0, ValidationCommands.ExecuteReadiness(["emit", "--root", _fixture, "--verdict", "pass", "--evidence", evidenceRelative]));
         Assert.Equal(0, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
 
@@ -134,22 +137,26 @@ public sealed class ToolValidationCommandTests : IDisposable
         RunGit("commit", "-m", "fixture");
 
         Assert.Equal(1, ValidationCommands.ExecuteReadiness(["unknown"]));
-        Assert.Equal(1, ValidationCommands.ExecuteReadiness(["emit", "--root", Path.Combine(_fixture, "missing-root"), "--verdict", "pass", "--evidence", ".engloop/coverage/COV001_readiness.md"]));
+        Assert.Equal(1, ValidationCommands.ExecuteReadiness(["emit", "--root", Path.Combine(_fixture, "missing-root"), "--verdict", "pass", "--evidence", ".engloop/coverage/COV001_readiness.json"]));
         Assert.Equal(1, ValidationCommands.ExecuteReadiness(["emit", "--root", _fixture]));
         Assert.Equal(1, ValidationCommands.ExecuteReadiness(["emit", "--root", _fixture, "--verdict", "pass"]));
         Assert.Equal(1, ValidationCommands.ExecuteReadiness(["emit", "--root", _fixture, "--verdict", "pass", "--evidence", Path.Combine(_fixture, "absolute.md")]));
         Assert.Equal(1, ValidationCommands.ExecuteReadiness(["emit", "--root", _fixture, "--verdict", "pass", "--evidence", "../escape.md"]));
         Assert.Equal(1, ValidationCommands.ExecuteReadiness(["emit", "--root", _fixture, "--verdict", "pass", "--evidence", "README.md"]));
-        Assert.Equal(1, ValidationCommands.ExecuteReadiness(["emit", "--root", _fixture, "--verdict", "pass", "--evidence", ".engloop/coverage/missing.md"]));
+        Assert.Equal(1, ValidationCommands.ExecuteReadiness(["emit", "--root", _fixture, "--verdict", "pass", "--evidence", ".engloop/coverage/missing.json"]));
 
         Directory.CreateDirectory(Path.Combine(_fixture, ".engloop", "coverage"));
-        var evidenceRelative = ".engloop/coverage/COV001_readiness.md";
-        var evidencePath = Path.Combine(_fixture, ".engloop", "coverage", "COV001_readiness.md");
-        File.WriteAllText(evidencePath, "# no verdict section and no checked pass\n");
+        var evidenceRelative = ".engloop/coverage/COV001_readiness.json";
+        var evidencePath = Path.Combine(_fixture, ".engloop", "coverage", "COV001_readiness.json");
+        File.WriteAllText(evidencePath, "{}");
         Assert.Equal(1, ValidationCommands.ExecuteReadiness(["emit", "--root", _fixture, "--verdict", "pass", "--evidence", evidenceRelative]));
-        File.WriteAllText(evidencePath, "# no verdict section\n- [x] **PASS**\n");
+        WriteReadinessEvidence(evidencePath, line: 94.99);
         Assert.Equal(1, ValidationCommands.ExecuteReadiness(["emit", "--root", _fixture, "--verdict", "pass", "--evidence", evidenceRelative]));
-        File.WriteAllText(evidencePath, "## Readiness Gate verdict\n- [x] **PASS** — complete\n");
+        WriteReadinessEvidence(evidencePath, includeModule: false);
+        Assert.Equal(1, ValidationCommands.ExecuteReadiness(["emit", "--root", _fixture, "--verdict", "pass", "--evidence", evidenceRelative]));
+        WriteReadinessEvidence(evidencePath, modulePass: false);
+        Assert.Equal(1, ValidationCommands.ExecuteReadiness(["emit", "--root", _fixture, "--verdict", "pass", "--evidence", evidenceRelative]));
+        WriteReadinessEvidence(evidencePath);
         Assert.Equal(0, ValidationCommands.ExecuteReadiness(["emit", "--root", _fixture, "--verdict", "pass", "--evidence", evidenceRelative]));
 
         var recordPath = Path.Combine(_fixture, ".engloop", "readiness", "current.json");
@@ -180,7 +187,7 @@ public sealed class ToolValidationCommandTests : IDisposable
         File.WriteAllText(recordPath, original.ToJsonString());
         Assert.Equal(2, ValidationCommands.ValidateAgentEntry(["--stage", "speckit.engloop.10-codereview-prepare", "--root", _fixture]));
 
-        File.WriteAllText(evidencePath, "## Readiness Gate verdict\n- [x] **PASS** — complete\n");
+        WriteReadinessEvidence(evidencePath);
         var gitPath = Path.Combine(_fixture, ".git");
         var hiddenGitPath = Path.Combine(_fixture, ".git-hidden");
         Directory.Move(gitPath, hiddenGitPath);
@@ -192,6 +199,61 @@ public sealed class ToolValidationCommandTests : IDisposable
         {
             Directory.Move(hiddenGitPath, gitPath);
         }
+    }
+
+    [Fact]
+    public void StructuredReadiness_rejectsMalformedEvidenceMatrix()
+    {
+        CreateCanonicalFixture(modulePath: "module.csproj");
+        File.WriteAllText(Path.Combine(_fixture, "module.csproj"), "<Project />");
+        RunGit("init");
+        RunGit("config", "user.email", "readiness-matrix@example.invalid");
+        RunGit("config", "user.name", "Readiness Matrix");
+        RunGit("add", ".");
+        RunGit("commit", "-m", "fixture");
+        Directory.CreateDirectory(Path.Combine(_fixture, ".engloop", "coverage"));
+        var relative = ".engloop/coverage/COV001_readiness.json";
+        var path = Path.Combine(_fixture, relative.Replace('/', Path.DirectorySeparatorChar));
+
+        void Reject(Action<JsonObject> mutate)
+        {
+            WriteReadinessEvidence(path);
+            var json = JsonNode.Parse(File.ReadAllText(path))!.AsObject();
+            mutate(json);
+            File.WriteAllText(path, json.ToJsonString());
+            Assert.Equal(1, ValidationCommands.ExecuteReadiness(["emit", "--root", _fixture, "--verdict", "pass", "--evidence", relative]));
+        }
+
+        Reject(json => json.Remove("schemaVersion"));
+        Reject(json => json["artifactType"] = "wrong");
+        Reject(json => json["verdict"] = "FAIL");
+        Reject(json => json["generatedFunctionalPass"] = false);
+        Reject(json => json["directSuitePass"] = false);
+        Reject(json => json["architectureValidationPass"] = false);
+        Reject(json => json["failures"] = new JsonArray("failure"));
+        Reject(json => json["failures"] = "not-an-array");
+        Reject(json => json.Remove("modules"));
+        Reject(json => json["coberturaSha256"] = new string('0', 64));
+        Reject(json => json["coberturaReport"] = 1);
+        Reject(json => json["coberturaReport"] = null);
+        Reject(json => json["coberturaSha256"] = null);
+        Reject(json => json["coberturaReport"] = ".engloop/out/readiness-coverage/missing.xml");
+        Reject(json => ((JsonArray)json["modules"]!).Clear());
+        Reject(json => ((JsonArray)json["modules"]!).Add(JsonNode.Parse(((JsonArray)json["modules"]!)[0]!.ToJsonString())));
+        Reject(json => ((JsonObject)((JsonArray)json["modules"]!)[0]!)["id"] = "other");
+        Reject(json => ((JsonObject)((JsonArray)json["modules"]!)[0]!).Remove("id"));
+        Reject(json => ((JsonObject)((JsonArray)json["modules"]!)[0]!)["id"] = null);
+        Reject(json => ((JsonObject)((JsonArray)json["modules"]!)[0]!)["coverageIdentity"] = "missing-package");
+        Reject(json => ((JsonObject)((JsonArray)json["modules"]!)[0]!).Remove("coverageIdentity"));
+        Reject(json => ((JsonObject)((JsonArray)json["modules"]!)[0]!)["coverageIdentity"] = null);
+        Reject(json => ((JsonObject)((JsonArray)json["modules"]!)[0]!).Remove("line"));
+        Reject(json => ((JsonObject)((JsonArray)json["modules"]!)[0]!).Remove("branch"));
+        Reject(json => ((JsonObject)((JsonArray)json["modules"]!)[0]!)["line"] = 99.0);
+        Reject(json => ((JsonObject)((JsonArray)json["modules"]!)[0]!)["branch"] = 99.0);
+        Reject(json => ((JsonObject)((JsonArray)json["modules"]!)[0]!)["functionalPass"] = false);
+        Reject(json => ((JsonObject)((JsonArray)json["modules"]!)[0]!)["directPass"] = false);
+        Reject(json => ((JsonObject)((JsonArray)json["modules"]!)[0]!)["architecturePass"] = false);
+        Reject(json => ((JsonObject)((JsonArray)json["modules"]!)[0]!)["pass"] = false);
     }
 
     [Fact]
@@ -232,6 +294,38 @@ public sealed class ToolValidationCommandTests : IDisposable
         Assert.Equal(1, ValidationCommands.ValidateAgentSurfaces(["--root", _fixture]));
     }
 
+    [Fact]
+    public void OperationsValidators_emitPolicyFailuresAndRejectUnsafeConfig()
+    {
+        CreateCanonicalFixture(modulePath: "module.csproj");
+        File.WriteAllText(Path.Combine(_fixture, "module.csproj"), "<Project />");
+        Directory.CreateDirectory(Path.Combine(_fixture, ".engloop", "postmortems"));
+        Directory.CreateDirectory(Path.Combine(_fixture, ".engloop", "repairs"));
+        File.WriteAllText(Path.Combine(_fixture, ".engloop", "postmortems", "PM001_invalid.md"), "# invalid\n");
+        File.WriteAllText(Path.Combine(_fixture, ".engloop", "repairs", "PM001-RPI001.route.json"), "{}\n");
+        Assert.Equal(1, ValidationCommands.ValidatePostmortemLearning(["--root", _fixture, "--incidents", "IN001", "--postmortem", ".engloop/postmortems/PM001_invalid.md"]));
+        Assert.Equal(1, ValidationCommands.ValidateRepairLearning(["--root", _fixture, "--phase", "route", "--postmortem", ".engloop/postmortems/PM001_invalid.md", "--rpi", "RPI001", "--rules", "RULE:x", "--acceptance", ".engloop/repairs/PM001-RPI001.route.json"]));
+
+        var config = Path.Combine(_fixture, ".engloop", "config.json");
+        File.WriteAllText(config, File.ReadAllText(config).Replace("\"productId\": \"engloopkit\"", "\"productId\": \"bad product\"", StringComparison.Ordinal));
+        Assert.Equal(1, ValidationCommands.ValidateIncidentContext(["--root", _fixture, "--incident", ".engloop/incidents/missing.md"]));
+    }
+
+    [Fact]
+    public void LearningsAndIncidentValidators_emitEveryReturnedFailure()
+    {
+        CreateCanonicalFixture(modulePath: "module.csproj");
+        File.WriteAllText(Path.Combine(_fixture, "module.csproj"), "<Project />");
+        Directory.CreateDirectory(Path.Combine(_fixture, ".engloop", "postmortems"));
+        Directory.CreateDirectory(Path.Combine(_fixture, ".engloop", "learnings", "cards"));
+        File.WriteAllText(Path.Combine(_fixture, ".engloop", "postmortems", "PM001_bad.md"), "## Learnings\n- **LEARN001** — uncovered\n");
+        Assert.Equal(1, ValidationCommands.ValidateLearnings(["--root", _fixture]));
+
+        Directory.CreateDirectory(Path.Combine(_fixture, ".engloop", "incidents"));
+        File.WriteAllText(Path.Combine(_fixture, ".engloop", "incidents", "IN001_bad.md"), "# invalid incident\n");
+        Assert.Equal(1, ValidationCommands.ValidateIncidentContext(["--root", _fixture, "--incident", ".engloop/incidents/IN001_bad.md"]));
+    }
+
     private void CreateCanonicalFixture(string modulePath)
     {
         Directory.CreateDirectory(Path.Combine(_fixture, ".engloop"));
@@ -266,6 +360,44 @@ public sealed class ToolValidationCommandTests : IDisposable
           "moduleInventory": [{ "id": "fixture", "path": "{{modulePath}}" }]
         }
         """);
+    }
+
+    private static void WriteReadinessEvidence(string path, double line = 100, double branch = 100, bool includeModule = true, bool modulePass = true)
+    {
+        var root = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(path)!, "..", ".."));
+        var report = Path.Combine(root, ".engloop", "out", "readiness-coverage", "fixture", "coverage.cobertura.xml");
+        Directory.CreateDirectory(Path.GetDirectoryName(report)!);
+        File.WriteAllText(report, $"<coverage><packages><package name=\"fixture\" line-rate=\"{(line / 100).ToString(System.Globalization.CultureInfo.InvariantCulture)}\" branch-rate=\"{(branch / 100).ToString(System.Globalization.CultureInfo.InvariantCulture)}\" /></packages></coverage>");
+        object[] modules = includeModule
+            ?
+            [
+                new
+                {
+                    id = "fixture",
+                    coverageIdentity = "fixture",
+                    line,
+                    branch,
+                    functionalPass = modulePass,
+                    directPass = modulePass,
+                    architecturePass = modulePass,
+                    pass = modulePass,
+                }
+            ]
+            : [];
+        var evidence = new
+        {
+            schemaVersion = "1.0",
+            artifactType = "whole-product-readiness",
+            verdict = "PASS",
+            generatedFunctionalPass = true,
+            directSuitePass = true,
+            architectureValidationPass = true,
+            coberturaReport = Path.GetRelativePath(root, report).Replace('\\', '/'),
+            coberturaSha256 = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(report))).ToLowerInvariant(),
+            modules,
+            failures = Array.Empty<string>(),
+        };
+        File.WriteAllText(path, JsonSerializer.Serialize(evidence));
     }
 
     private void RunGit(params string[] args)

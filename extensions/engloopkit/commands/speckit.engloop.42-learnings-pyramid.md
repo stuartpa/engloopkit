@@ -1,29 +1,19 @@
 ---
-name: speckit.engloop.41-learnings-pyramid
+name: speckit.engloop.42-learnings-pyramid
 description: Validate source/card/index/retrieval learnings completeness and provenance.
-argument-hint: '[learning refresh scope]'
+argument-hint: "[learning refresh scope]"
 target: vscode
 user-invocable: true
 disable-model-invocation: true
-tools:
-- read
-- search
-- edit
-- execute
-- agent
-agents:
-- Explore
+tools: [read, search, edit, execute, agent]
+agents: [Explore]
 hooks:
   SessionStart:
-  - type: command
-    command: dotnet tool run engloopkit validate agent-entry --stage speckit.engloop.41-learnings-pyramid
-      --root .
-    timeout: 30
+    - type: command
+      command: dotnet tool run engloopkit validate agent-entry --stage speckit.engloop.42-learnings-pyramid --root .
+      timeout: 30
 ---
 
-
-<!-- Extension: engloop -->
-<!-- Config: .specify/extensions/engloop/ -->
 ## User Input
 
 ```text
@@ -44,7 +34,7 @@ Use exactly `.engloop/` with config at `.engloop/config.json`.
 
 Run before any action:
 
-`dotnet tool run engloopkit validate agent-entry --stage speckit.engloop.41-learnings-pyramid --root .`
+`dotnet tool run engloopkit validate agent-entry --stage speckit.engloop.42-learnings-pyramid --root .`
 
 ## Done when
 

@@ -63,10 +63,10 @@ public static class OverlayCommands
         "speckit.engloop.10-codereview-prepare",
         "speckit.engloop.20-incident", "speckit.engloop.21-postmortem", "speckit.engloop.22-repair",
         "speckit.engloop.30-token-efficiency-analyze", "speckit.engloop.31-token-efficiency-implement",
-        "speckit.engloop.40-refactor-scan", "speckit.engloop.41-learnings-pyramid",
-        "speckit.engloop.50-pomodoro-create", "speckit.engloop.60-overlay-pack", "speckit.engloop.61-overlay-remove",
+        "speckit.engloop.40-refactor", "speckit.engloop.41-deadcode", "speckit.engloop.42-learnings-pyramid",
+        "speckit.engloop.50-handoff-create", "speckit.engloop.60-overlay-pack", "speckit.engloop.61-overlay-remove",
         "speckit.engloop.70-six-pager-create", "speckit.engloop.71-powerpnt-create",
-        "speckit.engloop.72-academic-paper-create",
+        "speckit.engloop.72-academic-paper-create", "speckit.engloop.80-upgrade-elk",
     ];
 
     private static string NormalizeHostMode(string mode)
@@ -297,7 +297,7 @@ public static class OverlayCommands
 
     private static void MoveFileWithSharingRetry(string source, string destination)
     {
-        var delays = new[] { 50, 100, 200, 400 };
+        var delays = new[] { 50, 100, 200, 400, 800, 1600, 3200 };
         for (var attempt = 0; ; attempt++)
         {
             try
@@ -594,6 +594,8 @@ public static class OverlayCommands
             Run("dotnet", root, "tool", "install", "engloopkit", "--version", toolVersion,
                 "--add-source", Path.Combine(root, ".engloop-overlay", "packages"),
                 "--tool-manifest", toolManifest, "--no-cache");
+            Run("dotnet", root, "tool", "restore", "--tool-manifest", toolManifest,
+                "--add-source", Path.Combine(root, ".engloop-overlay", "packages"), "--no-http-cache");
 
             if (hostMode == "clean")
             {
@@ -1208,7 +1210,7 @@ HOOK_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
     private static void WriteInitialOverlayFiles(string root, string productId)
     {
         File.WriteAllText(Path.Combine(root, "NORTHSTAR.md"), "# Northstar\n\n- **Status:** overlay-local draft\n- **Product ID:** " + productId + "\n\nUse `/speckit.engloop.01-northstar` to establish evidence-backed direction.\n");
-        File.WriteAllText(Path.Combine(root, "LEARNINGS.md"), "# Learnings\n\n- **Status:** overlay-local draft\n\nUse `/speckit.engloop.41-learnings-pyramid` after accepted source learnings exist.\n");
+        File.WriteAllText(Path.Combine(root, "LEARNINGS.md"), "# Learnings\n\n- **Status:** overlay-local draft\n\nUse `/speckit.engloop.42-learnings-pyramid` after accepted source learnings exist.\n");
 
         var config = new
         {

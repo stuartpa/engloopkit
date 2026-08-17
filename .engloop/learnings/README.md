@@ -45,6 +45,6 @@ belongs on cards and evidence belongs in post-mortems.
 | PM004 | 3 | adequate-models-prove-rejection |
 
 Current source-learning coverage: **11 of 11**. The root index is **172 words and 24
-nonblank lines**, below both limits. This is prototype evidence, not yet the automated
-Stage 31 gate; v2 must make completeness, links, size, and retrieval checks
-deterministic.
+nonblank lines**, below both limits. Stage 41 validates completeness, links, size, and
+sampled retrieval. Stage 21 also validates current PM provenance and applicable retrieval
+before completion, so operations cannot defer all learning integration to stewardship.

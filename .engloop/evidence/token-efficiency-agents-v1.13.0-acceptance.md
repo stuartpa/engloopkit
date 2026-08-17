@@ -13,13 +13,12 @@
 | 31 | `extensions/engloopkit/commands/speckit.engloop.31-token-efficiency-implement.md` | `.github/agents/speckit.engloop.31-token-efficiency-implement.agent.md` | `.engloop/evidence/token-efficiency-implementation-<short-revision>-<full-UTC-attempt>.json` |
 
 Agent 30 has one review-first handoff (`send: false`) to Agent 31. Agent 31 is terminal.
-The exact installed surface is 23 agents/prompts and 28 ordered handoff edges.
+The v1.13.0 installed surface at capture time had 23 agents/prompts and 28 ordered handoff edges.
 
 ## Renumbering
 
 - `30-refactor-scan` → `40-refactor-scan`
 - `31-learnings-pyramid` → `41-learnings-pyramid`
-- `40-pomodoro-create` → `50-pomodoro-create`
 - `50-overlay-pack` → `60-overlay-pack`
 - `51-overlay-remove` → `61-overlay-remove`
 - `60-six-pager-create` → `70-six-pager-create`

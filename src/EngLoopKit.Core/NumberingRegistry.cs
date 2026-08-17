@@ -17,7 +17,7 @@ public sealed class NumberingRegistry
     {
         ["SPEC"] = 3, ["SCAF"] = 3, ["ARCH"] = 3, ["MODEL"] = 3,
         ["CORD"] = 3, ["COV"] = 3, ["IN"] = 3, ["PM"] = 3,
-        ["REFACT"] = 3, ["DBG"] = 3, ["SIX"] = 3, ["PPT"] = 3, ["PAP"] = 3, ["POM"] = 4,
+        ["REFACT"] = 3, ["DEADCODE"] = 3, ["DBG"] = 3, ["SIX"] = 3, ["PPT"] = 3, ["PAP"] = 3, ["HANDOFF"] = 3,
         ["MIT"] = 3, ["LEARN"] = 3, ["RPI"] = 3,
     };
 
@@ -30,7 +30,7 @@ public sealed class NumberingRegistry
     /// <summary>Every recognized prefix.</summary>
     public static IReadOnlyCollection<string> Prefixes => PrefixWidths.Keys.ToArray();
 
-    /// <summary>Format a prefix + number using its policy width, e.g. <c>POM0001</c>.</summary>
+    /// <summary>Format a prefix + number using its policy width, e.g. <c>HANDOFF001</c>.</summary>
     public static string Format(string prefix, int n)
     {
         if (!IsKnownPrefix(prefix))
@@ -58,7 +58,7 @@ public sealed class NumberingRegistry
         return _counters.Next(prefix);
     }
 
-    /// <summary>Reserve and return the next id (e.g. <c>POM0001</c>).</summary>
+    /// <summary>Reserve and return the next id (e.g. <c>HANDOFF001</c>).</summary>
     public string NextId(string prefix) => Format(prefix, Next(prefix));
 
     /// <summary>

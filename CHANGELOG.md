@@ -3,6 +3,41 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0] - 2026-08-17
+
+### Added
+
+- Stage 21 direction/Learnings-Pyramid completion gate: current root hashes, stable
+  `RULE:<card-slug>` dispositions, explicit pyramid update/no-change, historical
+  source-card coverage, applicable retrieval PASS, and RPI executable-gate contracts.
+- Stage 22 route/close repair acceptance records binding PM hash, Rule IDs, current
+  direction/pyramid hashes, exact executable gate, durable gate PASS evidence, and
+  current Stage 08 readiness.
+- Versioned `postmortem-learning` and `repair-learning` validators plus agent-scoped
+  prompt/Stop hooks and synthetic contradiction acceptance tests.
+- Mandatory Stage 21 SEK test-escape analysis and Stage 22 model/CORD scenario repair
+  acceptance when the incident cause belongs to the stateful vertical.
+- `/speckit.engloop.50-handoff-create` with `HANDOFF<NNN>-<description>.md` continuation
+  packets for another chat window or engineering team.
+- `/speckit.engloop.80-upgrade-elk`, which reports already-current or upgrades root-local
+  ELK plus its exact SEK dependency from hash-verified release manifests with rollback.
+- `/speckit.engloop.41-deadcode`, which records one high-certainty `DEADCODExxx`
+  deletion proposal, asks for candidate-specific approval, records rejection before
+  searching again, and never changes current source before approval.
+- Exact native .NET 10 SEK v0.1.3 tool, Modeling package, and Spec Kit extension pins.
+
+### Changed
+
+- Stage 20 now consults current North Star boundaries and immediately relevant learning
+  cues when safe, or records an explicit emergency deferral for Stage 21.
+- Updated PM source identity from legacy `LRNxxx` template wording to the deterministic
+  `PMxxx/LEARNxxx` contract.
+- Migrated every executable/model/test project to `net10.0`, pinned SDK `10.0.303`,
+  and made `EngLoopKit.slnx` the authoritative local/CI build and test graph.
+- Replaced the former Stage 50 session-note utility with the handoff creation workflow.
+- Renamed stewardship Stage 40 to `40-refactor`, moved Learnings Pyramid to Stage 42,
+  and expanded the exact surface from 23 to 25 commands / 29 handoff edges.
+
 ## [1.13.1] - 2026-08-06
 
 ### Fixed
@@ -13,7 +48,6 @@ All notable changes to EngLoopKit are documented here. This project adheres to
   child move immediately, so a mid-directory lock remains fully rollback-safe.
 
 ## [1.13.0] - 2026-08-05
-
 ### Added
 
 - `/speckit.engloop.30-token-efficiency-analyze`: read-only VS Code Copilot chat-speed
@@ -30,8 +64,7 @@ All notable changes to EngLoopKit are documented here. This project adheres to
 
 ### Changed
 
-- Renumbered stewardship to `40-refactor-scan` / `41-learnings-pyramid`, session memory
-  to `50-pomodoro-create`, overlay utilities to `60-overlay-pack` /
+- Renumbered stewardship to `40-refactor-scan` / `41-learnings-pyramid`, overlay utilities to `60-overlay-pack` /
   `61-overlay-remove`, and publication agents to `70-six-pager-create`,
   `71-powerpnt-create`, and `72-academic-paper-create`.
 - Expanded the current exact surface from 21 to 23 commands and the review-first
@@ -145,9 +178,6 @@ All notable changes to EngLoopKit are documented here. This project adheres to
 - `/speckit.engloop.09-codereview-prepare`: minimizes and validates an explicitly
   selected GitHub/Azure DevOps PR, identifies current reviewers, and records only
   current-PR, source-linked recurring technical review concerns.
-- `/speckit.engloop.40-pomodoro-create`: records the just-completed 30–60 minute session
-  as `.engloop/pomodoros/POM<NNNN>-<brief-description>.md`; POM numbering begins at
-  `POM0001` and uses a four-digit monotonic counter.
 - `/speckit.engloop.51-overlay-remove` and `engloopkit overlay remove`: require an exact
   target-bound confirmation token, remove manifest-owned installation and dynamically
   registered paths, remove the ELK exclude block/wrappers, restore prior hooks, and

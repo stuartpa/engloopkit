@@ -15,11 +15,12 @@ public sealed class NumberingRegistryTests
     [InlineData("ARCH", 12, "ARCH012")]
     [InlineData("PM", 7, "PM007")]
     [InlineData("REFACT", 1000, "REFACT1000")]
+    [InlineData("DEADCODE", 1, "DEADCODE001")]
     [InlineData("DBG", 1, "DBG001")]
     [InlineData("SIX", 1, "SIX001")]
     [InlineData("PPT", 1, "PPT001")]
     [InlineData("PAP", 1, "PAP001")]
-    [InlineData("POM", 1, "POM0001")]
+    [InlineData("HANDOFF", 1, "HANDOFF001")]
     public void Format_usesPrefixWidth(string prefix, int n, string expected)
     {
         Assert.Equal(expected, NumberingRegistry.Format(prefix, n));
@@ -40,7 +41,7 @@ public sealed class NumberingRegistryTests
     [Fact]
     public void KnownPrefixes_matchCurrentStandards()
     {
-        string[] expected = ["SPEC", "SCAF", "ARCH", "MODEL", "CORD", "COV", "IN", "PM", "REFACT", "DBG", "SIX", "PPT", "PAP", "POM", "MIT", "LEARN", "RPI"];
+        string[] expected = ["SPEC", "SCAF", "ARCH", "MODEL", "CORD", "COV", "IN", "PM", "REFACT", "DEADCODE", "DBG", "SIX", "PPT", "PAP", "HANDOFF", "MIT", "LEARN", "RPI"];
         foreach (var p in expected)
         {
             Assert.True(NumberingRegistry.IsKnownPrefix(p), p);
@@ -66,7 +67,8 @@ public sealed class NumberingRegistryTests
         var reg = new NumberingRegistry();
         Assert.Equal("MODEL001", reg.NextId("MODEL"));
         Assert.Equal("MODEL002", reg.NextId("MODEL"));
-        Assert.Equal("POM0001", reg.NextId("POM"));
+        Assert.Equal("HANDOFF001", reg.NextId("HANDOFF"));
+        Assert.Equal("DEADCODE001", reg.NextId("DEADCODE"));
     }
 
     [Fact]

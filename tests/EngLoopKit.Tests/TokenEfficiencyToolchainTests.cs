@@ -18,8 +18,12 @@ public sealed class TokenEfficiencyToolchainTests : IDisposable
         var repo = CreatePnpmRepository();
         var bin = Path.Combine(_work, "bin-ready");
         Directory.CreateDirectory(bin);
-        WriteCommand(bin, "node", "if \"%1\"==\"--version\" echo v22.0.0\r\nexit /b 0\r\n");
-        WriteCommand(bin, "corepack", "if \"%1\"==\"--version\" echo 0.31.0\r\nif \"%1\"==\"pnpm\" if \"%2\"==\"--version\" echo 9.15.0\r\nexit /b 0\r\n");
+        WriteCommand(bin, "node",
+            "if \"%1\"==\"--version\" echo v22.0.0\r\nexit /b 0\r\n",
+            "[ \"$1\" = \"--version\" ] && echo v22.0.0\nexit 0\n");
+        WriteCommand(bin, "corepack",
+            "if \"%1\"==\"--version\" echo 0.31.0\r\nif \"%1\"==\"pnpm\" if \"%2\"==\"--version\" echo 9.15.0\r\nexit /b 0\r\n",
+            "if [ \"$1\" = \"--version\" ]; then echo 0.31.0; elif [ \"$1\" = \"pnpm\" ] && [ \"$2\" = \"--version\" ]; then echo 9.15.0; fi\nexit 0\n");
 
         var result = Run(repo, bin);
 
@@ -37,9 +41,15 @@ public sealed class TokenEfficiencyToolchainTests : IDisposable
         var repo = CreatePnpmRepository();
         var bin = Path.Combine(_work, "bin-blocked");
         Directory.CreateDirectory(bin);
-        WriteCommand(bin, "node", "if \"%1\"==\"--version\" echo v22.0.0\r\nexit /b 0\r\n");
-        WriteCommand(bin, "corepack", "if \"%1\"==\"--version\" echo 0.31.0 & exit /b 0\r\necho Signature verification failed 1>&2\r\nexit /b 1\r\n");
-        WriteCommand(bin, "npm", "echo npm-must-not-run>\"%TEMP%\\elk-npm-fallback.txt\"\r\nexit /b 0\r\n");
+        WriteCommand(bin, "node",
+            "if \"%1\"==\"--version\" echo v22.0.0\r\nexit /b 0\r\n",
+            "[ \"$1\" = \"--version\" ] && echo v22.0.0\nexit 0\n");
+        WriteCommand(bin, "corepack",
+            "if \"%1\"==\"--version\" echo 0.31.0 & exit /b 0\r\necho Signature verification failed 1>&2\r\nexit /b 1\r\n",
+            "if [ \"$1\" = \"--version\" ]; then echo 0.31.0; exit 0; fi\necho 'Signature verification failed' >&2\nexit 1\n");
+        WriteCommand(bin, "npm",
+            "echo npm-must-not-run>\"%TEMP%\\elk-npm-fallback.txt\"\r\nexit /b 0\r\n",
+            "echo npm-must-not-run > \"${TMPDIR:-/tmp}/elk-npm-fallback.txt\"\nexit 0\n");
         var marker = Path.Combine(Path.GetTempPath(), "elk-npm-fallback.txt");
         File.Delete(marker);
 
@@ -67,8 +77,21 @@ public sealed class TokenEfficiencyToolchainTests : IDisposable
         return repo;
     }
 
-    private static void WriteCommand(string directory, string name, string body)
-        => File.WriteAllText(Path.Combine(directory, name + ".cmd"), "@echo off\r\n" + body);
+    private static void WriteCommand(string directory, string name, string windowsBody, string unixBody)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            File.WriteAllText(Path.Combine(directory, name + ".cmd"), "@echo off\r\n" + windowsBody);
+            return;
+        }
+
+        var path = Path.Combine(directory, name);
+        File.WriteAllText(path, "#!/bin/sh\nset -u\n" + unixBody);
+        File.SetUnixFileMode(path,
+            UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
+            UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
+            UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
+    }
 
     private static (int ExitCode, string Output, string Error) Run(string repo, string bin)
     {

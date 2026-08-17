@@ -8,6 +8,12 @@ namespace EngLoopKit.Core;
 public sealed class Loop
 {
     private EngineeringLoopState _state = EngineeringLoopState.Initial;
+    private bool _directionConsulted;
+    private bool _learningContextConsidered;
+    private bool _postmortemLearningGatePassed;
+    private bool _repairLearningContractCurrent;
+    private bool _stabilizedIncidentForPostmortemLearning;
+    private bool _postmortemAcceptedForRepairLearning;
 
     public EngineeringLoopState State => _state;
 
@@ -30,15 +36,50 @@ public sealed class Loop
         DirectEvidenceCurrent: true,
         ReadinessGatePass: true));
 
+    public void ConsultDirection()
+    {
+        if (_directionConsulted) throw new InvalidOperationException("direction-already-consulted");
+        _directionConsulted = true;
+    }
+
+    public void ConsultLearnings()
+    {
+        if (_learningContextConsidered) throw new InvalidOperationException("learnings-already-consulted");
+        _learningContextConsidered = true;
+    }
+
+    public void ValidatePostmortemLearning()
+    {
+        if (!_stabilizedIncidentForPostmortemLearning)
+            throw new InvalidOperationException("postmortem-learning-validation-requires-stabilized-incident");
+        if (_postmortemLearningGatePassed) throw new InvalidOperationException("postmortem-learning-already-validated");
+        _postmortemLearningGatePassed = true;
+    }
+
+    public void ValidateRepairLearning()
+    {
+        if (!_postmortemAcceptedForRepairLearning)
+            throw new InvalidOperationException("repair-learning-validation-requires-postmortem");
+        if (_repairLearningContractCurrent) throw new InvalidOperationException("repair-learning-already-validated");
+        _repairLearningContractCurrent = true;
+    }
+
     public void Incident(bool actualDemand) => Apply(Stage.Incident, new TransitionEvidence(
         IncidentDemand: actualDemand,
-        IncidentStabilized: actualDemand));
+        IncidentStabilized: actualDemand,
+        DirectionConsulted: _directionConsulted,
+        LearningContextConsidered: _learningContextConsidered));
 
     public void Postmortem(bool selectedStabilizedSet) => Apply(Stage.Postmortem, new TransitionEvidence(
         SelectedIncidentSet: selectedStabilizedSet,
+        DirectionConsulted: _directionConsulted,
+        LearningContextConsidered: _learningContextConsidered,
+        PostmortemLearningGatePass: _postmortemLearningGatePassed,
         RepairItemDemand: selectedStabilizedSet));
 
-    public void Repair(bool repairItemDemand) => Apply(Stage.Repair, new TransitionEvidence(RepairItemDemand: repairItemDemand));
+    public void Repair(bool repairItemDemand) => Apply(Stage.Repair, new TransitionEvidence(
+        RepairItemDemand: repairItemDemand,
+        RepairLearningContractCurrent: _repairLearningContractCurrent));
 
     public void RefactorScan(bool capacity, bool directionChange, bool architectureImpact) => Apply(Stage.RefactorScan, new TransitionEvidence(
         StewardshipCapacity: capacity,
@@ -74,5 +115,18 @@ public sealed class Loop
         }
 
         _state = result.State;
+        if (stage == Stage.Incident && _state.IncidentStabilized)
+            _stabilizedIncidentForPostmortemLearning = true;
+        if (stage == Stage.Postmortem)
+            _postmortemAcceptedForRepairLearning = true;
+        if (stage == Stage.UnitTest && _state.DeliveryCursor == DeliveryCursor.Ready)
+        {
+            _directionConsulted = false;
+            _learningContextConsidered = false;
+            _postmortemLearningGatePassed = false;
+            _repairLearningContractCurrent = false;
+            _stabilizedIncidentForPostmortemLearning = false;
+            _postmortemAcceptedForRepairLearning = false;
+        }
     }
 }

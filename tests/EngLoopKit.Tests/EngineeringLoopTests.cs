@@ -158,8 +158,8 @@ public sealed class EngineeringLoopTests
     public void Incident_allowsRepeatedDemandButNotAfterDeliveryInvalidation()
     {
         var ready = ReadyState();
-        var first = Accept(ready, Stage.Incident, new TransitionEvidence(IncidentDemand: true, IncidentStabilized: false));
-        var repeated = Accept(first, Stage.Incident, new TransitionEvidence(IncidentDemand: true, IncidentStabilized: true));
+        var first = Accept(ready, Stage.Incident, new TransitionEvidence(IncidentDemand: true, IncidentStabilized: false, DirectionConsulted: true, LearningContextConsidered: true));
+        var repeated = Accept(first, Stage.Incident, new TransitionEvidence(IncidentDemand: true, IncidentStabilized: true, DirectionConsulted: true, LearningContextConsidered: true));
         Assert.True(repeated.IncidentStabilized);
 
         var invalidated = Accept(ready, Stage.RefactorScan, new TransitionEvidence(StewardshipCapacity: true, DirectionChange: true));
@@ -186,7 +186,7 @@ public sealed class EngineeringLoopTests
         var state = ReadyState() with
         {
             LastAcceptedStage = Stage.Repair,
-            RepairObligations = [new RepairObligation("RPI-001", false, false, false, false)],
+            RepairObligations = [new RepairObligation("RPI-001", false, false, false, false, false)],
         };
         var result = EngineeringLoop.Evaluate(state, Stage.UnitTest, new TransitionEvidence(DirectEvidenceCurrent: true, ReadinessGatePass: true));
         RejectsWithoutMutation(state, result, TransitionReasons.RepairGateBypass);
@@ -217,6 +217,34 @@ public sealed class EngineeringLoopTests
         RejectsWithoutMutation(repair,
             EngineeringLoop.Evaluate(repair, Stage.Repair, new TransitionEvidence(RepairItemDemand: false)),
             TransitionReasons.NoRepairDemand);
+    }
+
+    [Fact]
+    public void OperationsLearningGuards_rejectEachMissingFact()
+    {
+        var ready = ReadyState();
+        RejectsWithoutMutation(ready,
+            EngineeringLoop.Evaluate(ready, Stage.Incident, new TransitionEvidence(IncidentDemand: true)),
+            TransitionReasons.MissingDirectionConsultation);
+        RejectsWithoutMutation(ready,
+            EngineeringLoop.Evaluate(ready, Stage.Incident, new TransitionEvidence(IncidentDemand: true, DirectionConsulted: true)),
+            TransitionReasons.MissingLearningConsultation);
+
+        var incident = ready with { LastAcceptedStage = Stage.Incident, IncidentDemandActive = true, IncidentStabilized = true };
+        RejectsWithoutMutation(incident,
+            EngineeringLoop.Evaluate(incident, Stage.Postmortem, new TransitionEvidence(SelectedIncidentSet: true)),
+            TransitionReasons.MissingDirectionConsultation);
+        RejectsWithoutMutation(incident,
+            EngineeringLoop.Evaluate(incident, Stage.Postmortem, new TransitionEvidence(SelectedIncidentSet: true, DirectionConsulted: true)),
+            TransitionReasons.MissingLearningConsultation);
+        RejectsWithoutMutation(incident,
+            EngineeringLoop.Evaluate(incident, Stage.Postmortem, new TransitionEvidence(SelectedIncidentSet: true, DirectionConsulted: true, LearningContextConsidered: true)),
+            TransitionReasons.MissingPostmortemLearningGate);
+
+        var postmortem = ready with { LastAcceptedStage = Stage.Postmortem, SelectedIncidentSet = true, RepairItemDemand = true };
+        RejectsWithoutMutation(postmortem,
+            EngineeringLoop.Evaluate(postmortem, Stage.Repair, new TransitionEvidence(RepairItemDemand: true)),
+            TransitionReasons.MissingRepairLearningContract);
     }
 
     [Fact]
@@ -288,7 +316,7 @@ public sealed class EngineeringLoopTests
     {
         var ready = ReadyState();
         var scanned = Accept(ready, Stage.RefactorScan, new TransitionEvidence(StewardshipCapacity: true));
-        var incident = Accept(scanned, Stage.Incident, new TransitionEvidence(IncidentDemand: true, IncidentStabilized: true));
+        var incident = Accept(scanned, Stage.Incident, new TransitionEvidence(IncidentDemand: true, IncidentStabilized: true, DirectionConsulted: true, LearningContextConsidered: true));
         Assert.Equal(Stage.Incident, incident.LastAcceptedStage);
     }
 
@@ -311,7 +339,7 @@ public sealed class EngineeringLoopTests
         var repaired = ReadyState() with
         {
             LastAcceptedStage = Stage.Repair,
-            RepairObligations = [new RepairObligation("RPI-001", false, false, false, false)],
+            RepairObligations = [new RepairObligation("RPI-001", false, false, false, false, false)],
             DeliveryCursor = DeliveryCursor.Architecture,
         };
         var implementation = Accept(repaired, Stage.Refactor, new TransitionEvidence(ImplementationCurrent: true));
@@ -349,7 +377,7 @@ public sealed class EngineeringLoopTests
             TransitionReasons.NoPostmortemSelection);
 
         incident = incident with { IncidentStabilized = true };
-        var postmortem = Accept(incident, Stage.Postmortem, new TransitionEvidence(SelectedIncidentSet: true, RepairItemDemand: false));
+        var postmortem = Accept(incident, Stage.Postmortem, new TransitionEvidence(SelectedIncidentSet: true, DirectionConsulted: true, LearningContextConsidered: true, PostmortemLearningGatePass: true, RepairItemDemand: false));
         RejectsWithoutMutation(postmortem,
             EngineeringLoop.Evaluate(postmortem, Stage.Repair, new TransitionEvidence(RepairItemDemand: false)),
             TransitionReasons.NoRepairDemand);
@@ -364,7 +392,7 @@ public sealed class EngineeringLoopTests
             TransitionReasons.NoLearningRefreshDemand);
 
         var refreshed = Accept(ready, Stage.LearningsPyramid, new TransitionEvidence(StewardshipCapacity: true, LearningRefreshCurrent: true));
-        var incident = Accept(refreshed, Stage.Incident, new TransitionEvidence(IncidentDemand: true, IncidentStabilized: true));
+        var incident = Accept(refreshed, Stage.Incident, new TransitionEvidence(IncidentDemand: true, IncidentStabilized: true, DirectionConsulted: true, LearningContextConsidered: true));
         Assert.Equal(Stage.Incident, incident.LastAcceptedStage);
     }
 
@@ -380,7 +408,7 @@ public sealed class EngineeringLoopTests
         };
         var refreshed = Accept(postmortem, Stage.LearningsPyramid, new TransitionEvidence(StewardshipCapacity: true, LearningRefreshCurrent: true));
         Assert.Equal(Stage.Postmortem, refreshed.ReturnStage);
-        var repair = Accept(refreshed, Stage.Repair, new TransitionEvidence(RepairItemDemand: true));
+        var repair = Accept(refreshed, Stage.Repair, new TransitionEvidence(RepairItemDemand: true, RepairLearningContractCurrent: true));
         Assert.Equal(Stage.Repair, repair.LastAcceptedStage);
     }
 
@@ -427,7 +455,7 @@ public sealed class EngineeringLoopTests
         var openRepair = ReadyState() with
         {
             LastAcceptedStage = Stage.Repair,
-            RepairObligations = [new RepairObligation("RPI-001", false, false, false, false)],
+            RepairObligations = [new RepairObligation("RPI-001", false, false, false, false, false)],
         };
         var refactored = Accept(openRepair, Stage.Refactor, new TransitionEvidence(ImplementationCurrent: true));
         Assert.Equal(Stage.Refactor, refactored.LastAcceptedStage);
@@ -483,6 +511,37 @@ public sealed class EngineeringLoopTests
 
         var rootFailure = EngineeringLoop.EvaluateUnknown(ready, new TransitionEvidence(RootLayoutValid: false, RootFailureReason: TransitionReasons.AmbiguousProcessRoot));
         RejectsWithoutMutation(ready, rootFailure, TransitionReasons.AmbiguousProcessRoot);
+    }
+
+    [Fact]
+    public void RemainingTransitionAlternatives_areExplicitlyCovered()
+    {
+        var initialDirection = Accept(EngineeringLoopState.Initial, Stage.Northstar,
+            new TransitionEvidence(NorthstarComplete: true, DirectionChange: true));
+        Assert.True(initialDirection.DirectionRefactorRequired);
+
+        RejectsWithoutMutation(EngineeringLoopState.Initial,
+            EngineeringLoop.Evaluate(EngineeringLoopState.Initial, Stage.Scaffold, new TransitionEvidence(RunwayProven: true)),
+            TransitionReasons.InvalidOrder);
+
+        var ready = ReadyState();
+        var scanNoDirection = ready with { LastAcceptedStage = Stage.RefactorScan, ArchitectureImpactPending = true, DirectionChangePending = false };
+        Assert.True(EngineeringLoop.Evaluate(scanNoDirection, Stage.Architect, new TransitionEvidence(ArchitectureCurrent: true)).Accepted);
+
+        var modelFromWrongStage = ready with { LastAcceptedStage = Stage.Architect };
+        RejectsWithoutMutation(modelFromWrongStage,
+            EngineeringLoop.Evaluate(modelFromWrongStage, Stage.Model, new TransitionEvidence(ModelAdequate: true)),
+            TransitionReasons.MissingImplementation);
+
+        var postmortemMissingSelection = ready with { LastAcceptedStage = Stage.Postmortem, SelectedIncidentSet = false, RepairItemDemand = true };
+        RejectsWithoutMutation(postmortemMissingSelection,
+            EngineeringLoop.Evaluate(postmortemMissingSelection, Stage.Repair, new TransitionEvidence(RepairItemDemand: true, RepairLearningContractCurrent: true)),
+            TransitionReasons.NoRepairDemand);
+
+        var scanWrongCursor = ready with { LastAcceptedStage = Stage.UnitTest, DeliveryCursor = DeliveryCursor.Validated };
+        RejectsWithoutMutation(scanWrongCursor,
+            EngineeringLoop.Evaluate(scanWrongCursor, Stage.RefactorScan, new TransitionEvidence(StewardshipCapacity: true)),
+            TransitionReasons.RefactorGateBypass);
     }
 
     private static EngineeringLoopState StateAtRefactor()

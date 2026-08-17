@@ -1,7 +1,7 @@
 ---
-name: speckit.engloop.40-refactor-scan
+name: speckit.engloop.40-refactor
 description: Select one REFACT decision or no-work outcome under explicit stewardship capacity.
-argument-hint: "[stewardship scan scope]"
+argument-hint: "[stewardship scope]"
 target: vscode
 user-invocable: true
 disable-model-invocation: true
@@ -10,7 +10,7 @@ agents: [Explore]
 hooks:
   SessionStart:
     - type: command
-      command: dotnet tool run engloopkit validate agent-entry --stage speckit.engloop.40-refactor-scan --root .
+      command: dotnet tool run engloopkit validate agent-entry --stage speckit.engloop.40-refactor --root .
       timeout: 30
 handoffs:
   - label: Update direction
@@ -24,6 +24,10 @@ handoffs:
   - label: Implement selected refactor
     agent: speckit.engloop.04-refactor
     prompt: Route the selected refactor above through the governed SPEC implementation loop.
+    send: false
+  - label: Inspect certain dead code
+    agent: speckit.engloop.41-deadcode
+    prompt: Search for the single highest-certainty dead-code candidate. Create a numbered DEADCODE proposal with deletion-proof evidence before asking whether to remove it.
     send: false
 ---
 
@@ -41,15 +45,15 @@ Use exactly `.engloop/` with config at `.engloop/config.json`.
 
 - **Trigger:** explicit stewardship capacity exists.
 - **Goal:** one REFACT decision (or no-work) with evidence.
-- **Actions:** evaluate signals, choose first valid branch, record decision.
-- **Verification:** exactly one decision emitted.
+- **Actions:** evaluate signals, choose the first valid branch, and record one decision.
+- **Verification:** exactly one decision is emitted and its routing is explicit.
 - **Memory:** `.engloop/refactors/`.
 
 Run before any action:
 
-`dotnet tool run engloopkit validate agent-entry --stage speckit.engloop.40-refactor-scan --root .`
+`dotnet tool run engloopkit validate agent-entry --stage speckit.engloop.40-refactor --root .`
 
 ## Done when
 
 - [ ] One REFACT decision or no-work result is recorded
-- [ ] Direction/architecture routing implications are explicit
+- [ ] Direction, architecture, implementation, or dead-code routing is explicit

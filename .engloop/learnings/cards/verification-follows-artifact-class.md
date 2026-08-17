@@ -30,3 +30,8 @@ the vertical is a boundary failure, not permission to evade either method.
   — extracting generics is a precondition for honest self-validation.
 - [PM002/LEARN003](../../postmortems/PM002_gate-verification-method-by-class.md#learnings)
   — refine how evidence is measured without lowering what is required.
+
+## Tensions
+
+None known. Artifact-specific verification may evolve, but it must not lower the shared
+coverage, architecture, and green-regression bar.

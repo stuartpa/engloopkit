@@ -15,9 +15,27 @@ config Main
     switch TestEnabled = false;
 }
 
+config OperationsEvidence : Main
+{
+        action void Loop.Incident(bool actualDemand)
+            where {.
+                Condition.In(actualDemand, true, false);
+            .};
+
+        action void Loop.Postmortem(bool selectedStabilizedSet)
+            where {.
+                Condition.In(selectedStabilizedSet, true, false);
+            .};
+
+        action void Loop.Repair(bool repairItemDemand)
+            where {.
+                Condition.In(repairItemDemand, true, false);
+            .};
+}
+
 // The explorable machine: the whole loop state machine, including boolean demand and
 // capacity values that generate both legal and model-derived rejection witnesses.
-machine ModelProgram() : Main
+machine ModelProgram() : OperationsEvidence
 {
-    construct model program from Main
+    construct model program from OperationsEvidence
 }

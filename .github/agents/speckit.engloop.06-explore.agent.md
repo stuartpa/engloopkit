@@ -48,14 +48,24 @@ Use exactly `.engloop/` with config at `.engloop/config.json`.
 
 - **Trigger:** current accepted model exists.
 - **Goal:** bounded exploration and generated suite refresh.
-- **Actions:** explicitly register generated destinations, run explore/generate commands,
-  and persist CORD evidence.
-- **Verification:** generated suite is fresh and exploration is bounded.
+- **Actions:** load the installed SEK product skills, explicitly register generated
+  destinations, run SEK exploration/generation, and persist CORD evidence.
+- **Verification:** generated suites are fresh, exploration is bounded, and ELK's required
+  legal and model-derived rejection evidence is present.
 - **Memory:** `.engloop/cord/` and generated test destination.
 
 Run before any action:
 
 `dotnet tool run engloopkit validate agent-entry --stage speckit.engloop.06-explore --root .`
+
+## SEK product dependency
+
+SEK owns its language, binding, and generation guidance. Load the installed
+`.specify/extensions/sek/skills/sek-cord-authoring/SKILL.md` and
+`.specify/extensions/sek/skills/using-sek-to-generate-tests/SKILL.md`; if either is absent, stop and require the SEK
+extension. Do not copy SEK documentation into ELK.
+Use the root-local `sek` v0.1.3 tool directly; it and generated test projects are
+native `net10.0` dependencies.
 
 ## Overlay ownership
 
@@ -70,6 +80,8 @@ field names or application layout.
 
 ## Done when
 
+- [ ] Installed SEK product skills governed exploration and generation
 - [ ] Exploration evidence is fresh and bounded
+- [ ] Required legal and model-derived rejection evidence is verified
 - [ ] Every overlay-local generated destination is explicitly registered and ignored
 - [ ] Generated suite is regenerated deterministically

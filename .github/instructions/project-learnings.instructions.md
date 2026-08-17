@@ -13,7 +13,7 @@ Before making a consequential decision covered by this instruction:
    principle.
 4. Cite the consulted card and source learning in any new durable decision artifact.
 5. If the index has no relevant cue, or sources conflict, do not invent a consensus.
-   Preserve the gap and route it through `speckit.engloop.41-learnings-pyramid`.
+   Preserve the gap and route it through `speckit.engloop.42-learnings-pyramid`.
 
 Do not preload every post-mortem. The page → card → source path exists to make context
 progressive, cheap, and traceable.

@@ -9,6 +9,7 @@ Set-Location $root
 
 $coverageRoot = Join-Path $root '.engloop/out/readiness-coverage'
 $coverageDoc = Join-Path $root '.engloop/coverage/COV003_ordered-engloop-v2-readiness.md'
+$coverageStructured = Join-Path $root '.engloop/coverage/COV003_ordered-engloop-v2-readiness.json'
 $coverageJson = Join-Path $root '.engloop/out/cov003-readiness.json'
 New-Item -ItemType Directory (Split-Path $coverageDoc -Parent) -Force | Out-Null
 New-Item -ItemType Directory (Split-Path $coverageJson -Parent) -Force | Out-Null
@@ -59,10 +60,20 @@ $merge
 "@ | Set-Content $Path -Encoding utf8NoBOM
 }
 
-# Stage 07 functional evidence remains independent: only freshly generated tests run here.
+# Stage 07 functional evidence remains independent and also contributes measured Core
+# coverage to the final whole-product report. Model-derived legal/rejection branches are
+# authoritative behavior evidence and must not disappear from the coverage inventory.
+$functionalCoverageRoot = Join-Path $coverageRoot 'functional'
+$functionalSettings = Join-Path $coverageRoot 'functional.runsettings'
+Write-CoverletRunSettings -Path $functionalSettings
 $functionalPass = Invoke-Checked 'generated functional suite' {
-    dotnet test tests/EngLoopKit.Loop.Generated/ModelProgramTests.csproj -c Debug --nologo
+    dotnet test tests/EngLoopKit.Loop.Generated/ModelProgramTests.csproj -c Debug --nologo `
+        --settings $functionalSettings --collect:'XPlat Code Coverage' `
+        --results-directory $functionalCoverageRoot
 }
+$functionalJson = Get-ChildItem $functionalCoverageRoot -Recurse -Filter coverage.json -ErrorAction SilentlyContinue |
+    Select-Object -Last 1 -ExpandProperty FullName
+if ($functionalPass -and -not $functionalJson) { throw 'generated functional coverage JSON report missing' }
 
 # Stage 08 direct/property evidence plus real Cobertura output (same collector/version as SEK).
 # The test process has two deterministic partitions: generic/core validation tests and
@@ -70,16 +81,16 @@ $functionalPass = Invoke-Checked 'generated functional suite' {
 # runs every direct test exactly once while avoiding a Windows testhost collector crash
 # observed only when both partitions share one host process.
 $directPass = Invoke-Checked 'direct test suite with coverage' {
-    dotnet build tests/EngLoopKit.Tests/EngLoopKit.Tests.csproj -c Debug --nologo
-    if ($LASTEXITCODE -ne 0) { throw 'direct test build failed' }
+    dotnet build EngLoopKit.slnx -c Debug --nologo
+    if ($LASTEXITCODE -ne 0) { throw '.slnx build failed before direct coverage' }
 
     $coreCoverageRoot = Join-Path $coverageRoot 'core'
     $overlayCoverageRoot = Join-Path $coverageRoot 'overlay'
     $coreSettings = Join-Path $coverageRoot 'core.runsettings'
     $overlaySettings = Join-Path $coverageRoot 'overlay.runsettings'
-    Write-CoverletRunSettings -Path $coreSettings
+    Write-CoverletRunSettings -Path $coreSettings -MergeWith $functionalJson
 
-    $coreFilter = 'FullyQualifiedName~AgentSurfaceValidationTests|FullyQualifiedName~BundleConformanceTests|FullyQualifiedName~CommandSurfaceTests|FullyQualifiedName~CoreNegativeContractTests|FullyQualifiedName~DocumentValidationEdgeTests|FullyQualifiedName~DocumentValidationTests|FullyQualifiedName~EngineeringLoopTests|FullyQualifiedName~EvidenceAndLearningTests|FullyQualifiedName~EvidenceCurrencyTests|FullyQualifiedName~EvidenceRecordAndConfigTests|FullyQualifiedName~InstallationValidationTests|FullyQualifiedName~LoopFacadeTests|FullyQualifiedName~NumberingRegistryTests|FullyQualifiedName~ReadinessGateTests|FullyQualifiedName~RunwayBoundaryTests|FullyQualifiedName~StateMachineComponentTests|FullyQualifiedName~ToolSurfaceFailureTests|FullyQualifiedName~ToolValidationCommandTests'
+    $coreFilter = 'FullyQualifiedName!~OverlayArchiveTests&FullyQualifiedName!~OverlayCommandCoverageTests&FullyQualifiedName!~OverlayCommandFailureTests&FullyQualifiedName!~OverlayCommandPrivateTests&FullyQualifiedName!~OverlayCommandTests'
     dotnet test tests/EngLoopKit.Tests/EngLoopKit.Tests.csproj -c Debug --no-build --no-restore `
         --filter $coreFilter --settings $coreSettings --collect:'XPlat Code Coverage' `
         --results-directory $coreCoverageRoot --nologo
@@ -177,6 +188,10 @@ $markdown = @(
     "| $($_.id) | $($_.coverageIdentity) | $($_.line)% | $($_.branch)% | $($_.functionalPass) | $($_.directPass) | $($_.architecturePass) | $($_.pass) |"
 })
 
+if ($passed) {
+    $markdown += @('', '## Readiness Gate verdict', '', '- [x] **PASS**')
+}
+
 if (-not $passed) {
     $markdown += @('', '## Blockers')
     $markdown += ($failures | Sort-Object -Unique | ForEach-Object { "- $_" })
@@ -185,9 +200,12 @@ if (-not $passed) {
 [string]::Join("`n", $markdown) | Set-Content $coverageDoc -Encoding utf8NoBOM
 
 $evidence = [pscustomobject]@{
+    schemaVersion = '1.0'
+    artifactType = 'whole-product-readiness'
     capturedAtUtc = $captured
     verdict = $verdict
     coberturaReport = if ($reportPath) { [IO.Path]::GetRelativePath($root, $reportPath) } else { $null }
+    coberturaSha256 = if ($reportPath) { (Get-FileHash $reportPath -Algorithm SHA256).Hash.ToLowerInvariant() } else { $null }
     generatedFunctionalPass = $functionalPass
     directSuitePass = $directPass
     architectureValidationPass = $architecturePass
@@ -195,9 +213,13 @@ $evidence = [pscustomobject]@{
     failures = @($failures | Sort-Object -Unique)
 }
 $evidence | ConvertTo-Json -Depth 12 | Set-Content $coverageJson -Encoding utf8NoBOM
+$evidence | ConvertTo-Json -Depth 12 | Set-Content $coverageStructured -Encoding utf8NoBOM
 
 if (-not $passed) {
     throw "READINESS_NOT_READY evidence=$coverageJson"
 }
+
+dotnet run --project src/EngLoopKit.Tool/EngLoopKit.Tool.csproj -- readiness emit --root . --evidence '.engloop/coverage/COV003_ordered-engloop-v2-readiness.json' --verdict pass
+if ($LASTEXITCODE -ne 0) { throw 'Structured current readiness emission failed.' }
 
 Write-Output "READINESS_PASS evidence=$coverageJson"

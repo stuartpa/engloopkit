@@ -3,7 +3,7 @@ param(
     [string]$Root = (Join-Path $PSScriptRoot '..'),
     [string]$ToolNupkg,
     [string]$ExtensionArchive,
-    [string]$Version = '1.13.1',
+    [string]$Version = '1.14.0',
     [switch]$KeepWork
 )
 
@@ -13,11 +13,13 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path $Root).Path
 $toolNupkg = (Resolve-Path $ToolNupkg).Path
 $extensionArchive = (Resolve-Path $ExtensionArchive).Path
-$work = Join-Path $repoRoot ('.engloop/out/overlay-integration-' + [Guid]::NewGuid().ToString('N'))
+$work = Join-Path ([IO.Path]::GetTempPath()) ('elk-overlay-integration-' + [Guid]::NewGuid().ToString('N'))
 $bare = Join-Path $work 'origin.git'
 $source = Join-Path $work 'source'
 $target = Join-Path $work 'target'
 $driver = Join-Path $work 'driver'
+$previousDotNetCliHome = $env:DOTNET_CLI_HOME
+$env:DOTNET_CLI_HOME = Join-Path $work '.dotnet-home'
 $archive = Join-Path $work 'private-overlay.zip'
 $coexist = Join-Path $work 'coexist'
 
@@ -82,11 +84,14 @@ try {
 
     New-Item -ItemType Directory -Path $driver -Force | Out-Null
     Clear-ExactToolCache -PackageId 'engloopkit' -PackageVersion $Version
-    Invoke-Checked dotnet $driver @('new', 'tool-manifest', '--force')
-    $driverManifest = Join-Path $driver '.config/dotnet-tools.json'
-    Invoke-Checked dotnet $driver @('tool', 'install', 'engloopkit', '--version', $Version, '--add-source', (Split-Path $toolNupkg -Parent), '--tool-manifest', $driverManifest, '--no-cache')
+    $driverToolPath = Join-Path $driver 'tools'
+    New-Item -ItemType Directory -Path $driverToolPath -Force | Out-Null
+    Invoke-Checked dotnet $driver @('tool', 'install', 'engloopkit', '--version', $Version, '--add-source', (Split-Path $toolNupkg -Parent), '--tool-path', $driverToolPath, '--no-cache')
+    $driverToolName = if ($IsWindows) { 'engloopkit.exe' } else { 'engloopkit' }
+    $driverTool = Join-Path $driverToolPath $driverToolName
+    if (-not (Test-Path -LiteralPath $driverTool -PathType Leaf)) { throw "Overlay driver tool executable missing: $driverTool" }
 
-    Invoke-Checked dotnet $driver @('tool', 'run', 'engloopkit', '--', 'overlay', 'install', '--mode', 'overlay', '--root', $source, '--product-id', 'overlay-test', '--repository-id', 'overlay-test-repository', '--tool-version', $Version, '--tool-nupkg', $toolNupkg, '--extension-archive', $extensionArchive)
+    Invoke-Checked $driverTool $driver @('overlay', 'install', '--mode', 'overlay', '--root', $source, '--product-id', 'overlay-test', '--repository-id', 'overlay-test-repository', '--tool-version', $Version, '--tool-nupkg', $toolNupkg, '--extension-archive', $extensionArchive)
     Invoke-Checked dotnet $source @('tool', 'run', 'engloopkit', '--', 'overlay', 'verify', '--root', $source)
 
     # Runtime ownership selected after installation must be registered before creation.
@@ -127,7 +132,7 @@ try {
     Invoke-Checked git $work @('clone', '--branch', 'main', $bare, $target)
     Invoke-Checked git $target @('config', 'user.email', 'overlay@example.invalid')
     Invoke-Checked git $target @('config', 'user.name', 'Overlay Test')
-    Invoke-Checked dotnet $driver @('tool', 'run', 'engloopkit', '--', 'overlay', 'unpack', '--root', $target, '--input', $archive, '--repository-id', 'overlay-test-repository')
+    Invoke-Checked $driverTool $driver @('overlay', 'unpack', '--root', $target, '--input', $archive, '--repository-id', 'overlay-test-repository')
     Invoke-Checked dotnet $target @('tool', 'run', 'engloopkit', '--', 'overlay', 'verify', '--root', $target)
 
     $targetStatus = (& git -C $target status --short | Out-String).Trim()
@@ -144,7 +149,7 @@ try {
     # A matching Git checkout but wrong explicit repository identity must fail before mutation.
     $wrong = Join-Path $work 'wrong-identity'
     Invoke-Checked git $work @('clone', '--branch', 'main', $bare, $wrong)
-    Invoke-ExpectedFailure dotnet $driver @('tool', 'run', 'engloopkit', '--', 'overlay', 'unpack', '--root', $wrong, '--input', $archive, '--repository-id', 'wrong-id') 'overlay-repository-id-mismatch'
+    Invoke-ExpectedFailure $driverTool $driver @('overlay', 'unpack', '--root', $wrong, '--input', $archive, '--repository-id', 'wrong-id') 'overlay-repository-id-mismatch'
 
     # Generic coexistence host: the repository owns existing agent content and an LFS-style
     # local pre-push hook. ELK must preserve them and add only namespaced ELK entries.
@@ -175,7 +180,7 @@ try {
     Set-Content $prePush $lfsHook -NoNewline -Encoding utf8
     $lfsHookBytes = [IO.File]::ReadAllBytes($prePush)
 
-    Invoke-Checked dotnet $driver @('tool', 'run', 'engloopkit', '--', 'overlay', 'install', '--mode', 'overlay', '--host-mode', 'coexist', '--root', $coexist, '--product-id', 'overlay-test', '--repository-id', 'overlay-test-repository', '--tool-version', $Version, '--tool-nupkg', $toolNupkg, '--extension-archive', $extensionArchive)
+    Invoke-Checked $driverTool $driver @('overlay', 'install', '--mode', 'overlay', '--host-mode', 'coexist', '--root', $coexist, '--product-id', 'overlay-test', '--repository-id', 'overlay-test-repository', '--tool-version', $Version, '--tool-nupkg', $toolNupkg, '--extension-archive', $extensionArchive)
     Invoke-Checked dotnet $coexist @('tool', 'run', 'engloopkit', '--', 'overlay', 'verify', '--root', $coexist)
     if (-not ([System.Linq.Enumerable]::SequenceEqual([IO.File]::ReadAllBytes($existingAgent), $existingBytes)) -or -not ([System.Linq.Enumerable]::SequenceEqual([IO.File]::ReadAllBytes($localAgent), $localBytes))) {
         throw 'Coexistence changed a repository-owned agent file.'
@@ -208,6 +213,7 @@ try {
     Write-Output "OVERLAY_INTEGRATION_PASS archive=$archive"
 }
 finally {
+    $env:DOTNET_CLI_HOME = $previousDotNetCliHome
     if (-not $KeepWork -and (Test-Path $work)) {
         Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue
     }

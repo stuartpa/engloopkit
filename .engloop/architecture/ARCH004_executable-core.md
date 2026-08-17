@@ -9,7 +9,7 @@
 EngLoopKit's load-bearing invariants — the **engineering-loop state machine** and the
 **document-numbering discipline** — are implemented as a small, verified C# core
 (`EngLoopKit.Core`), the executable form of the prose in `docs/`. The core is verified on
-**the same platform as SEK** (.NET 8 / C# / xUnit, no extra dependencies): a SEK model
+**the current ELK platform** (.NET 10 / C# / xUnit, no extra application dependencies): a SEK model
 generates a conformance suite, and hand-written xUnit tests cover the deep behaviour.
 
 ## Context (from the bridging code)
@@ -25,7 +25,16 @@ the platform to SEK's.
   code enforces.
 - The SEK model (`model/EngLoopKit.Model`) is an independent spec; `sek explore` +
   `sek generate` produce the committed conformance tests that drive the core.
-- No dependency beyond .NET 8, xUnit, and SEK's `Sek.Modeling` (referenced by project, as
+- No dependency beyond .NET 10, xUnit, and SEK's published Modeling package (consumed as
+
+  ## 2026-08-17 platform evolution
+
+  ELK targets `net10.0`, pins SDK `10.0.303`, and uses `EngLoopKit.slnx` as the sole
+  solution graph. SEK v0.1.3 remains independently versioned: its exact released tool,
+  Modeling package, and generated ELK tests run natively on .NET 10, while
+  are normalized to `net10.0`. This preserves the common readiness bar from
+  `readiness-is-a-gate` (`PM001/LEARN001–003`) and changes verification mechanics without
+  lowering them, per `verification-follows-artifact-class` (`PM002/LEARN001–003`).
   SEK's own samples do). SEK is consumed via its v0.1.1 tool.
 - All tests execute fast and must stay green.
 

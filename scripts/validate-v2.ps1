@@ -10,21 +10,6 @@ $ErrorActionPreference = 'Stop'
 $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 Set-Location $repositoryRoot
 
-$projectBuildOrder = @(
-    'components/EngLoopKit.Components.StateMachine/EngLoopKit.Components.StateMachine.csproj'
-    'components/EngLoopKit.Components.Numbering/EngLoopKit.Components.Numbering.csproj'
-    'components/EngLoopKit.Components.DocumentValidation/EngLoopKit.Components.DocumentValidation.csproj'
-    'components/EngLoopKit.Components.Overlay/EngLoopKit.Components.Overlay.csproj'
-    'src/EngLoopKit.Core/EngLoopKit.Core.csproj'
-    'src/EngLoopKit.Tool/EngLoopKit.Tool.csproj'
-    'model/EngLoopKit.Model/EngLoopKit.Model.csproj'
-    'tests/EngLoopKit.Loop.Generated/ModelProgramTests.csproj'
-    'tests/EngLoopKit.Tests/EngLoopKit.Tests.csproj'
-)
-
-$coreTestFilter = 'FullyQualifiedName~AgentSurfaceValidationTests|FullyQualifiedName~BundleConformanceTests|FullyQualifiedName~CommandSurfaceTests|FullyQualifiedName~CoreNegativeContractTests|FullyQualifiedName~DocumentValidationEdgeTests|FullyQualifiedName~DocumentValidationTests|FullyQualifiedName~EngineeringLoopTests|FullyQualifiedName~EvidenceAndLearningTests|FullyQualifiedName~EvidenceCurrencyTests|FullyQualifiedName~EvidenceRecordAndConfigTests|FullyQualifiedName~InstallationValidationTests|FullyQualifiedName~LoopFacadeTests|FullyQualifiedName~NumberingRegistryTests|FullyQualifiedName~ReadinessGateTests|FullyQualifiedName~RunwayBoundaryTests|FullyQualifiedName~StateMachineComponentTests|FullyQualifiedName~ToolSurfaceFailureTests|FullyQualifiedName~ToolValidationCommandTests'
-$overlayTestFilter = 'FullyQualifiedName~OverlayArchiveTests|FullyQualifiedName~OverlayCommandCoverageTests|FullyQualifiedName~OverlayCommandFailureTests|FullyQualifiedName~OverlayCommandPrivateTests|FullyQualifiedName~OverlayCommandTests'
-
 function Invoke-Step {
     param(
         [string]$Name,
@@ -35,27 +20,14 @@ function Invoke-Step {
     & $Action
 }
 
-Invoke-Step -Name 'dotnet restore/build (project graph)' -Action {
-    foreach ($project in $projectBuildOrder) {
-        dotnet build $project -c Debug
-        if ($LASTEXITCODE -ne 0) {
-            throw "Build failed for $project"
-        }
-    }
+Invoke-Step -Name 'dotnet build (.slnx graph)' -Action {
+    dotnet build 'EngLoopKit.slnx' -c Debug
+    if ($LASTEXITCODE -ne 0) { throw 'EngLoopKit.slnx build failed.' }
 }
 
-Invoke-Step -Name 'dotnet test (project graph)' -Action {
-    dotnet test 'tests/EngLoopKit.Loop.Generated/ModelProgramTests.csproj' -c Debug --no-build
-    if ($LASTEXITCODE -ne 0) { throw 'Generated test project failed.' }
-
-    # Overlay tests intentionally run Git/local-tool transactions. Running the two
-    # deterministic partitions in separate test hosts avoids a Windows testhost file-lock
-    # race while still executing every direct test exactly once.
-    dotnet test 'tests/EngLoopKit.Tests/EngLoopKit.Tests.csproj' -c Debug --no-build --no-restore --filter $coreTestFilter
-    if ($LASTEXITCODE -ne 0) { throw 'Core direct test partition failed.' }
-
-    dotnet test 'tests/EngLoopKit.Tests/EngLoopKit.Tests.csproj' -c Debug --no-build --no-restore --filter $overlayTestFilter
-    if ($LASTEXITCODE -ne 0) { throw 'Overlay direct test partition failed.' }
+Invoke-Step -Name 'dotnet test (.slnx graph)' -Action {
+    dotnet test 'EngLoopKit.slnx' -c Debug --no-build --no-restore
+    if ($LASTEXITCODE -ne 0) { throw 'EngLoopKit.slnx test failed.' }
 }
 
 Invoke-Step -Name 'tool validate root/config/commands/agent-surfaces' -Action {
@@ -86,7 +58,7 @@ if ($Release) {
     }
 
     Invoke-Step -Name 'immutable release packaging' -Action {
-        & "$repositoryRoot\scripts\validate-package.ps1" -Version '1.13.1'
+        & "$repositoryRoot\scripts\validate-package.ps1" -Version '1.14.0'
         if ($LASTEXITCODE -ne 0) { throw 'Package gate failed.' }
     }
 }
