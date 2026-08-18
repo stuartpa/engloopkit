@@ -22,7 +22,7 @@ in the bundle's [document standards](../docs/standards.md). Artifact root is `.e
 | `SIX` | Six-page narrative memos | `SIX000` | authoritative Markdown, generated DOCX, appendices, and render validation |
 | `PPT` | Presentation decks | `PPT000` | Markdown-first evidence-backed presentation and generated PPTX |
 | `PAP` | Academic systems papers | `PAP000` | authoritative Markdown/BibTeX, generated PDF, figures/data, and review validation |
-| `HANDOFF` | Chat/team continuation packets | `HANDOFF000` | three-digit global counter; first handoff is HANDOFF001 |
+| `HANDOFF` | Chat/team continuation packets | `HANDOFF001` | latest = DsMainDev one-time ELK v1.14.0 bootstrap; future updates use Stage 80 |
 
 ## Local counters
 
