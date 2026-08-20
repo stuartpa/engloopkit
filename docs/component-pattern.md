@@ -1,7 +1,7 @@
 # The Component Pattern
 
-**Status:** Architectural principle — enforced by `/speckit.engloop.03-architect`, converged
-toward by `/speckit.engloop.40-refactor`.
+**Status:** Architectural principle — enforced by `/speckit.engloop.03-architect`, planned
+toward by `/speckit.engloop.40-refactor-plan`, and implemented by `/speckit.engloop.04-refactor`.
 
 EngLoopKit builds software in two kinds of code, and keeps them physically separate:
 
@@ -67,9 +67,19 @@ This is recursive — EngLoopKit applies it to **itself** and to **every reposit
   appropriate `components/` folder, records the boundary as a governed architecture rule
   (an `ARC` that architecture-guard enforces), and files any non-vertical code still sitting
   in the vertical as refactor tasks.
-- **Stage 04 · Refactor** and **Stage 40 · Stewardship** (`/speckit.engloop.40-refactor`)
-  **converge** toward the ideal: every refactor cycle pulls a little more non-vertical code out
-  of the vertical into a component, iterating toward perfection of the pattern.
+- **Stage 40 · Refactor Plan** (`/speckit.engloop.40-refactor-plan`) works with the user
+  to inspect the North Star, applicable architecture decisions, and code boundaries; it
+  plans which non-vertical responsibilities should move into components and records
+  ordered implementation slices without changing product code.
+- **Stage 04 · Refactor** (`/speckit.engloop.04-refactor`) implements only the accepted
+  plan slice under those binding direction/architecture/component constraints.
+
+Stage 40 Refactor Plan uses an explicit compute profile rather than guessing the selected AI model or
+thinking level. `point` (the default) examines one declared local seam and is the normal
+profile for frequent inexpensive-model component extractions. `bounded` examines one
+subsystem. Explicit `deep` permits a repository-wide survey and selects one phased campaign
+for deliberate frontier/high-thinking runs. All profiles still select only; Stage 04
+implements the resulting REFACT decision.
 
 So a repo that adopts EngLoopKit is *caused* to adopt the component pattern: it cannot pass its
 architecture stage without the boundary, and its refactor cycles keep tightening it.

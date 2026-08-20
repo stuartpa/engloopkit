@@ -21,6 +21,7 @@ parent artifact and are tracked there.
 | `PM` | `PM000` | Selected stabilized incident-set postmortems. |
 | `REFACT` | `REFACT000` | Stewardship refactor decisions or no-work records. |
 | `DEADCODE` | `DEADCODE000` | High-certainty dead-code proposals and user decisions. |
+| `HAPPY` | `HAPPY000` | Moments when things worked wonderfully and the readily available context worth remembering. |
 | `DBG` | `DBG000` | Engineer-attested debugger walkthrough ledgers. |
 | `SIX` | `SIX000` | Six-page narrative memos, generated Word documents, appendices, and render evidence. |
 | `PPT` | `PPT000` | Markdown-first presentation decks and generated PowerPoint artifacts. |

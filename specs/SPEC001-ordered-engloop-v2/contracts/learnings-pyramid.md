@@ -1,8 +1,8 @@
 # Contract: Learnings Pyramid Validation and Retrieval
 
 - **Feature:** SPEC001
-- **Stage:** 31
-- **Compression graph:** `PMxxx/LEARNxxx → subject cards → root LEARNINGS.md → on-demand instruction`
+- **Stage:** 42
+- **Compression graph:** `PMxxx/LEARNxxx or accepted HAPPYxxx → subject cards → root LEARNINGS.md → on-demand instruction`
 
 ## Inputs
 
@@ -11,6 +11,7 @@ single-root gate and whose exact config is `.engloop/config.json`, the validator
 consumes:
 
 - `.engloop/postmortems/PM[0-9][0-9][0-9]_*.md`;
+- `.engloop/happy-minutes/HAPPY[0-9][0-9][0-9]-*.md` only when its `Stage 42 candidate` field is `YES`;
 - `.engloop/learnings/cards/*.md`;
 - root `LEARNINGS.md`;
 - `.github/instructions/project-learnings.instructions.md`;
@@ -35,6 +36,12 @@ It does not merge card/source sets or retry discovery against another root.
   displayed PM/LEARN pair disagrees with its target.
 6. Never edit, delete, or normalize source PM content during condensation.
 
+Happy Minutes are opt-in positive sources. `NO`/`NOT-YET` records remain standalone
+history and are excluded from mandatory coverage. Stage 42 may change only the candidate
+field to `YES` when accepting the record, then cards cite its stable `HAPPYxxx` identity.
+The gratitude/outcome body is not rewritten, and observations are not promoted to proven
+causes or universal rules.
+
 Acceptance status follows the PM's authoritative status/approval contract. If that
 contract is missing or ambiguous, the validator fails rather than guessing whether a
 learning belongs to the source set.
@@ -48,7 +55,7 @@ contain:
 - applicability/“apply when” guidance;
 - a compressed plain-language principle;
 - operational/decision checks;
-- a non-empty source-learning list with resolving links labeled `PMxxx/LEARNxxx`;
+- a non-empty source-learning list with resolving links labeled `PMxxx/LEARNxxx` or `HAPPYxxx`;
 - a conflicts/supersessions/unresolved-tension section, explicitly saying “none known”
   when empty;
 - living status.
@@ -159,9 +166,9 @@ The agent interaction itself is an acceptance exercise; set comparison, coverage
 final status are deterministic. Results carry input digests so an old retrieval run
 cannot validate changed cards/index/sources.
 
-## Stage 31 state effect
+## Stage 42 state effect
 
 On PASS for matching source/card/index/instruction/retrieval digests, clear the pending
 learning-refresh obligation. On any failure, keep it pending and repeat
-condense/recreate/retrieve. Stage 31 never rewrites source PM/LEARN content, closes a
+condense/recreate/retrieve. Stage 42 never rewrites source PM/LEARN or HAPPY observation content, closes a
 repair item, or changes product readiness.

@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$Root = (Join-Path $PSScriptRoot '..'),
-    [string]$Version = '1.14.0',
+    [string]$Version = '1.15.0',
     [string]$EmitReleaseManifest = '',
     [string]$OutDir = ''
 )

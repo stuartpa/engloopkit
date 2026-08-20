@@ -25,6 +25,7 @@ The planned required config is `.engloop/config.json`; ignored transient output 
 ├── coverage/               # COVxxx — coverage/validation/readiness records
 ├── incidents/              # INxxx — incidents with local MIT actions
 ├── postmortems/            # PMxxx — post-mortems with local LEARN/RPI entries
+├── happy-minutes/           # HAPPYxxx — moments when everything worked wonderfully
 ├── repairs/                # PMxxx-RPIxxx — direction/rule/gate-bound route and close acceptance
 ├── refactors/              # REFACTxxx — refactor decisions
 ├── deadcode/               # DEADCODExxx — proven deletion proposals and user decisions
@@ -51,6 +52,7 @@ docs here point at it. Spec Kit's own `specify` outputs (`SPECxxx`) live at `spe
 | Model | historical baseline | [MODEL001](models/MODEL001_engineering-loop.md) |
 | Explore / Coverage | historical baseline | [CORD001](cord/CORD001_loop-conformance.md), [COV001](coverage/COV001_conformance.md) |
 | Operations | historical evidence | [IN001–IN004](incidents/), [PM001–PM004](postmortems/INDEX.md) |
+| Positive history | ready for first record | [happy-minutes/README.md](happy-minutes/README.md); registry remains `HAPPY000` |
 | Evolution | current decision | [REFACT001](refactors/REFACT001_ordered-engloop-v2.md) |
 | Utility evidence | current contract | [evidence/README.md](evidence/README.md) defines compact Agent 30/31 JSON and ignored detailed logs. |
 

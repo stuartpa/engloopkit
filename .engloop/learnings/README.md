@@ -5,7 +5,7 @@ This is the working prototype behind
 accepted post-mortem learnings without replacing them:
 
 ```text
-post-mortem PMxxx/LEARNxxx source
+accepted PMxxx/LEARNxxx or HAPPYxxx source
     → living subject card
         → root LEARNINGS.md recall/index page
             → on-demand agent instruction
@@ -15,8 +15,10 @@ post-mortem PMxxx/LEARNxxx source
 
 The authoritative source sequence is every accepted `LEARNxxx` in the post-mortems
 listed by [`postmortems/INDEX.md`](../postmortems/INDEX.md), addressed globally as
-`PMxxx/LEARNxxx`. Source post-mortems remain immutable historical analysis; cards and the
-one-page index are living condensations whose changes are retained by Git.
+`PMxxx/LEARNxxx`, plus Happy Minutes whose `Stage 42 candidate` field is explicitly
+`YES`, addressed as `HAPPYxxx`. `NO`/`NOT-YET` Happy Minutes remain standalone positive
+history and do not create mandatory card work. Source records retain their original
+observations; cards and the one-page index are living condensations retained by Git.
 
 ## Card contract
 
@@ -44,7 +46,8 @@ belongs on cards and evidence belongs in post-mortems.
 | PM003 | 2 | model-observable-behavior |
 | PM004 | 3 | adequate-models-prove-rejection |
 
-Current source-learning coverage: **11 of 11**. The root index is **172 words and 24
-nonblank lines**, below both limits. Stage 41 validates completeness, links, size, and
+Current source-learning coverage: **11 of 11 PM learnings**; no HAPPY source is currently
+accepted for condensation. The root index is **172 words and 24 nonblank lines**, below
+both limits. Stage 42 validates completeness, links, size, and
 sampled retrieval. Stage 21 also validates current PM provenance and applicable retrieval
 before completion, so operations cannot defer all learning integration to stewardship.

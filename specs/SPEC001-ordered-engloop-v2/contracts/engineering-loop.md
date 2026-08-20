@@ -113,12 +113,32 @@ Non-reachability is evidence requiring classification. It is never an automatic
 
 There is no small-change/tinyspec bypass in this lane.
 
+## Positive-history lane
+
+### Stage 23
+
+May be invoked whenever the user wants to record that a live system, repository workflow,
+or engineering experience worked wonderfully. The user's description is sufficient;
+Stage 23 MUST NOT require a current readiness record, clean working tree, deployment
+provenance, full commit attribution, production authentication, or causal proof.
+
+It increments the global `HAPPY` counter and creates one
+`.engloop/happy-minutes/HAPPY<NNN>-<brief-kebab-description>.md`. It captures readily
+available live/runtime context, the exact current Git root, and only additional repositories
+explicitly supplied by the user. Local Git state is labeled `LOCAL-CONTEXT`, not silently
+treated as deployed identity. Missing details are `NOT-PROVIDED`; sensitive information is
+redacted. Stage 23 changes no source, configuration, deployment, or learning card.
+
+The record is complete on creation. A review-first handoff to Stage 42 may later condense
+genuinely reusable positive learnings with provenance; no handoff is required and no
+observation becomes a mandatory rule or proven cause merely because it appears in HAPPY.
+
 ## Stewardship lane
 
 ### Stage 30
 
 Requires explicit spare engineering or agent-token capacity. It evaluates the ratified
-priority tree and records exactly one REFACT result:
+priority tree with the user and records exactly one confirmed REFACT plan/result:
 
 - `none-this-cycle`: return to steady context; no product stage changes;
 - selected refactor without direction change: route to 04;
@@ -128,6 +148,28 @@ priority tree and records exactly one REFACT result:
   then 04.
 
 It never creates a numbered direction snapshot and never routes directly to 08.
+
+Before proposing options, Stage 40 reads the configured living North Star, applicable
+`.engloop/architecture/ARCH*.md` decisions, the Component Pattern, relevant learning
+provenance, and profile-bounded code evidence. Its primary architectural objective is to
+identify non-vertical responsibilities that should move into reusable components while
+preserving vertical → component dependency direction. It records paths/identities,
+alternatives, user constraints/confirmation, proposed component responsibilities/APIs,
+and ordered Stage 04 implementation slices. Stage 40 changes no product source.
+
+Stage 04 is the implementation counterpart: it requires an accepted SPEC/REFACT/repair
+slice, rereads the cited North Star and architecture decisions, and implements only that
+slice. Candidate selection, changed component boundaries, or scope expansion route back
+to Stage 40 Refactor Plan; direction/architecture changes route to Stages 01/03.
+
+The command-surface Stage 40 invocation requires a declared `--scope` and resolves one
+compute profile: omitted `--profile` means `point`; `bounded` and `deep` require those
+exact explicit values. Runtime model family/tier, pricing, token budget, and thinking
+level are not authoritative agent or hook inputs and MUST NOT be inferred. `point`
+inspects one local seam and selects one local simplification or single-component
+extraction; `bounded` inspects one subsystem; `deep` permits repository-wide analysis
+and selects one phased campaign. A profile changes investigation breadth only—it does
+not change transition order, authorize implementation, or bypass Stages 01/03/04.
 
 ### Stage 31
 

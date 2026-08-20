@@ -15,8 +15,8 @@ public static class ValidationCommands
         "speckit.engloop.04-refactor", "speckit.engloop.05-model", "speckit.engloop.06-explore",
         "speckit.engloop.07-validate", "speckit.engloop.08-unittest", "speckit.engloop.09-debugger-walk-thru",
         "speckit.engloop.10-codereview-prepare", "speckit.engloop.20-incident", "speckit.engloop.21-postmortem",
-        "speckit.engloop.22-repair", "speckit.engloop.30-token-efficiency-analyze", "speckit.engloop.31-token-efficiency-implement",
-        "speckit.engloop.40-refactor", "speckit.engloop.41-deadcode", "speckit.engloop.42-learnings-pyramid",
+        "speckit.engloop.22-repair", "speckit.engloop.23-happy-minute", "speckit.engloop.30-token-efficiency-analyze", "speckit.engloop.31-token-efficiency-implement",
+        "speckit.engloop.40-refactor-plan", "speckit.engloop.41-deadcode", "speckit.engloop.42-learnings-pyramid",
         "speckit.engloop.50-handoff-create", "speckit.engloop.60-overlay-pack", "speckit.engloop.61-overlay-remove",
         "speckit.engloop.70-six-pager-create", "speckit.engloop.71-powerpnt-create", "speckit.engloop.72-academic-paper-create",
         "speckit.engloop.80-upgrade-elk",
@@ -37,9 +37,10 @@ public static class ValidationCommands
         ["speckit.engloop.20-incident"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.21-postmortem"] = ["read", "search", "edit", "execute", "agent"],
         ["speckit.engloop.22-repair"] = ["read", "search", "edit", "execute"],
+        ["speckit.engloop.23-happy-minute"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.30-token-efficiency-analyze"] = ["read", "search", "edit", "execute", "agent", "copilot_sessionStoreSql"],
         ["speckit.engloop.31-token-efficiency-implement"] = ["read", "search", "edit", "execute", "agent"],
-        ["speckit.engloop.40-refactor"] = ["read", "search", "edit", "execute", "agent"],
+        ["speckit.engloop.40-refactor-plan"] = ["read", "search", "edit", "execute", "agent"],
         ["speckit.engloop.41-deadcode"] = ["read", "search", "edit", "execute", "agent"],
         ["speckit.engloop.42-learnings-pyramid"] = ["read", "search", "edit", "execute", "agent"],
         ["speckit.engloop.50-handoff-create"] = ["read", "search", "edit", "execute"],
@@ -59,8 +60,8 @@ public static class ValidationCommands
         ["speckit.engloop.07-validate"] = [], ["speckit.engloop.08-unittest"] = ["Explore"],
         ["speckit.engloop.09-debugger-walk-thru"] = [], ["speckit.engloop.10-codereview-prepare"] = [],
         ["speckit.engloop.20-incident"] = [], ["speckit.engloop.21-postmortem"] = ["Explore"],
-        ["speckit.engloop.22-repair"] = [], ["speckit.engloop.30-token-efficiency-analyze"] = ["Explore"],
-        ["speckit.engloop.31-token-efficiency-implement"] = ["Explore"], ["speckit.engloop.40-refactor"] = ["Explore"],
+        ["speckit.engloop.22-repair"] = [], ["speckit.engloop.23-happy-minute"] = [], ["speckit.engloop.30-token-efficiency-analyze"] = ["Explore"],
+        ["speckit.engloop.31-token-efficiency-implement"] = ["Explore"], ["speckit.engloop.40-refactor-plan"] = ["Explore"],
         ["speckit.engloop.41-deadcode"] = ["Explore"], ["speckit.engloop.42-learnings-pyramid"] = ["Explore"],
         ["speckit.engloop.50-handoff-create"] = [], ["speckit.engloop.60-overlay-pack"] = [],
         ["speckit.engloop.61-overlay-remove"] = [], ["speckit.engloop.70-six-pager-create"] = [],
@@ -83,9 +84,10 @@ public static class ValidationCommands
         ["speckit.engloop.20-incident"] = ["speckit.engloop.21-postmortem"],
         ["speckit.engloop.21-postmortem"] = ["speckit.engloop.22-repair", "speckit.engloop.42-learnings-pyramid"],
         ["speckit.engloop.22-repair"] = ["speckit.engloop.04-refactor"],
+        ["speckit.engloop.23-happy-minute"] = ["speckit.engloop.42-learnings-pyramid"],
         ["speckit.engloop.30-token-efficiency-analyze"] = ["speckit.engloop.31-token-efficiency-implement"],
         ["speckit.engloop.31-token-efficiency-implement"] = [],
-        ["speckit.engloop.40-refactor"] = ["speckit.engloop.01-northstar", "speckit.engloop.03-architect", "speckit.engloop.04-refactor", "speckit.engloop.41-deadcode"],
+        ["speckit.engloop.40-refactor-plan"] = ["speckit.engloop.01-northstar", "speckit.engloop.03-architect", "speckit.engloop.04-refactor", "speckit.engloop.41-deadcode"],
         ["speckit.engloop.41-deadcode"] = [], ["speckit.engloop.42-learnings-pyramid"] = [],
         ["speckit.engloop.50-handoff-create"] = [],
         ["speckit.engloop.60-overlay-pack"] = ["speckit.engloop.01-northstar"],
@@ -525,7 +527,9 @@ public static class ValidationCommands
         var root = Path.GetFullPath(GetOption(args, "--root"));
         var result = LearningsPyramidPolicy.Validate(
             Path.Combine(root, "LEARNINGS.md"),
-            LearningsPyramidPolicy.ExtractSources(Path.Combine(root, ".engloop", "postmortems")),
+            LearningsPyramidPolicy.ExtractSources(
+                Path.Combine(root, ".engloop", "postmortems"),
+                Path.Combine(root, ".engloop", "happy-minutes")),
             LearningsPyramidPolicy.ExtractCards(Path.Combine(root, ".engloop", "learnings", "cards")));
         if (!result.Passed)
         {
@@ -805,7 +809,7 @@ public static class ValidationCommands
 
                 if (id == "speckit.engloop.08-unittest" &&
                     (target.ToString() == "speckit.engloop.20-incident" ||
-                     target.ToString() == "speckit.engloop.40-refactor" ||
+                     target.ToString() == "speckit.engloop.40-refactor-plan" ||
                      target.ToString() == "speckit.engloop.41-deadcode" ||
                      target.ToString() == "speckit.engloop.42-learnings-pyramid"))
                 {
@@ -821,7 +825,7 @@ public static class ValidationCommands
             }
         }
 
-        if (totalHandoffs != 29)
+        if (totalHandoffs != 30)
         {
             Console.Error.WriteLine($"wrong-handoff-count:{totalHandoffs}");
             return 1;

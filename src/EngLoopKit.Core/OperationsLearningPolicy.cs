@@ -73,7 +73,7 @@ public sealed record IncidentContextValidationResult(
 public static class OperationsLearningPolicy
 {
     private static readonly Regex PostmortemFileRegex = new(@"^PM(?<number>\d{3})(?:[-_].+)?\.md$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-    private static readonly Regex SourceIdRegex = new(@"^PM\d{3}/LEARN\d{3}$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex SourceIdRegex = new(@"^(?:PM\d{3}/LEARN\d{3}|HAPPY\d{3})$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex SourceIdFindRegex = new(@"PM\d{3}/LEARN\d{3}", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex RuleIdRegex = new(@"^RULE:(?<slug>[a-z0-9]+(?:-[a-z0-9]+)*)$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex RpiRegex = new(@"^RPI\d{3}$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
@@ -175,7 +175,9 @@ public static class OperationsLearningPolicy
             ValidateRuleDisposition(disposition, cardsBySlug, currentSourceIds, pyramidDecision, failures);
         }
 
-        var sources = LearningsPyramidPolicy.ExtractSources(Path.Combine(root, ".engloop", "postmortems"));
+        var sources = LearningsPyramidPolicy.ExtractSources(
+            Path.Combine(root, ".engloop", "postmortems"),
+            Path.Combine(root, ".engloop", "happy-minutes"));
         var pyramid = LearningsPyramidPolicy.Validate(learningsPath ?? Path.Combine(root, "LEARNINGS.md"), sources, cards);
         failures.AddRange(pyramid.Failures.Select(failure => "pyramid-" + failure));
 
@@ -339,6 +341,13 @@ public static class OperationsLearningPolicy
                 if (id == currentPostmortemId) continue;
                 RejectReparse(path, "postmortem");
                 entries.Add(Path.GetRelativePath(root, path).Replace('\\', '/') + ":" + Sha256(path));
+            }
+            var happyRoot = Path.Combine(root, ".engloop", "happy-minutes");
+            foreach (var source in LearningsPyramidPolicy.ExtractSources(postmortemsRoot, happyRoot)
+                         .Where(source => source.Id.StartsWith("HAPPY", StringComparison.Ordinal)))
+            {
+                RejectReparse(source.Path, "happy-minute");
+                entries.Add(Path.GetRelativePath(root, source.Path).Replace('\\', '/') + ":" + Sha256(source.Path));
             }
             return Sha256Bytes(Encoding.UTF8.GetBytes(string.Join("\n", entries) + "\n"));
         }

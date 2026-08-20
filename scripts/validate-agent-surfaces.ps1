@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$Root = (Join-Path $PSScriptRoot '..'),
-    [string]$Version = '1.14.0',
+    [string]$Version = '1.15.0',
     [string]$OutputPath = '',
     [switch]$SkipDisposableFixture
 )
@@ -104,9 +104,10 @@ $expectedIds = @(
     'speckit.engloop.20-incident',
     'speckit.engloop.21-postmortem',
     'speckit.engloop.22-repair',
+    'speckit.engloop.23-happy-minute',
     'speckit.engloop.30-token-efficiency-analyze',
     'speckit.engloop.31-token-efficiency-implement',
-    'speckit.engloop.40-refactor',
+    'speckit.engloop.40-refactor-plan',
     'speckit.engloop.41-deadcode',
     'speckit.engloop.42-learnings-pyramid',
     'speckit.engloop.50-handoff-create',
@@ -143,9 +144,10 @@ $expectedHandoffTargets = @{
     'speckit.engloop.20-incident' = @('speckit.engloop.21-postmortem')
     'speckit.engloop.21-postmortem' = @('speckit.engloop.22-repair', 'speckit.engloop.42-learnings-pyramid')
     'speckit.engloop.22-repair' = @('speckit.engloop.04-refactor')
+    'speckit.engloop.23-happy-minute' = @('speckit.engloop.42-learnings-pyramid')
     'speckit.engloop.30-token-efficiency-analyze' = @('speckit.engloop.31-token-efficiency-implement')
     'speckit.engloop.31-token-efficiency-implement' = @()
-    'speckit.engloop.40-refactor' = @('speckit.engloop.01-northstar', 'speckit.engloop.03-architect', 'speckit.engloop.04-refactor', 'speckit.engloop.41-deadcode')
+    'speckit.engloop.40-refactor-plan' = @('speckit.engloop.01-northstar', 'speckit.engloop.03-architect', 'speckit.engloop.04-refactor', 'speckit.engloop.41-deadcode')
     'speckit.engloop.41-deadcode' = @()
     'speckit.engloop.42-learnings-pyramid' = @()
     'speckit.engloop.50-handoff-create' = @()
@@ -272,7 +274,7 @@ try {
             if ($handoff.Contains('model')) {
                 $mismatches.Add(@{ issue = 'handoff-model-forbidden'; id = $id; target = $handoff.agent }) | Out-Null
             }
-            if ($id -eq 'speckit.engloop.08-unittest' -and ($handoff.agent -in @('speckit.engloop.20-incident', 'speckit.engloop.40-refactor', 'speckit.engloop.41-deadcode', 'speckit.engloop.42-learnings-pyramid'))) {
+            if ($id -eq 'speckit.engloop.08-unittest' -and ($handoff.agent -in @('speckit.engloop.20-incident', 'speckit.engloop.40-refactor-plan', 'speckit.engloop.41-deadcode', 'speckit.engloop.42-learnings-pyramid'))) {
                 $mismatches.Add(@{ issue = 'forbidden-stage08-edge'; target = $handoff.agent }) | Out-Null
             }
         }
@@ -283,10 +285,10 @@ try {
     }
 
     $report.deterministic.handoffs = [ordered]@{
-        expected = 29
+        expected = 30
         actual = $handoffCount
     }
-    if ($handoffCount -ne 29) {
+    if ($handoffCount -ne 30) {
         $mismatches.Add(@{ issue = 'wrong-handoff-count'; actual = $handoffCount }) | Out-Null
     }
 

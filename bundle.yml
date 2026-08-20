@@ -3,9 +3,9 @@ schema_version: "1.0"
 bundle:
   id: "engloopkit"
   name: "EngLoopKit"
-  version: "1.14.0"
+  version: "1.15.0"
   role: "loop-engineer"
-  description: "Ordered evidence-gated delivery, operations learning, handoffs, verified ELK/SEK upgrades, stewardship, publication, and private overlay workflow for Spec Kit."
+  description: "Ordered evidence-gated delivery, operations learning, positive history, handoffs, verified ELK/SEK upgrades, stewardship, publication, and private overlay workflow for Spec Kit."
   author: "stuartpa"
   license: "MIT"
 
@@ -22,7 +22,7 @@ provides:
   extensions:
     # EngLoopKit's exact lifecycle, review, session-memory, and overlay utility surface.
     - id: "engloop"
-      version: "1.14.0"
+      version: "1.15.0"
 
     # Architecture governance for the post-bridging architecture stage and for
     # honoring the long-lived architecture on every subsequent loop.
@@ -45,4 +45,5 @@ tags:
   - "spec-driven"
   - "model-checking"
   - "operations"
+  - "positive-history"
   - "token-efficiency"

@@ -16,6 +16,7 @@ public sealed class NumberingRegistryTests
     [InlineData("PM", 7, "PM007")]
     [InlineData("REFACT", 1000, "REFACT1000")]
     [InlineData("DEADCODE", 1, "DEADCODE001")]
+    [InlineData("HAPPY", 1, "HAPPY001")]
     [InlineData("DBG", 1, "DBG001")]
     [InlineData("SIX", 1, "SIX001")]
     [InlineData("PPT", 1, "PPT001")]
@@ -41,7 +42,7 @@ public sealed class NumberingRegistryTests
     [Fact]
     public void KnownPrefixes_matchCurrentStandards()
     {
-        string[] expected = ["SPEC", "SCAF", "ARCH", "MODEL", "CORD", "COV", "IN", "PM", "REFACT", "DEADCODE", "DBG", "SIX", "PPT", "PAP", "HANDOFF", "MIT", "LEARN", "RPI"];
+        string[] expected = ["SPEC", "SCAF", "ARCH", "MODEL", "CORD", "COV", "IN", "PM", "REFACT", "DEADCODE", "HAPPY", "DBG", "SIX", "PPT", "PAP", "HANDOFF", "MIT", "LEARN", "RPI"];
         foreach (var p in expected)
         {
             Assert.True(NumberingRegistry.IsKnownPrefix(p), p);
@@ -69,6 +70,7 @@ public sealed class NumberingRegistryTests
         Assert.Equal("MODEL002", reg.NextId("MODEL"));
         Assert.Equal("HANDOFF001", reg.NextId("HANDOFF"));
         Assert.Equal("DEADCODE001", reg.NextId("DEADCODE"));
+        Assert.Equal("HAPPY001", reg.NextId("HAPPY"));
     }
 
     [Fact]

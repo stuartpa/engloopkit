@@ -117,6 +117,73 @@ public sealed class EvidenceAndLearningTests : IDisposable
         Assert.Empty(card.SourceIds);
     }
 
+    [Fact]
+    public void LearningsPolicy_happySourcesAreOptInAndValidateAfterStage42Acceptance()
+    {
+        var postmortems = Path.Combine(_root, ".engloop", "postmortems");
+        var happy = Path.Combine(_root, ".engloop", "happy-minutes");
+        var cards = Path.Combine(_root, ".engloop", "learnings", "cards");
+        Directory.CreateDirectory(happy);
+        Directory.CreateDirectory(cards);
+        File.WriteAllText(Path.Combine(happy, "HAPPY001-perfect-flow.md"), """
+        # HAPPY001: Perfect flow
+
+        ## What was wonderful
+
+        Everything worked perfectly.
+
+        ## Positive-learning handoff
+
+        - **Stage 42 candidate:** NOT-YET
+        """);
+        File.WriteAllText(Path.Combine(happy, "HAPPY002-repeatable-flow.md"), """
+        # HAPPY002: Repeatable flow
+
+        ## What was wonderful
+
+        The deployment and validation aligned beautifully.
+
+        ## Positive-learning handoff
+
+        - **Stage 42 candidate:** `YES`
+        """);
+        File.WriteAllText(Path.Combine(happy, "HAPPY004-loved-but-not-condensed.md"), "- **Stage 42 candidate:** NO\n");
+        File.WriteAllText(Path.Combine(cards, "positive-flow.md"), """
+        # Card
+
+        ## Source learnings
+
+        HAPPY002
+
+        ## Tensions
+
+        none known
+        """);
+        var index = Path.Combine(_root, "LEARNINGS.md");
+        File.WriteAllText(index, "[positive-flow](.engloop/learnings/cards/positive-flow.md)\n");
+
+        var sources = LearningsPyramidPolicy.ExtractSources(postmortems, happy);
+        Assert.Equal(["HAPPY002"], sources.Select(source => source.Id).ToArray());
+        var result = LearningsPyramidPolicy.Validate(index, sources, LearningsPyramidPolicy.ExtractCards(cards));
+        Assert.True(result.Passed, string.Join(Environment.NewLine, result.Failures));
+    }
+
+    [Fact]
+    public void LearningsPolicy_acceptedHappySourceRequiresCardCoverage()
+    {
+        var happy = Path.Combine(_root, "happy-minutes");
+        Directory.CreateDirectory(happy);
+        File.WriteAllText(Path.Combine(happy, "HAPPY003-uncardied.md"), "- **Stage 42 candidate:** YES\n");
+        var index = Path.Combine(_root, "LEARNINGS.md");
+        File.WriteAllText(index, "# Learnings\n");
+
+        var sources = LearningsPyramidPolicy.ExtractSources(Path.Combine(_root, "missing-postmortems"), happy);
+        var result = LearningsPyramidPolicy.Validate(index, sources, []);
+
+        Assert.Contains("HAPPY003", sources.Select(source => source.Id));
+        Assert.Contains(result.Failures, failure => failure == "uncovered-source:HAPPY003");
+    }
+
     private void CreateCanonicalRoot()
     {
         Directory.CreateDirectory(Path.Combine(_root, ".engloop"));

@@ -18,6 +18,7 @@ in the bundle's [document standards](../docs/standards.md). Artifact root is `.e
 | `PM` | Post-mortems | `PM004` | PM001 = no readiness gate; PM002 = verification method by module class; PM003 = self-model criterion is behavior-level; PM004 = self-model must be behaviorally rich + prove negative conformance |
 | `REFACT` | Refactor decisions | `REFACT001` | REFACT001 = ordered EngLoop v2 workflow, Northstar, verification split, and Learnings Pyramid |
 | `DEADCODE` | High-certainty dead-code proposals | `DEADCODE000` | explicit user approval is required before current-source removal |
+| `HAPPY` | Happy Minute records | `HAPPY000` | moments of gratitude and readily available conditions worth repeating |
 | `DBG` | Debugger walkthrough ledgers | `DBG000` | engineer-attested per-chunk debugger walkthrough evidence |
 | `SIX` | Six-page narrative memos | `SIX000` | authoritative Markdown, generated DOCX, appendices, and render validation |
 | `PPT` | Presentation decks | `PPT000` | Markdown-first evidence-backed presentation and generated PPTX |

@@ -3,6 +3,33 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.0] - 2026-08-20
+
+### Changed
+
+- Stage 40 now requires an explicit refactor scope and uses profile-bounded strategy:
+  `point` is the fail-closed default for one small local/component extraction,
+  `bounded` permits one subsystem, and explicit `deep` permits repository-wide analysis
+  into one phased campaign. A versioned hook binds profile/scope to the session; selected
+  model family, pricing, token budget, and thinking level are unavailable and never inferred.
+- Renamed Stage 40 from `/speckit.engloop.40-refactor` to
+  `/speckit.engloop.40-refactor-plan`. It now works with the user to read and cite the
+  configured North Star, applicable architecture decisions, Component Pattern, and
+  relevant learnings; classify vertical/component responsibilities; and record one
+  confirmed, ordered REFACT plan without changing product code.
+- Clarified `/speckit.engloop.04-refactor` as implementation-only. It rereads the current
+  North Star and governing architecture, requires an accepted SPEC/REFACT/repair slice,
+  implements only that slice, and routes changed direction, architecture, or scope back
+  to Stages 01, 03, or 40 instead of silently re-planning.
+
+### Added
+
+- `/speckit.engloop.23-happy-minute` creates a gratitude-first
+  `HAPPY<NNN>-<brief-description>.md`. The user's description is sufficient; the agent
+  captures readily available live/runtime and explicitly supplied repository context,
+  labels missing details `NOT-PROVIDED`, redacts sensitive data, and optionally hands
+  reusable positive learnings to Stage 42 without turning the moment into a gate.
+
 ## [1.14.0] - 2026-08-17
 
 ### Added

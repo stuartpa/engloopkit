@@ -34,7 +34,7 @@ public sealed class AgentSurfaceValidationTests
     public void PromptFiles_selectExactAgents_andForbidTools()
     {
         var prompts = Directory.GetFiles(PromptsDir, "speckit.engloop.*.prompt.md", SearchOption.TopDirectoryOnly);
-        Assert.Equal(25, prompts.Length);
+        Assert.Equal(26, prompts.Length);
 
         foreach (var prompt in prompts)
         {
@@ -75,6 +75,36 @@ public sealed class AgentSurfaceValidationTests
         Assert.Contains("--rpi", repair, StringComparison.Ordinal);
         Assert.Contains("--rules", repair, StringComparison.Ordinal);
         Assert.Contains("verification requirement", repair, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void RefactorPrompt_exposesExplicitProfilesAndSafeDefault()
+    {
+        var refactor = File.ReadAllText(Path.Combine(PromptsDir, "speckit.engloop.40-refactor-plan.prompt.md"));
+        Assert.Contains("description:", refactor, StringComparison.Ordinal);
+        Assert.Contains("argument-hint:", refactor, StringComparison.Ordinal);
+        Assert.Contains("--scope", refactor, StringComparison.Ordinal);
+        Assert.Contains("point|bounded|deep", refactor, StringComparison.Ordinal);
+        Assert.Contains("omitted means `point`", refactor, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Never infer model", refactor, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("tools:", refactor, StringComparison.Ordinal);
+
+        var implementation = File.ReadAllText(Path.Combine(PromptsDir, "speckit.engloop.04-refactor.prompt.md"));
+        Assert.Contains("accepted SPEC, REFACT, or repair slice", implementation, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("without re-planning", implementation, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Stage 40 Refactor Plan", implementation, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void HappyMinutePrompt_isGratitudeFirstAndLightweight()
+    {
+        var happy = File.ReadAllText(Path.Combine(PromptsDir, "speckit.engloop.23-happy-minute.prompt.md"));
+        Assert.Contains("description:", happy, StringComparison.Ordinal);
+        Assert.Contains("argument-hint:", happy, StringComparison.Ordinal);
+        Assert.Contains("what worked perfectly", happy, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("description is sufficient", happy, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("NOT-PROVIDED", happy, StringComparison.Ordinal);
+        Assert.DoesNotContain("tools:", happy, StringComparison.Ordinal);
     }
 
     [Fact]

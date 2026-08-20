@@ -2,7 +2,7 @@
 
 **Workflow generation:** Ordered EngLoop v2.
 **Product SemVer:** EngLoopKit remains on the **1.x** line; this workflow ships as
-v1.14.0. “v2” describes the workflow generation, not a v2.0 release.
+v1.15.0. “v2” describes the workflow generation, not a v2.0 release.
 
 Durable workflow memory lives in exactly one tracked hidden root:
 
@@ -26,8 +26,9 @@ archive.
 ## Naming and counters
 
 Numbered artifacts are monotonic, never reused, and incremented before creation. Most
-use `<PREFIX><NNN>_<short-title>.md`; handoffs use
-`HANDOFF<NNN>-<brief-kebab-description>.md`. Increment the tracked
+use `<PREFIX><NNN>_<short-title>.md`; handoffs and Happy Minutes use
+`HANDOFF<NNN>-<brief-kebab-description>.md` and
+`HAPPY<NNN>-<brief-kebab-description>.md`. Increment the tracked
 `.engloop/numbering-registry.md` counter **before** creating the artifact.
 
 ## Global prefixes
@@ -42,7 +43,8 @@ use `<PREFIX><NNN>_<short-title>.md`; handoffs use
 | `COV` | 07 / 08 | `.engloop/coverage/` | Stage 07 functional evidence or Stage 08 whole-product readiness inventory. |
 | `IN` | 20 Incident | `.engloop/incidents/` | Actual operating disruption, timeline, and local mitigations. |
 | `PM` | 21 Postmortem | `.engloop/postmortems/` | Analysis of deliberately selected stabilized incident sets. |
-| `REFACT` | 40 Refactor | `.engloop/refactors/` | One selected evolution decision or `none-this-cycle`. |
+| `HAPPY` | 23 Happy Minute | `.engloop/happy-minutes/` | A gratitude-first record of a wonderful outcome and readily available live/repository context. |
+| `REFACT` | 40 Refactor Plan | `.engloop/refactors/` | One user-confirmed, North-Star-/architecture-aligned plan or `none-this-cycle`; Stage 04 implements its slices. |
 | `DEADCODE` | 41 Dead code | `.engloop/deadcode/` | One high-certainty deletion proposal, its isolated proof, and explicit user decision. |
 | `DBG` | 09 Debugger walk-through | `.engloop/debugger-walkthroughs/` | Per-chunk breakpoint/trigger evidence plus explicit engineer attestation at an exact HEAD. |
 | `SIX` | 70 Six-pager create | `.engloop/six-pagers/` | Six-page narrative Markdown, generated DOCX, appendices, feedback, and rendered-page validation. |

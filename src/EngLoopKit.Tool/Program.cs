@@ -24,9 +24,14 @@ public static class Program
             return OperationsHookCommands.Execute(args[1..]);
         }
 
+        if (args.Length >= 1 && string.Equals(args[0], "refactor-profile", StringComparison.Ordinal))
+        {
+            return RefactorProfileCommands.Execute(args[1..]);
+        }
+
         if (args.Length < 2 || !string.Equals(args[0], "validate", StringComparison.Ordinal))
         {
-            Console.Error.WriteLine("Usage: engloopkit validate <root|config|commands|reachability|learnings|incident-context|postmortem-learning|repair-learning|installation|agent-entry|agent-surfaces> [options] | engloopkit repair-gate execute [options] | engloopkit readiness emit [options] | engloopkit overlay <install|register|verify|pack|unpack|remove|status>");
+            Console.Error.WriteLine("Usage: engloopkit validate <root|config|commands|reachability|learnings|incident-context|postmortem-learning|repair-learning|installation|agent-entry|agent-surfaces> [options] | engloopkit refactor-profile <bind|clear> | engloopkit repair-gate execute [options] | engloopkit readiness emit [options] | engloopkit overlay <install|register|verify|pack|unpack|remove|status>");
             return 1;
         }
 

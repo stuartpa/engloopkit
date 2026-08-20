@@ -26,9 +26,10 @@ public sealed class BundleConformanceTests
         "speckit.engloop.20-incident",
         "speckit.engloop.21-postmortem",
         "speckit.engloop.22-repair",
+        "speckit.engloop.23-happy-minute",
         "speckit.engloop.30-token-efficiency-analyze",
         "speckit.engloop.31-token-efficiency-implement",
-        "speckit.engloop.40-refactor",
+        "speckit.engloop.40-refactor-plan",
         "speckit.engloop.41-deadcode",
         "speckit.engloop.42-learnings-pyramid",
         "speckit.engloop.50-handoff-create",
@@ -48,20 +49,21 @@ public sealed class BundleConformanceTests
         using var catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "catalog.json")));
 
         Assert.Contains("id: \"engloop\"", extension);
-        Assert.Contains("version: \"1.14.0\"", extension);
+        Assert.Contains("version: \"1.15.0\"", extension);
         Assert.Contains("id: \"engloopkit\"", bundle);
-        Assert.Contains("version: \"1.14.0\"", bundle);
+        Assert.Contains("version: \"1.15.0\"", bundle);
         Assert.Equal("engloop", catalog.RootElement.GetProperty("extensions")[0].GetProperty("id").GetString());
-        Assert.Equal("1.14.0", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
-        Assert.Equal(25, catalog.RootElement.GetProperty("extensions")[0].GetProperty("provides").GetProperty("commands").GetInt32());
+        Assert.Equal("1.15.0", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
+        Assert.Equal(26, catalog.RootElement.GetProperty("extensions")[0].GetProperty("provides").GetProperty("commands").GetInt32());
 
         var changelog = File.ReadAllText(Path.Combine(Root, "CHANGELOG.md"));
+        Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.15\.0\] - 2026-08-20\r?$").Cast<Match>());
         Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.14\.0\] - 2026-08-17\r?$").Cast<Match>());
         Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.13\.0\] - 2026-08-05\r?$").Cast<Match>());
     }
 
     [Fact]
-    public void Extension_declaresExactOrderedTwentyFiveCommandSurface()
+    public void Extension_declaresExactOrderedTwentySixCommandSurface()
     {
         var manifest = File.ReadAllText(Path.Combine(ExtensionRoot, "extension.yml"));
         var ids = Regex.Matches(manifest, @"^\s*-\s*name:\s*""?(speckit\.engloop\.[\w-]+)""?", RegexOptions.Multiline)
@@ -179,11 +181,67 @@ public sealed class BundleConformanceTests
             Assert.True(File.Exists(Path.Combine(ExtensionRoot, "scripts", trustedScript)), trustedScript);
         }
 
+        var refactor = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.40-refactor-plan.md"));
+        foreach (var marker in new[]
+        {
+            "--scope <path-or-topic>", "--profile <point|bounded|deep>",
+            "DEFAULT-POINT", "Never infer", "No repository-wide survey",
+            "At most one read-only `Explore` survey", "At most two read-only `Explore` surveys",
+            "Stage 04 owns implementation", "MAI-Flash-1.1", "Luna/low-thinking",
+            "Tera/medium-thinking", "SOL/frontier max-thinking", "PM002/LEARN001–003",
+            "dotnet tool run engloopkit -- refactor-profile bind",
+            "dotnet tool run engloopkit -- refactor-profile clear",
+            "NORTHSTAR.md", ".engloop/architecture/ARCH*.md", "docs/component-pattern.md",
+            "work with the user", "Never edit product source", "vertical → component",
+            "Proposed component API/responsibility", "Stage 04 implementation slices"
+        }) Assert.Contains(marker, refactor, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("point` is intentionally optimized for inexpensive/fast models", refactor, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("deep` is appropriate", refactor, StringComparison.OrdinalIgnoreCase);
+
+        var generatedRefactor = File.ReadAllText(Path.Combine(Root, ".github", "agents", "speckit.engloop.40-refactor-plan.agent.md"));
+        Assert.Contains("--profile <point|bounded|deep>", generatedRefactor, StringComparison.Ordinal);
+        Assert.Contains("Runtime model", generatedRefactor, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("DEFAULT-POINT", generatedRefactor, StringComparison.Ordinal);
+
+        var implementationRefactor = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.04-refactor.md"));
+        foreach (var marker in new[]
+        {
+            "Implementation-only boundary", "accepted SPEC task slice", "REFACT plan/slice",
+            "does not choose among refactor candidates", "North Star", "architecture decisions",
+            "/speckit.engloop.40-refactor-plan", "Do not bundle adjacent cleanup"
+        }) Assert.Contains(marker, implementationRefactor, StringComparison.OrdinalIgnoreCase);
+
+        var refactTemplate = File.ReadAllText(Path.Combine(ExtensionRoot, "templates", "REFACT-template.md"));
+        foreach (var marker in new[]
+        {
+            "Compute profile", "Profile source", "Declared scope", "Scope class",
+            "UNAVAILABLE-NOT-INFERRED", "Implementation envelope", "Escalation decision",
+            "Ordered implementation slices"
+        }) Assert.Contains(marker, refactTemplate, StringComparison.OrdinalIgnoreCase);
+
         var handoff = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.50-handoff-create.md"));
         Assert.Contains("HANDOFF001", handoff, StringComparison.Ordinal);
         Assert.Contains("another chat window or engineering team", handoff, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("HANDOFF<NNN>-<brief-kebab-description>.md", handoff, StringComparison.Ordinal);
         Assert.True(File.Exists(Path.Combine(ExtensionRoot, "templates", "HANDOFF-template.md")));
+
+        var happy = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.23-happy-minute.md"));
+        foreach (var marker in new[]
+        {
+            "HAPPY001-everything-worked-perfectly.md", "user's description is enough",
+            "Give the person a break", "LIVE/DEPLOYED", "LOCAL-CONTEXT",
+            "NOT-PROVIDED", "do not auto-discover parent/sibling repositories",
+            "Do not require readiness", "Do not change source", "gratitude"
+        }) Assert.Contains(marker, happy, StringComparison.OrdinalIgnoreCase);
+        Assert.True(File.Exists(Path.Combine(ExtensionRoot, "templates", "HAPPY-template.md")));
+        var happyTemplate = File.ReadAllText(Path.Combine(ExtensionRoot, "templates", "HAPPY-template.md"));
+        Assert.Contains("Stage 42 candidate:** NOT-YET", happyTemplate, StringComparison.Ordinal);
+        Assert.Contains("LOCAL-CONTEXT", happyTemplate, StringComparison.Ordinal);
+
+        var learnings = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.42-learnings-pyramid.md"));
+        Assert.Contains("Positive provenance from Happy Minutes", learnings, StringComparison.Ordinal);
+        Assert.Contains("HAPPY<NNN>", learnings, StringComparison.Ordinal);
+        Assert.Contains("NO` or `NOT-YET", learnings, StringComparison.Ordinal);
 
         var deadcode = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.41-deadcode.md"));
         foreach (var marker in new[]

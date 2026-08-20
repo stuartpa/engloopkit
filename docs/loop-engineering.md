@@ -30,7 +30,7 @@ prompt.
 | **Goal** | A *verifiable* end state — "all tests pass", "bundle < 200KB" — not "make it better". | "95%+ line coverage then functional coverage", "all P1 incidents mitigated", "zero architecture-drift violations". |
 | **Actions** | The tools the loop may use — read/write files, run commands, call MCP, spawn sub-agents. | Spec Kit commands, **SEK/Z3 exploration**, the test runner, coverage tooling, git, architecture-guard, tinyspec. |
 | **Verification** | How the loop knows to stop — tests + exit codes, a supervisor, a diff review, CI. | Deterministic gates: test pass/fail, coverage thresholds, **Z3 exhaustiveness**, CI, `architecture-verify`. |
-| **Memory** | What persists across iterations so work isn't repeated or lost. | Root North Star/Learnings plus `SPEC/SCAF/ARCH/MODEL/CORD/COV/IN/PM/REFACT/POM` records — see [standards.md](standards.md). |
+| **Memory** | What persists across iterations so work isn't repeated or lost. | Root North Star/Learnings plus `SPEC/SCAF/ARCH/MODEL/CORD/COV/IN/PM/HAPPY/REFACT/DEADCODE/HANDOFF` records — see [standards.md](standards.md). |
 
 ## The agentic cycle
 

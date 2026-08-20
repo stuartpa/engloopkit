@@ -4,11 +4,11 @@
     {
       "name": "EngLoopKit",
       "id": "engloop",
-      "description": "Ordered evidence-gated delivery, operations learning, handoffs, verified ELK/SEK upgrades, stewardship, publication, and private overlay workflow for Spec Kit.",
+      "description": "Ordered evidence-gated delivery, operations learning, positive history, handoffs, verified ELK/SEK upgrades, stewardship, publication, and private overlay workflow for Spec Kit.",
       "author": "stuartpa",
-      "version": "1.14.0",
-      "download_url": "https://github.com/stuartpa/engloopkit/releases/download/v1.14.0/engloopkit-extension-1.14.0.zip",
-      "sha256": "e01fec4a1366c9f7fad76723cc4754544e9299ecf598fe6e13a7d4c521710385",
+      "version": "1.15.0",
+      "download_url": "https://github.com/stuartpa/engloopkit/releases/download/v1.15.0/engloopkit-extension-1.15.0.zip",
+      "sha256": "c2af37c4bbba73cd9e2fcb66424d70cfc6d92697e60382c56878fb9fe73341de",
       "repository": "https://github.com/stuartpa/engloopkit",
       "homepage": "https://github.com/stuartpa/engloopkit",
       "documentation": "https://github.com/stuartpa/engloopkit/blob/main/README.md",
@@ -30,7 +30,7 @@
         ]
       },
       "provides": {
-        "commands": 25,
+        "commands": 26,
         "hooks": 0
       },
       "tags": [
@@ -38,6 +38,7 @@
         "spec-driven",
         "model-checking",
         "operations",
+        "positive-history",
         "refactoring"
       ],
       "verified": false

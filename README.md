@@ -12,7 +12,7 @@ explicit trigger, goal, actions, verification, and durable memory.
 > on the **1.x** maturity runway for the foreseeable future: this ordered release is
 > **v1.7.0** established the ordered baseline; review, handoff memory, and complete
 > reusable debugger walkthroughs, generic readiness handoff, presentation generation, and
-> no-ID overlay installation, advisory debugger walkthroughs, publication/token-efficiency agents, and direction/pyramid-bound operations learning ship as **v1.14.0**. No v2.0 release is implied.
+> no-ID overlay installation, advisory debugger walkthroughs, publication/token-efficiency agents, direction/pyramid-bound operations learning, positive history, and distinct refactor planning/implementation agents ship as **v1.15.0**. No v2.0 release is implied.
 
 The v1.8 workflow separates delivery/readiness, operations, stewardship, and local
 overlay utility work into
@@ -32,7 +32,7 @@ A handoff is review-first (`send: false`), not a state transition.
 - **Components are generic:** non-domain runtime/BCL helpers live under language-appropriate
   component boundaries; the vertical composes them.
 
-## The 25 commands
+## The 26 commands
 
 The released extension ID is **`engloop`**; product, bundle, and tool identity remain
 **`engloopkit`**. Lexical picker order is the normal workflow order.
@@ -42,7 +42,7 @@ The released extension ID is **`engloop`**; product, bundle, and tool identity r
 | Delivery | `/speckit.engloop.01-northstar` | Create/evolve the one root living direction. |
 | Delivery | `/speckit.engloop.02-scaffold` | Create a thin working slice and prove the test runway. |
 | Delivery | `/speckit.engloop.03-architect` | Derive/govern long-lived architecture and component boundary. |
-| Delivery | `/speckit.engloop.04-refactor` | Governed implementation/refactor to final form. |
+| Delivery | `/speckit.engloop.04-refactor` | Implement one accepted SPEC, REFACT plan slice, or repair scope without re-planning it. |
 | Delivery | `/speckit.engloop.05-model` | Define independent stateful vertical behavior and rejection semantics. |
 | Delivery | `/speckit.engloop.06-explore` | Explore bounded behavior and regenerate functional tests. |
 | Delivery | `/speckit.engloop.07-validate` | Run generated-only functional validation and reachability. |
@@ -52,9 +52,10 @@ The released extension ID is **`engloop`**; product, bundle, and tool identity r
 | Operations | `/speckit.engloop.20-incident` | Stabilize a real disruption using mitigations under current North Star boundaries and immediately relevant learning cues. |
 | Operations | `/speckit.engloop.21-postmortem` | Analyze incidents against current direction/pyramid rules; update provenance/retrieval or record explicit no-change; emit rule-bound RPIs. |
 | Operations | `/speckit.engloop.22-repair` | Route/close permanent repair with exact Rule IDs, executable-gate evidence, Stage 04/applicable 05–08 gates, and current readiness. |
+| Positive history | `/speckit.engloop.23-happy-minute` | Celebrate one wonderful outcome and preserve readily available live/runtime/repository context in a `HAPPY<NNN>-<description>.md` record. |
 | Token efficiency | `/speckit.engloop.30-token-efficiency-analyze` | Read-only analysis of VS Code Copilot chat speed/context waste with compact Chronicle evidence and ranked repairs. |
 | Token efficiency | `/speckit.engloop.31-token-efficiency-implement` | Implement only explicitly approved efficiency repairs with toolchain preflight and focused validation. |
-| Stewardship | `/speckit.engloop.40-refactor` | Select one evidence-backed REFACT decision or record no work. |
+| Stewardship | `/speckit.engloop.40-refactor-plan` | Work with the user to plan one North-Star- and architecture-aligned refactor; emphasize extracting generic/non-vertical code into components and make no product changes. |
 | Stewardship | `/speckit.engloop.41-deadcode` | Propose one proven high-certainty DEADCODE candidate; remove it only after explicit user approval. |
 | Stewardship | `/speckit.engloop.42-learnings-pyramid` | Condense source learnings into validated cards and retrieval evidence. |
 | Continuation | `/speckit.engloop.50-handoff-create` | Create a numbered evidence-backed handoff for another chat window or engineering team. |
@@ -87,10 +88,10 @@ never authorizes operations.
 
 ## Install a release
 
-ELK v1.14.0 requires the **.NET 10 SDK/runtime**. The repository pins SDK `10.0.303`
+ELK v1.15.0 requires the **.NET 10 SDK/runtime**. The repository pins SDK `10.0.303`
 and uses `EngLoopKit.slnx` as its only solution graph.
 
-A released v1.14.0 artifact set contains three immutable pieces:
+A released v1.15.0 artifact set contains three immutable pieces:
 
 1. `engloopkit.<version>.nupkg` — the root-local .NET tool (`engloopkit`);
 2. `engloopkit-extension-<version>.zip` — the ordered Spec Kit extension (`engloop`);
@@ -102,10 +103,10 @@ not point agent hooks at a sibling build output:
 ```powershell
 # From the consumer root, after downloading the released nupkg to <release-dir>.
 dotnet new tool-manifest --force
-dotnet tool install engloopkit --version 1.14.0 --add-source <release-dir>
+dotnet tool install engloopkit --version 1.15.0 --add-source <release-dir>
 
 # Install the exact released ordered extension archive.
-specify extension add engloop --from <release-dir>/engloopkit-extension-1.14.0.zip
+specify extension add engloop --from <release-dir>/engloopkit-extension-1.15.0.zip
 ```
 
 The extension’s `SessionStart` hook and command body both run:
@@ -161,16 +162,16 @@ explicit at install time and does **not** modify tracked `.gitignore` or product
 
 ```powershell
 # Do this in a private bootstrap directory OUTSIDE <git-root>.
-$bootstrap = Join-Path $env:LOCALAPPDATA 'EngLoopKit\bootstrap\1.14.0'
+$bootstrap = Join-Path $env:LOCALAPPDATA 'EngLoopKit\bootstrap\1.15.0'
 New-Item -ItemType Directory -Force $bootstrap | Out-Null
 Push-Location $bootstrap
 dotnet new tool-manifest --force
-dotnet tool install engloopkit --version 1.14.0 --add-source <release-dir>
+dotnet tool install engloopkit --version 1.15.0 --add-source <release-dir>
 
 # <release-dir> contains the downloaded .nupkg and extension .zip.
 dotnet tool run engloopkit -- overlay install --mode overlay --root <git-root> `
-  --tool-version 1.14.0 --tool-nupkg <release-dir>\engloopkit.1.14.0.nupkg `
-  --extension-archive <release-dir>\engloopkit-extension-1.14.0.zip
+  --tool-version 1.15.0 --tool-nupkg <release-dir>\engloopkit.1.15.0.nupkg `
+  --extension-archive <release-dir>\engloopkit-extension-1.15.0.zip
 Pop-Location
 ```
 

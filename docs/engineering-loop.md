@@ -2,9 +2,9 @@
 
 **Workflow generation:** Ordered EngLoop v2.
 **Product versioning:** EngLoopKit remains on the **1.x** line; the ordered workflow
-ships in v1.7.0 and reusable debugger/readiness/publication/token-efficiency plus direction/pyramid-bound operations support in v1.14.0. “v2” is not a v2.0 product release.
+ships in v1.7.0 and the current positive-history plus distinct refactor-plan/refactor workflow in v1.15.0. “v2” is not a v2.0 product release.
 
-EngLoopKit has three independently invoked lifecycle lanes plus one local utility.
+EngLoopKit has independently invoked lifecycle, positive-history, and local utility lanes.
 Command ordinals give the picker a
 predictable order; they do **not** schedule work automatically. Every accepted stage is
 an evidence-gated transition, not a narrated claim.
@@ -16,7 +16,7 @@ an evidence-gated transition, not a narrated claim.
 | 01 | `speckit.engloop.01-northstar` | One living root `NORTHSTAR.md`; do not create numbered direction snapshots. |
 | 02 | `speckit.engloop.02-scaffold` | Thin real-boundary slice plus a proven test runway (`SCAFxxx`): same command pass → controlled named failure → restoration pass. |
 | 03 | `speckit.engloop.03-architect` | Architecture and component/vertical boundary evidence (`ARCHxxx`). |
-| 04 | `speckit.engloop.04-refactor` | Governed specification/plan/tasks/implementation under accepted architecture. |
+| 04 | `speckit.engloop.04-refactor` | Implement one accepted SPEC/REFACT/repair slice under binding North Star and architecture guidance; do not re-plan. |
 | 05 | `speckit.engloop.05-model` | Independent behavior model with legal and rejection semantics (`MODELxxx`). |
 | 06 | `speckit.engloop.06-explore` | Bounded CORD exploration and deterministic generated suite (`CORDxxx`). |
 | 07 | `speckit.engloop.07-validate` | Fresh generated-suite-only functional validation and reachability (`COVxxx`); no readiness claim. |
@@ -40,6 +40,23 @@ Use this lane whenever a chat shows repeated polling, oversized output, tool gue
 missing checkpoints, repeated context discovery, or slow serial work. Agent 30 hands off
 with `send: false`; Agent 31 requires the user to approve stable repair IDs again.
 
+## Refactor compute profiles: 40
+
+`/speckit.engloop.40-refactor-plan --scope <path-or-topic>` defaults to `--profile point`.
+This intentionally supports frequent small component extractions with inexpensive/fast
+models. Explicit `bounded` permits one subsystem; explicit `deep` permits repository-wide
+analysis and one phased campaign for deliberate frontier/high-thinking runs. VS Code does
+not provide authoritative selected-model, pricing, token-budget, or thinking-level metadata
+to the agent/hook contract, so Stage 40 never guesses or silently promotes the profile.
+Stage 40 works with the user to read/cite the current North Star and applicable architecture,
+classify vertical versus component responsibilities, and record one confirmed REFACT plan.
+Stage 04 performs only the accepted implementation slice.
+
+Typical mapping: MAI-Flash-1.1/Luna or low thinking → explicit/default `point`; Tera or
+medium thinking → explicit `bounded`; deliberately selected SOL/frontier max thinking →
+explicit `deep`. This is operator guidance, not runtime detection, and a profile stays
+bound for the session even if the selected model changes.
+
 ## Continuation, local utilities, and publications: 50, 60–61, 70–72, 80
 
 | Stage | Command | Gate and durable output |
@@ -52,7 +69,7 @@ with `send: false`; Agent 31 requires the user to approve stable repair IDs agai
 | 72 | `speckit.engloop.72-academic-paper-create` | Create a rigorous systems research paper with citations, figures, reproducible evaluation, and validated PDF. |
 | 80 | `speckit.engloop.80-upgrade-elk` | Upgrade root-local ELK plus its pinned SEK dependency to the latest verified release, or report already current. |
 
-## Operations: 20–22
+## Operations and positive history: 20–23
 
 Operations is not created merely because a delivery lane completed.
 
@@ -68,12 +85,18 @@ Operations is not created merely because a delivery lane completed.
    carried into immutable route acceptance. A separate close record requires the versioned
    tool's hashed process receipt for that gate, source, immutable release, exact target
    verification, and current readiness.
+4. **23 Happy Minute** needs only the user's description of what worked wonderfully.
+   It creates one gratitude-first `HAPPY<NNN>-<description>.md`, captures readily
+   available live/runtime and explicitly supplied repository context, labels unknowns
+   `NOT-PROVIDED`, and never blocks on provenance, cleanliness, readiness, or causal proof.
+   Its optional review-first Stage 42 handoff may preserve reusable positive learnings.
 
 ## Stewardship: 40–42
 
-- **40 Refactor** requires explicit spare capacity. It records exactly one REFACT
-  decision or `none-this-cycle`; a selected direction/architecture change returns to
-  01 and/or 03 before 04.
+- **40 Refactor Plan** requires explicit spare capacity. It works with the user to record
+   exactly one architecture-aligned REFACT plan or `none-this-cycle`, emphasizing
+   extraction of generic/non-vertical code into components. A selected direction or
+   architecture change returns to 01 and/or 03 before 04 implementation.
 - **41 Dead code** records the single highest-certainty DEADCODE proposal only after
    symbol, dynamic-use, public-contract, history, and isolated-deletion proof. It changes
    no current source before explicit candidate-specific approval. Rejection is recorded

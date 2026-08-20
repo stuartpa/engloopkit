@@ -20,7 +20,7 @@ public sealed class CommandSurfaceTests
     }
 
     [Fact]
-    public void HandoffGraph_hasExact29Edges_withDeadCodeAndTerminalAgents()
+    public void HandoffGraph_hasExact30Edges_withHappyMinuteAndDeadCode()
     {
         var edges = 0;
 
@@ -71,7 +71,7 @@ public sealed class CommandSurfaceTests
             {
                 Assert.Contains("speckit.engloop.09-debugger-walk-thru", localEdges);
                 Assert.DoesNotContain("speckit.engloop.20-incident", localEdges);
-                Assert.DoesNotContain("speckit.engloop.40-refactor", localEdges);
+                Assert.DoesNotContain("speckit.engloop.40-refactor-plan", localEdges);
                 Assert.DoesNotContain("speckit.engloop.41-deadcode", localEdges);
                 Assert.DoesNotContain("speckit.engloop.42-learnings-pyramid", localEdges);
             }
@@ -86,14 +86,19 @@ public sealed class CommandSurfaceTests
                 Assert.Equal(["speckit.engloop.31-token-efficiency-implement"], localEdges);
             }
 
-            if (id == "speckit.engloop.40-refactor")
+            if (id == "speckit.engloop.40-refactor-plan")
             {
                 Assert.Equal("speckit.engloop.41-deadcode", localEdges[^1]);
             }
 
+            if (id == "speckit.engloop.23-happy-minute")
+            {
+                Assert.Equal(["speckit.engloop.42-learnings-pyramid"], localEdges);
+            }
+
         }
 
-        Assert.Equal(29, edges);
+        Assert.Equal(30, edges);
     }
 
     [Fact]

@@ -10,21 +10,20 @@ public sealed record LearningsValidationResult(bool Passed, IReadOnlyList<string
 
 public static class LearningsPyramidPolicy
 {
-    private static readonly Regex SourceIdRegex = new(@"PM\d{3}/LEARN\d{3}", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex SourceIdRegex = new(@"(?:PM\d{3}/LEARN\d{3}|HAPPY\d{3})", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex PostmortemIdRegex = new(@"^PM\d{3}", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex HappyIdRegex = new(@"^HAPPY\d{3}", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex HappyAcceptedRegex = new(@"(?m)^- \*\*Stage 42 candidate:\*\*\s*`?YES`?\s*$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex LocalLearningIdRegex = new(@"(?<!/)\bLEARN\d{3}\b", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-    public static IReadOnlyList<LearningSource> ExtractSources(string postmortemsRoot)
+    public static IReadOnlyList<LearningSource> ExtractSources(string postmortemsRoot, string? happyMinutesRoot = null)
     {
-        if (!Directory.Exists(postmortemsRoot))
-        {
-            return [];
-        }
-
         var results = new List<LearningSource>();
-        var files = Directory.GetFiles(postmortemsRoot, "PM*.md", SearchOption.TopDirectoryOnly)
+        var files = Directory.Exists(postmortemsRoot)
+            ? Directory.GetFiles(postmortemsRoot, "PM*.md", SearchOption.TopDirectoryOnly)
             .OrderBy(path => path, StringComparer.Ordinal)
-            .ToArray();
+            .ToArray()
+            : [];
 
         foreach (var file in files)
         {
@@ -34,6 +33,18 @@ public static class LearningsPyramidPolicy
             foreach (var id in ExtractSourceIds(postmortemId, text))
             {
                 results.Add(new LearningSource(id, file, Path.GetFileName(file)));
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(happyMinutesRoot) && Directory.Exists(happyMinutesRoot))
+        {
+            foreach (var file in Directory.GetFiles(happyMinutesRoot, "HAPPY*.md", SearchOption.TopDirectoryOnly)
+                         .OrderBy(path => path, StringComparer.Ordinal))
+            {
+                var text = File.ReadAllText(file);
+                if (!HappyAcceptedRegex.IsMatch(text)) continue;
+                var happyId = HappyIdRegex.Match(Path.GetFileName(file)).Value;
+                if (happyId.Length > 0) results.Add(new LearningSource(happyId, file, Path.GetFileName(file)));
             }
         }
 
