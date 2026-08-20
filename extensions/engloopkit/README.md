@@ -10,7 +10,7 @@ authoritative solution graph; SEK v0.1.3 is a native .NET 10 external dependency
 
 > **Versioning clarification:** “Ordered EngLoop v2” is the *workflow generation /
 > specification name*, not a SemVer major release. The product remains on the **1.x**
-> maturity runway: this package is **v1.15.0**; “v2” remains workflow terminology only,
+> maturity runway: this package is **v1.15.1**; “v2” remains workflow terminology only,
 > not v2.0.
 
 ## Ordered command lanes
@@ -40,7 +40,7 @@ Install the released extension archive through Spec Kit after installing the mat
 root-local `engloopkit` .NET tool manifest:
 
 ```powershell
-specify extension add engloop --from <release-dir>/engloopkit-extension-1.15.0.zip
+specify extension add engloop --from <release-dir>/engloopkit-extension-1.15.1.zip
 ```
 
 The selected root must have exactly one tracked `.engloop/` root, root `NORTHSTAR.md`,

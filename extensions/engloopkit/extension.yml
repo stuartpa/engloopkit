@@ -5,7 +5,7 @@ extension:
   # the ordered speckit.engloop picker namespace.
   id: "engloop"
   name: "EngLoopKit"
-  version: "1.15.0"
+  version: "1.15.1"
   description: "Ordered evidence-gated delivery, operations learning, positive history, handoffs, verified ELK/SEK upgrades, stewardship, publication, and private overlay workflow for Spec Kit."
   author: "stuartpa"
   repository: "https://github.com/stuartpa/engloopkit"
@@ -35,7 +35,7 @@ provides:
       description: "Derive and govern architecture from current direction and scaffold evidence."
     - name: "speckit.engloop.04-refactor"
       file: "commands/speckit.engloop.04-refactor.md"
-      description: "Execute governed implementation/refactor work under accepted architecture."
+      description: "Implement one accepted SPEC, REFACT plan, or repair slice under binding North Star and architecture guidance; do not re-plan."
     - name: "speckit.engloop.05-model"
       file: "commands/speckit.engloop.05-model.md"
       description: "Author and validate the independent behavior model including rejection semantics."

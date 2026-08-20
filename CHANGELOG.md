@@ -3,6 +3,14 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.1] - 2026-08-20
+
+### Fixed
+
+- Clarified the `/speckit.engloop.04-refactor` picker description so installed users see
+  the same implementation-only boundary enforced by its agent: accepted SPEC/REFACT/repair
+  slice, binding North Star/architecture guidance, and no re-planning.
+
 ## [1.15.0] - 2026-08-20
 
 ### Changed

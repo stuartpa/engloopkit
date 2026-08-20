@@ -1,11 +1,11 @@
 # COV003 Ordered EngLoop v2 Readiness
 
-- Captured: 2026-08-20T10:56:01.5480483Z
+- Captured: 2026-08-20T13:13:20.8402352Z
 - Verdict: PASS
 - Functional generated suite: True
 - Direct/property suite: True
 - Architecture/installation validators: True
-- Cobertura report: .engloop\out\readiness-coverage\overlay\3218e1fb-1c51-4418-84f4-910310246305\coverage.cobertura.xml
+- Cobertura report: .engloop\out\readiness-coverage\overlay\22cc5670-a965-45c5-8785-22c9e7ff672e\coverage.cobertura.xml
 
 ## Readiness inventory
 

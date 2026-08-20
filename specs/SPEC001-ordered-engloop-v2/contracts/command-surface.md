@@ -1,7 +1,7 @@
 # Contract: Ordered v2 Command Surface
 
 - **Features:** SPEC001 ordered workflow + SPEC002 overlay utilities + positive history + numbered continuation handoffs + verified self-upgrade
-- **Contract version:** 1.15.0
+- **Contract version:** 1.15.1
 - **Owner:** first-party extension `engloopkit`
 
 ## Identity
@@ -401,9 +401,9 @@ it does not install a development source as an alternate success path.
 
 ## Version rule
 
-The current command-surface target is 1.15.0. “Ordered EngLoop v2” identifies this workflow
+The current command-surface target is 1.15.1. “Ordered EngLoop v2” identifies this workflow
 generation only and provides no authority for a 2.x product release. Bundle, extension,
-tool, catalog, archive names, and release notes MUST agree on 1.15.0. Catalog SHA-256
+tool, catalog, archive names, and release notes MUST agree on 1.15.1. Catalog SHA-256
 values are computed from final immutable artifacts. Rebuilding different bits under
-1.15.0 is forbidden. Any 2.x value is a release-blocking error unless a later explicit
+1.15.1 is forbidden. Any 2.x value is a release-blocking error unless a later explicit
 maintainer decision supersedes this contract.
