@@ -5,7 +5,7 @@ extension:
   # the ordered speckit.engloop picker namespace.
   id: "engloop"
   name: "EngLoopKit"
-  version: "1.15.1"
+  version: "1.15.2"
   description: "Ordered evidence-gated delivery, operations learning, positive history, handoffs, verified ELK/SEK upgrades, stewardship, publication, and private overlay workflow for Spec Kit."
   author: "stuartpa"
   repository: "https://github.com/stuartpa/engloopkit"

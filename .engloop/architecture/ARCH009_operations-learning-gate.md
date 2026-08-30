@@ -1,6 +1,7 @@
 # ARCH009: Direction- and pyramid-bound operations learning gate
 
 - **Created:** 2026-08-15
+- **Amended:** 2026-08-30
 - **Status:** ACCEPTED
 - **Governs:** Stages 20 Incident, 21 Postmortem, 22 Repair, PM/RPI templates,
   operation-agent completion hooks, and repair acceptance evidence
@@ -38,13 +39,26 @@ learnings cannot silently disappear from provenance.
 
 ## Completion enforcement
 
-Agent-scoped hooks execute only the root-local versioned tool. The tool binds explicit
-PM/repair paths, identifiers, session hash, HEAD, argument hash, local manifest hash,
-executing assembly hash, and package version into ignored session gates. `Stop` revalidates
-those identities before invoking:
+Agent-scoped hooks execute only the root-local versioned tool. When Stage 20 receives a
+resolvable explicit incident path, and for every Stage 21/22 operation, the tool binds
+explicit artifact paths, identifiers, session hash, HEAD, argument hash, local manifest
+hash, executing assembly hash, and package version into ignored session gates. `Stop`
+revalidates those identities before invoking:
 
+- `validate incident-context`
 - `validate postmortem-learning`
 - `validate repair-learning`
+
+The Stage 20 lifecycle hook is a context-capture aid, not the incident-completion
+authority. Any incident-hook setup, parsing, state, storage, identity, or validation
+failure leaves chat available with `continue: true` and a structured
+`learning-context-deferred` diagnostic. The response names the phase, command, diagnostic,
+expected source, ELK version, and remediation. It does not create, accept, substitute, or
+delete a gate after failure. A deferred hook result cannot support a stabilization claim;
+the incident artifact must still pass the authoritative `incident-context` validator.
+This keeps mitigation available while applying `PM001/LEARN001` and `PM001/LEARN003` at
+the actual completion boundary rather than treating lifecycle metadata collection as the
+readiness verdict.
 
 The validators fail closed on missing/stale North Star or Learnings hashes, absent rule
 dispositions, uncovered source provenance, missing historical coverage, required retrieval
@@ -61,6 +75,10 @@ checks, not prose claims supplied by the agent.
 
 ## Consequences
 
+- Missing or malformed Stage 20 hook context can reduce learning capture but cannot make
+  the recovery agent unavailable. The diagnostic is explicit; there is no silent fallback.
+- Stage 21/22 scope and completion gates remain blocking because they accept durable
+  retrospective or repair evidence rather than performing urgent stabilization.
 - Stage 41 remains useful for wider backlog condensation and sampled retrieval refresh,
   but it no longer excuses Stage 21 from considering/updating the living pyramid now.
 - Repairs carry the rule they implement into specification and executable acceptance.

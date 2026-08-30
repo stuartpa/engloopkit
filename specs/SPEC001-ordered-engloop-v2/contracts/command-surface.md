@@ -1,7 +1,7 @@
 # Contract: Ordered v2 Command Surface
 
 - **Features:** SPEC001 ordered workflow + SPEC002 overlay utilities + positive history + numbered continuation handoffs + verified self-upgrade
-- **Contract version:** 1.15.1
+- **Contract version:** 1.15.2
 - **Owner:** first-party extension `engloopkit`
 
 ## Identity
@@ -233,6 +233,15 @@ evidence. Hook-enabled focused workspaces provide the strict mechanical pre-acti
 boundary; neither hook nor body observation alone is sufficient stage-completion
 evidence.
 
+Stage 20 additionally uses agent-scoped lifecycle hooks to bind incident context when it
+is available. Those hooks are not incident-completion authorities and MUST never terminate
+the recovery conversation: any missing/malformed option, input/parser failure, unavailable
+state/storage, stale identity, or failed incident-context hook validation returns
+`continue: true` with a structured `learning-context-deferred` warning. Failure creates no
+alternate identity or accepted gate and deletes no failed gate. The standalone
+`validate incident-context` operation remains fail closed and is required before a
+stabilization claim can rely on that artifact.
+
 Stages 21 and 22 additionally require agent-scoped `UserPromptSubmit` and `Stop` guards.
 The prompt hook binds explicit PM/RPI/Rule-ID/acceptance paths into ignored session state;
 the Stop hook invokes `validate postmortem-learning` or `validate repair-learning` and
@@ -401,9 +410,9 @@ it does not install a development source as an alternate success path.
 
 ## Version rule
 
-The current command-surface target is 1.15.1. “Ordered EngLoop v2” identifies this workflow
+The current command-surface target is 1.15.2. “Ordered EngLoop v2” identifies this workflow
 generation only and provides no authority for a 2.x product release. Bundle, extension,
-tool, catalog, archive names, and release notes MUST agree on 1.15.1. Catalog SHA-256
+tool, catalog, archive names, and release notes MUST agree on 1.15.2. Catalog SHA-256
 values are computed from final immutable artifacts. Rebuilding different bits under
-1.15.1 is forbidden. Any 2.x value is a release-blocking error unless a later explicit
+1.15.2 is forbidden. Any 2.x value is a release-blocking error unless a later explicit
 maintainer decision supersedes this contract.

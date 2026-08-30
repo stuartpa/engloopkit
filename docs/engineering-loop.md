@@ -2,7 +2,7 @@
 
 **Workflow generation:** Ordered EngLoop v2.
 **Product versioning:** EngLoopKit remains on the **1.x** line; the ordered workflow
-ships in v1.7.0 and the current positive-history plus distinct refactor-plan/refactor workflow in v1.15.1. “v2” is not a v2.0 product release.
+ships in v1.7.0 and the current positive-history plus distinct refactor-plan/refactor workflow in v1.15.2. “v2” is not a v2.0 product release.
 
 EngLoopKit has independently invoked lifecycle, positive-history, and local utility lanes.
 Command ordinals give the picker a
@@ -76,6 +76,8 @@ Operations is not created merely because a delivery lane completed.
 1. **20 Incident** requires an actual operating disruption and a current Stage 08 PASS.
    It reads current North Star boundaries, consults only immediately relevant learning
    cues when safe, and captures mitigations/stabilization only; it does not close a repair.
+   Hook context failures emit a structured non-blocking deferral so recovery remains
+   available; the standalone incident-context validator still gates stabilization evidence.
 2. **21 Post-mortem** requires a selected non-empty stabilized incident set. It emits
    PM/LEARN/RPI evidence only after current North Star/Learnings hashes, rule
    dispositions, pyramid update/no-change, source-card/history coverage, retrieval impact,

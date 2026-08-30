@@ -3,6 +3,18 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.2] - 2026-08-30
+
+### Fixed
+
+- Kept Stage 20 incident chats available when an operations-learning hook cannot resolve
+  `--incident` or encounters malformed input, unavailable state/storage, identity drift,
+  or failed incident-context validation. Incident hook failures now return a structured
+  `learning-context-deferred` warning with `continue: true` instead of terminating chat.
+- Preserved the evidence boundary: failed incident gates are neither accepted nor deleted,
+  the authoritative `incident-context` validator still rejects unsupported stabilization
+  claims, and Stage 21/22 learning and repair completion gates remain fail closed.
+
 ## [1.15.1] - 2026-08-20
 
 ### Fixed

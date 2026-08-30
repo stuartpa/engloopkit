@@ -52,9 +52,15 @@ Run before any action:
 
 `dotnet tool run engloopkit validate agent-entry --stage speckit.engloop.20-incident --root .`
 
-Require `OPERATIONS_LEARNING_GUARD_ACTIVE mode=incident` and
+Normally require `OPERATIONS_LEARNING_GUARD_ACTIVE mode=incident` and
 `OPERATIONS_LEARNING_SCOPE_ACTIVE mode=incident`. The prompt names the incident artifact
-with `--incident`; the Stop hook runs `validate incident-context --allow-deferred true`.
+with `--incident`; a bound Stop hook runs `validate incident-context --allow-deferred true`.
+If any incident hook instead reports `OPERATIONS_LEARNING_CONTEXT_DEFERRED` with status
+`learning-context-deferred`, keep mitigating immediately. Record the diagnostic, do not
+treat deferred context as validated context, and resolve or create the incident artifact
+without delaying urgent stabilization. Before claiming stabilization, run the authoritative
+`validate incident-context --allow-deferred true` command against that artifact. Missing,
+malformed, or unavailable learning metadata never disables the recovery conversation.
 
 ## Direction and learning context during stabilization
 

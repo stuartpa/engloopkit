@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$Root = (Join-Path $PSScriptRoot '..'),
-    [string]$Version = '1.15.1',
+    [string]$Version = '1.15.2',
     [string]$OutputPath = '',
     [switch]$SkipDisposableFixture
 )
@@ -350,6 +350,13 @@ try {
                 foreach ($marker in @("operations-hook start $mode", "operations-hook initialize $mode", "operations-hook stop $mode", 'NORTHSTAR.md', 'LEARNINGS.md')) {
                     if ($installedBody -notmatch [regex]::Escape($marker)) {
                         $mismatches.Add(@{ issue = 'installed-operations-learning-marker-missing'; id = $id; marker = $marker }) | Out-Null
+                    }
+                }
+                if ($mode -eq 'incident') {
+                    foreach ($marker in @('OPERATIONS_LEARNING_CONTEXT_DEFERRED', 'learning-context-deferred', 'validate incident-context --allow-deferred true')) {
+                        if ($installedBody -notmatch [regex]::Escape($marker)) {
+                            $mismatches.Add(@{ issue = 'installed-incident-availability-marker-missing'; id = $id; marker = $marker }) | Out-Null
+                        }
                     }
                 }
                 if ($installedBody -match 'OperationsLearning.*\.ps1') {

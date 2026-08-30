@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using EngLoopKit.Core;
 using EngLoopKit.Tool;
 using Xunit;
 
@@ -147,6 +148,36 @@ public sealed class OperationsLearningHookTests : IDisposable
     }
 
     [Fact]
+    public void IncidentHook_withoutIncidentOption_defersContextWithoutStoppingMitigation()
+    {
+        var repo = CreateRepository();
+        const string session = "incident-without-metadata";
+
+        var initialized = RunHook(repo, "incident", "initialize", "The production queue is blocked; restore service now.", session);
+
+        Assert.True(Continues(initialized), initialized.Output);
+        using (var json = JsonDocument.Parse(initialized.Output))
+        {
+            Assert.Equal(JsonValueKind.Null, json.RootElement.GetProperty("stopReason").ValueKind);
+            var diagnostic = json.RootElement.GetProperty("systemMessage").GetString();
+            Assert.Contains("OPERATIONS_LEARNING_CONTEXT_DEFERRED", diagnostic);
+            Assert.Contains("\"status\":\"learning-context-deferred\"", diagnostic);
+            Assert.Contains("\"phase\":\"initialize\"", diagnostic);
+            Assert.Contains("\"command\":\"operations-hook initialize incident\"", diagnostic);
+            Assert.Contains("\"missingOption\":\"--incident\"", diagnostic);
+            Assert.Contains("\"expectedSource\":", diagnostic);
+            Assert.Contains("\"elkVersion\":", diagnostic);
+            Assert.Contains("\"remediation\":", diagnostic);
+        }
+
+        var stopped = RunHook(repo, "incident", "stop", string.Empty, session);
+
+        Assert.True(Continues(stopped), stopped.Output);
+        using var stopJson = JsonDocument.Parse(stopped.Output);
+        Assert.Contains("\"phase\":\"stop\"", stopJson.RootElement.GetProperty("systemMessage").GetString());
+    }
+
+    [Fact]
     public void SubprocessStart_emitsOneJsonResponseFromCompiledTool()
     {
         var repo = CreateRepository();
@@ -156,22 +187,32 @@ public sealed class OperationsLearningHookTests : IDisposable
     }
 
     [Fact]
-    public void Hook_rejectsMalformedDispatchRootArgumentsAndGateStateMatrix()
+    public void SubprocessIncidentInitialize_withoutOption_keepsCompiledHookNonBlocking()
+    {
+        var repo = CreateRepository();
+
+        var result = RunHookSubprocess(repo, "incident", "initialize", "Restore the affected service immediately.", "subprocess-deferred");
+
+        AssertIncidentDeferred(result, "initialize", "operations-hook-option-missing:--incident");
+    }
+
+    [Fact]
+    public void Hook_defersIncidentFailuresWhileRejectingInvalidNonIncidentDispatchAndArguments()
     {
         var repo = CreateRepository();
         Assert.False(Continues(RunHookRaw(repo, [], "{}")));
         Assert.False(Continues(RunHookRaw(repo, ["start"], "{}")));
         Assert.False(Continues(RunHookRaw(repo, ["start", "unknown"], HookJson(repo, "s", string.Empty))));
-        Assert.False(Continues(RunHookRaw(repo, ["unknown", "incident"], HookJson(repo, "s", string.Empty))));
-        Assert.False(Continues(RunHookRaw(repo, ["start", "incident"], "not-json")));
-        Assert.False(Continues(RunHookRaw(repo, ["start", "incident"], JsonSerializer.Serialize(new { session_id = "s" }))));
+        AssertIncidentDeferred(RunHookRaw(repo, ["unknown", "incident"], HookJson(repo, "s", string.Empty)), "unknown", "action-invalid");
+        AssertIncidentDeferred(RunHookRaw(repo, ["start", "incident"], "not-json"), "start", "operations-hook-json-invalid");
+        AssertIncidentDeferred(RunHookRaw(repo, ["start", "incident"], JsonSerializer.Serialize(new { session_id = "s" })), "start", "cwd-missing");
 
         var child = Path.Combine(repo, "child");
         Directory.CreateDirectory(child);
-        Assert.False(Continues(RunHookRaw(repo, ["start", "incident"], HookJson(child, "s", string.Empty))));
-        Assert.False(Continues(RunHook(repo, "incident", "initialize", string.Empty, "empty-prompt")));
-        Assert.False(Continues(RunHook(repo, "incident", "initialize", "--incident C:/absolute.md", "absolute")));
-        Assert.False(Continues(RunHook(repo, "incident", "initialize", "--incident .engloop/postmortems/PM001.md", "wrong-prefix")));
+        AssertIncidentDeferred(RunHookRaw(repo, ["start", "incident"], HookJson(child, "s", string.Empty)), "start", "cwd-not-exact-git-root");
+        AssertIncidentDeferred(RunHook(repo, "incident", "initialize", string.Empty, "empty-prompt"), "initialize", "prompt-missing");
+        AssertIncidentDeferred(RunHook(repo, "incident", "initialize", "--incident C:/absolute.md", "absolute"), "initialize", "path-invalid");
+        AssertIncidentDeferred(RunHook(repo, "incident", "initialize", "--incident .engloop/postmortems/PM001.md", "wrong-prefix"), "initialize", "path-invalid");
         Assert.False(Continues(RunHook(repo, "postmortem", "initialize", "--incidents IN001,IN001 --postmortem .engloop/postmortems/PM005.md", "duplicate-incidents")));
         Assert.False(Continues(RunHook(repo, "postmortem", "initialize", "--incidents BAD --postmortem .engloop/postmortems/PM005.md", "bad-incident")));
         Assert.False(Continues(RunHook(repo, "repair", "initialize", "--phase invalid --postmortem .engloop/postmortems/PM005.md --rpi RPI001 --rules RULE:x --acceptance .engloop/repairs/PM005-RPI001.route.json", "bad-phase")));
@@ -186,25 +227,25 @@ public sealed class OperationsLearningHookTests : IDisposable
 
         var noIgnore = CreateRepository();
         File.WriteAllText(Path.Combine(noIgnore, ".gitignore"), string.Empty);
-        Assert.False(Continues(RunHook(noIgnore, "incident", "initialize", "--incident .engloop/incidents/IN002.md", "not-ignored")));
+        AssertIncidentDeferred(RunHook(noIgnore, "incident", "initialize", "--incident .engloop/incidents/IN002.md", "not-ignored"), "initialize", "gate-root-not-ignored");
 
         var noManifest = CreateRepository();
         File.Delete(Path.Combine(noManifest, ".config", "dotnet-tools.json"));
-        Assert.False(Continues(RunHook(noManifest, "incident", "initialize", "--incident .engloop/incidents/IN002.md", "missing-manifest")));
+        AssertIncidentDeferred(RunHook(noManifest, "incident", "initialize", "--incident .engloop/incidents/IN002.md", "missing-manifest"), "initialize", "tool-manifest-missing");
         var wrongVersion = CreateRepository();
         File.WriteAllText(Path.Combine(wrongVersion, ".config", "dotnet-tools.json"), "{\"version\":1,\"isRoot\":true,\"tools\":{\"engloopkit\":{\"version\":\"9.9.9\",\"commands\":[\"engloopkit\"]}}}");
-        Assert.False(Continues(RunHook(wrongVersion, "incident", "initialize", "--incident .engloop/incidents/IN002.md", "wrong-version")));
-        Assert.False(Continues(RunHook(repo, "incident", "stop", string.Empty, "missing-gate")));
+        AssertIncidentDeferred(RunHook(wrongVersion, "incident", "initialize", "--incident .engloop/incidents/IN002.md", "wrong-version"), "initialize", "manifest-assembly-version-mismatch");
+        AssertIncidentDeferred(RunHook(repo, "incident", "stop", string.Empty, "missing-gate"), "stop", "gate-missing");
 
         var unborn = CreateRepository();
         Git(unborn, "checkout", "--orphan", "unborn");
         Git(unborn, "rm", "-rf", ".");
         File.WriteAllText(Path.Combine(unborn, ".gitignore"), ".engloop/out/\n");
-        Assert.False(Continues(RunHook(unborn, "incident", "initialize", "--incident .engloop/incidents/IN002.md", "unborn-head")));
+        AssertIncidentDeferred(RunHook(unborn, "incident", "initialize", "--incident .engloop/incidents/IN002.md", "unborn-head"), "initialize", "git-head-unavailable");
     }
 
     [Fact]
-    public void ExistingGate_rejectsCorruptIdentityHeadAndJsonMatrix()
+    public void ExistingIncidentGate_defersCorruptIdentityHeadAndJsonWithoutAcceptingIt()
     {
         void RejectMutation(Action<JsonObject> mutate, string expected)
         {
@@ -215,8 +256,8 @@ public sealed class OperationsLearningHookTests : IDisposable
             mutate(gate);
             File.WriteAllText(path, gate.ToJsonString());
             var result = RunHook(repo, "incident", "initialize", "continue", "gate-matrix");
-            Assert.False(Continues(result));
-            Assert.Contains(expected, result.Output);
+            AssertIncidentDeferred(result, "initialize", expected);
+            Assert.True(File.Exists(path));
         }
 
         RejectMutation(gate => gate["SchemaVersion"] = "2.0", "existing-gate-stale");
@@ -228,24 +269,28 @@ public sealed class OperationsLearningHookTests : IDisposable
         Assert.True(Continues(RunHook(corrupt, "incident", "initialize", "--incident .engloop/incidents/IN002.md", "corrupt-json")));
         var corruptPath = Assert.Single(Directory.GetFiles(Path.Combine(corrupt, ".engloop", "out", "operations-learning-gates"), "*.json"));
         File.WriteAllText(corruptPath, "{");
-        Assert.False(Continues(RunHook(corrupt, "incident", "initialize", "continue", "corrupt-json")));
+        AssertIncidentDeferred(RunHook(corrupt, "incident", "initialize", "continue", "corrupt-json"), "initialize", "operations-hook-json-invalid");
+        Assert.True(File.Exists(corruptPath));
 
         var head = CreateRepository();
         Assert.True(Continues(RunHook(head, "incident", "initialize", "--incident .engloop/incidents/IN002.md", "head-change")));
         File.WriteAllText(Path.Combine(head, "new.txt"), "new");
         Git(head, "add", "new.txt");
         Git(head, "commit", "-m", "new head");
-        Assert.False(Continues(RunHook(head, "incident", "stop", string.Empty, "head-change")));
+        var headGate = Assert.Single(Directory.GetFiles(Path.Combine(head, ".engloop", "out", "operations-learning-gates"), "*.json"));
+        AssertIncidentDeferred(RunHook(head, "incident", "stop", string.Empty, "head-change"), "stop", "head-changed");
+        Assert.True(File.Exists(headGate));
     }
 
     [Fact]
-    public void Hook_stopModesAndNullGate_failClosedWithoutProtocolDrift()
+    public void IncidentStop_defersNullGateWhilePostmortemAndRepairRemainFailClosed()
     {
         var nullGate = CreateRepository();
         Assert.True(Continues(RunHook(nullGate, "incident", "initialize", "--incident .engloop/incidents/IN002.md", "null-gate")));
         var nullPath = Assert.Single(Directory.GetFiles(Path.Combine(nullGate, ".engloop", "out", "operations-learning-gates"), "*.json"));
         File.WriteAllText(nullPath, "null");
-        Assert.False(Continues(RunHook(nullGate, "incident", "stop", string.Empty, "null-gate")));
+        AssertIncidentDeferred(RunHook(nullGate, "incident", "stop", string.Empty, "null-gate"), "stop", "gate-json-invalid");
+        Assert.True(File.Exists(nullPath));
 
         var repair = CreateRepository();
         const string repairPrompt = "--phase route --postmortem .engloop/postmortems/PM005.md --rpi RPI001 --rules RULE:x --acceptance .engloop/repairs/PM005-RPI001.route.json";
@@ -259,6 +304,29 @@ public sealed class OperationsLearningHookTests : IDisposable
         var pmStop = RunHook(postmortem, "postmortem", "stop", string.Empty, "pm-stop-mode");
         Assert.False(Continues(pmStop));
         Assert.Contains("mode=postmortem", pmStop.Output);
+    }
+
+    [Fact]
+    public void IncidentHook_defersMissingArtifactAndUnavailableGateStorage_withoutFalseAcceptance()
+    {
+        var missingArtifact = CreateRepository();
+        const string missingPath = ".engloop/incidents/IN999_missing.md";
+        Assert.True(Continues(RunHook(missingArtifact, "incident", "initialize", $"--incident {missingPath}", "missing-artifact")));
+        var gate = Assert.Single(Directory.GetFiles(Path.Combine(missingArtifact, ".engloop", "out", "operations-learning-gates"), "*.json"));
+
+        AssertIncidentDeferred(RunHook(missingArtifact, "incident", "stop", string.Empty, "missing-artifact"), "stop", "incident-context-validation-failed");
+        Assert.True(File.Exists(gate));
+        Assert.False(OperationsLearningPolicy.ValidateIncidentContext(missingArtifact, missingPath, requireConsulted: false).Passed);
+
+        var unavailableStorage = CreateRepository();
+        var outRoot = Path.Combine(unavailableStorage, ".engloop", "out");
+        Directory.CreateDirectory(outRoot);
+        File.WriteAllText(Path.Combine(outRoot, "operations-learning-gates"), "not a directory");
+
+        AssertIncidentDeferred(
+            RunHook(unavailableStorage, "incident", "initialize", "--incident .engloop/incidents/IN001_example.md", "unavailable-storage"),
+            "initialize",
+            "operations-hook-storage-unavailable");
     }
 
     private string CreateRepository()
@@ -275,7 +343,7 @@ public sealed class OperationsLearningHookTests : IDisposable
         File.WriteAllText(Path.Combine(repo, "LEARNINGS.md"), "# Learnings\n");
         File.WriteAllText(Path.Combine(repo, "src", "fixture.csproj"), "<Project Sdk=\"Microsoft.NET.Sdk\" />\n");
         File.WriteAllText(Path.Combine(repo, ".engloop", "config.json"), "{\"schemaVersion\":\"2.0\",\"productId\":\"fixture\",\"artifactRoot\":\".engloop\",\"transientOutputRoot\":\".engloop/out\",\"northstarPath\":\"NORTHSTAR.md\",\"validatorCommand\":[\"dotnet\",\"--version\"],\"moduleDiscoveryCommand\":[\"dotnet\",\"--version\"],\"architectureCommand\":[\"dotnet\",\"--version\"],\"regressionCommand\":[\"dotnet\",\"--version\"],\"coverageInputs\":{\"wholeProduct\":\"src/fixture.csproj\"},\"testRunway\":{\"status\":\"proven\",\"framework\":\"xunit\",\"terseCommand\":[\"dotnet\",\"--version\"],\"boundaryTest\":\"Fixture.Boundary\",\"generatedDestination\":\"tests/generated\",\"evidenceDigest\":\"fixture\",\"provenAtRevision\":\"content:fixture\"},\"moduleInventory\":[{\"id\":\"core\",\"path\":\"src/fixture.csproj\"}]}\n");
-        File.WriteAllText(Path.Combine(repo, ".config", "dotnet-tools.json"), "{\"version\":1,\"isRoot\":true,\"tools\":{\"engloopkit\":{\"version\":\"1.15.1\",\"commands\":[\"engloopkit\"]}}}\n");
+        File.WriteAllText(Path.Combine(repo, ".config", "dotnet-tools.json"), "{\"version\":1,\"isRoot\":true,\"tools\":{\"engloopkit\":{\"version\":\"1.15.2\",\"commands\":[\"engloopkit\"]}}}\n");
         var northstarHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(Path.Combine(repo, "NORTHSTAR.md")))).ToLowerInvariant();
         File.WriteAllText(Path.Combine(repo, ".engloop", "incidents", "IN001_example.md"), $"# IN001\n\n- **Status:** STABILIZED\n\n## Verification (stability, not root-cause fix)\n\n- [x] Health checks passing: service health remained continuously green for verification.\n- [x] User workflows unblocked: user workflow completed successfully without any errors.\n- [x] No fresh errors in the watch window: watch window reported zero additional errors.\n\n## Direction and learning context\n\n- **North Star SHA-256:** `{northstarHash}`\n- **Learning context:** `CONSULTED`\n- **Rule IDs:** `NONE`\n- **Source IDs:** `NONE`\n- **Deferral reason:** `NOT-REQUIRED`\n");
         Git(repo, "init");
@@ -347,6 +415,22 @@ public sealed class OperationsLearningHookTests : IDisposable
         Assert.Equal(0, result.ExitCode);
         using var json = JsonDocument.Parse(result.Output);
         return json.RootElement.GetProperty("continue").GetBoolean();
+    }
+
+    private static void AssertIncidentDeferred((int ExitCode, string Output, string Error) result, string phase, string expectedDiagnostic)
+    {
+        Assert.True(Continues(result), result.Output + result.Error);
+        using var json = JsonDocument.Parse(result.Output);
+        Assert.Equal(JsonValueKind.Null, json.RootElement.GetProperty("stopReason").ValueKind);
+        var message = json.RootElement.GetProperty("systemMessage").GetString();
+        Assert.Contains("OPERATIONS_LEARNING_CONTEXT_DEFERRED", message);
+        Assert.Contains("\"status\":\"learning-context-deferred\"", message);
+        Assert.Contains($"\"phase\":\"{phase}\"", message);
+        Assert.Contains($"\"command\":\"operations-hook {phase} incident\"", message);
+        Assert.Contains(expectedDiagnostic, message);
+        Assert.Contains("\"expectedSource\":", message);
+        Assert.Contains("\"elkVersion\":", message);
+        Assert.Contains("\"remediation\":", message);
     }
 
     private static void Git(string repo, params string[] args)

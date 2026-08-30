@@ -12,7 +12,7 @@ explicit trigger, goal, actions, verification, and durable memory.
 > on the **1.x** maturity runway for the foreseeable future: this ordered release is
 > **v1.7.0** established the ordered baseline; review, handoff memory, and complete
 > reusable debugger walkthroughs, generic readiness handoff, presentation generation, and
-> no-ID overlay installation, advisory debugger walkthroughs, publication/token-efficiency agents, direction/pyramid-bound operations learning, positive history, and distinct refactor planning/implementation agents ship as **v1.15.1**. No v2.0 release is implied.
+> no-ID overlay installation, advisory debugger walkthroughs, publication/token-efficiency agents, direction/pyramid-bound operations learning, positive history, and distinct refactor planning/implementation agents ship as **v1.15.2**. No v2.0 release is implied.
 
 The v1.8 workflow separates delivery/readiness, operations, stewardship, and local
 overlay utility work into
@@ -77,6 +77,13 @@ historical `PMxxx/LEARNxxx` provenance, and the selected RPI's executable gate. 
 still handles broader backlog condensation; it is not a fallback for skipping pyramid
 consideration during the dominant incident/postmortem/repair loop.
 
+Stage 20's operations-learning hook binds an explicit incident artifact when available,
+but it is not allowed to disable the recovery conversation. Missing/malformed metadata,
+unavailable hook state, or failed hook validation emits a structured
+`learning-context-deferred` warning with `continue: true`; no failed gate is accepted or
+deleted. The standalone `validate incident-context` command remains the fail-closed
+authority for stabilization evidence.
+
 ## Readiness gate
 
 Stage 08 is the only source of **READY / NOT READY**. Its PASS requires every explicit
@@ -88,10 +95,10 @@ never authorizes operations.
 
 ## Install a release
 
-ELK v1.15.1 requires the **.NET 10 SDK/runtime**. The repository pins SDK `10.0.303`
+ELK v1.15.2 requires the **.NET 10 SDK/runtime**. The repository pins SDK `10.0.303`
 and uses `EngLoopKit.slnx` as its only solution graph.
 
-A released v1.15.1 artifact set contains three immutable pieces:
+A released v1.15.2 artifact set contains three immutable pieces:
 
 1. `engloopkit.<version>.nupkg` — the root-local .NET tool (`engloopkit`);
 2. `engloopkit-extension-<version>.zip` — the ordered Spec Kit extension (`engloop`);
@@ -103,10 +110,10 @@ not point agent hooks at a sibling build output:
 ```powershell
 # From the consumer root, after downloading the released nupkg to <release-dir>.
 dotnet new tool-manifest --force
-dotnet tool install engloopkit --version 1.15.1 --add-source <release-dir>
+dotnet tool install engloopkit --version 1.15.2 --add-source <release-dir>
 
 # Install the exact released ordered extension archive.
-specify extension add engloop --from <release-dir>/engloopkit-extension-1.15.1.zip
+specify extension add engloop --from <release-dir>/engloopkit-extension-1.15.2.zip
 ```
 
 The extension’s `SessionStart` hook and command body both run:
@@ -162,16 +169,16 @@ explicit at install time and does **not** modify tracked `.gitignore` or product
 
 ```powershell
 # Do this in a private bootstrap directory OUTSIDE <git-root>.
-$bootstrap = Join-Path $env:LOCALAPPDATA 'EngLoopKit\bootstrap\1.15.1'
+$bootstrap = Join-Path $env:LOCALAPPDATA 'EngLoopKit\bootstrap\1.15.2'
 New-Item -ItemType Directory -Force $bootstrap | Out-Null
 Push-Location $bootstrap
 dotnet new tool-manifest --force
-dotnet tool install engloopkit --version 1.15.1 --add-source <release-dir>
+dotnet tool install engloopkit --version 1.15.2 --add-source <release-dir>
 
 # <release-dir> contains the downloaded .nupkg and extension .zip.
 dotnet tool run engloopkit -- overlay install --mode overlay --root <git-root> `
-  --tool-version 1.15.1 --tool-nupkg <release-dir>\engloopkit.1.15.1.nupkg `
-  --extension-archive <release-dir>\engloopkit-extension-1.15.1.zip
+  --tool-version 1.15.2 --tool-nupkg <release-dir>\engloopkit.1.15.2.nupkg `
+  --extension-archive <release-dir>\engloopkit-extension-1.15.2.zip
 Pop-Location
 ```
 

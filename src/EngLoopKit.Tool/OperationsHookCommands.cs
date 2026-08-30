@@ -30,11 +30,11 @@ public static class OperationsHookCommands
 
     public static int Execute(string[] args)
     {
+        var action = args.Length > 0 ? args[0] : "unknown";
+        var mode = args.Length > 1 ? args[1] : "unknown";
         try
         {
             Ensure(args.Length >= 2, "operations-hook-requires-action-and-mode");
-            var action = args[0];
-            var mode = args[1];
             Ensure(mode is "incident" or "postmortem" or "repair", "operations-hook-mode-invalid");
             using var input = JsonDocument.Parse(Console.In.ReadToEnd());
             var root = ExactGitRoot(ReadString(input.RootElement, "cwd"));
@@ -53,7 +53,8 @@ public static class OperationsHookCommands
         }
         catch (Exception ex)
         {
-            WriteResult(false, "Operations learning hook failed closed: " + ex.Message);
+            if (mode == "incident") WriteIncidentContextDeferred(action, IncidentDiagnosticCode(ex), ex.Message);
+            else WriteResult(false, "Operations learning hook failed closed: " + ex.Message);
             return 0;
         }
     }
@@ -114,7 +115,8 @@ public static class OperationsHookCommands
         marker = mode == "incident" ? "INCIDENT_CONTEXT_OK" : mode == "postmortem" ? "POSTMORTEM_LEARNING_OK" : "REPAIR_LEARNING_OK";
         if (result != 0)
         {
-            WriteResult(false, $"Operations learning validation failed for mode={mode}: {Bound(diagnostic)}");
+            if (mode == "incident") WriteIncidentContextDeferred("stop", "operations-hook-incident-context-validation-failed", diagnostic);
+            else WriteResult(false, $"Operations learning validation failed for mode={mode}: {Bound(diagnostic)}");
             return 0;
         }
         File.Delete(gatePath);
@@ -143,6 +145,49 @@ public static class OperationsHookCommands
     }
 
     private static string Bound(string value) => value.Length <= 4096 ? value : value[..4096] + "...[truncated]";
+
+    private static string IncidentDiagnosticCode(Exception exception)
+        => exception switch
+        {
+            JsonException => "operations-hook-json-invalid",
+            IOException or UnauthorizedAccessException => "operations-hook-storage-unavailable",
+            InvalidOperationException when exception.Message.StartsWith("operations-hook-", StringComparison.Ordinal) => Bound(exception.Message),
+            InvalidOperationException => "operations-hook-invalid-state",
+            _ => "operations-hook-unexpected-failure",
+        };
+
+    private static void WriteIncidentContextDeferred(string phase, string diagnosticCode, string diagnostic)
+    {
+        var missingOption = MissingOption(diagnosticCode + ":" + diagnostic);
+        var expectedSource = phase switch
+        {
+            "start" => "SessionStart hook input fields cwd and session_id",
+            "initialize" => "UserPromptSubmit.prompt containing --incident <.engloop/incidents/INxxx_title.md>",
+            "stop" => "A validated incident gate created from UserPromptSubmit.prompt",
+            _ => "A recognized incident lifecycle action with documented hook input",
+        };
+        var details = JsonSerializer.Serialize(new
+        {
+            status = "learning-context-deferred",
+            mode = "incident",
+            phase,
+            command = $"operations-hook {phase} incident",
+            diagnosticCode,
+            diagnostic = Bound(diagnostic),
+            missingOption,
+            expectedSource,
+            elkVersion = typeof(OperationsHookCommands).Assembly.GetName().Version?.ToString(3) ?? "unknown",
+            remediation = "Continue incident mitigation. Resolve or create the incident artifact, then run validate incident-context before claiming stabilization; deferred context is not validated context.",
+        });
+        WriteResult(true, systemMessage: "OPERATIONS_LEARNING_CONTEXT_DEFERRED " + details);
+    }
+
+    private static string? MissingOption(string diagnostic)
+    {
+        var match = Regex.Match(diagnostic, @"operations-hook-option-missing:(?<option>--[a-z-]+)", RegexOptions.CultureInvariant);
+        if (match.Success) return match.Groups["option"].Value;
+        return diagnostic.Contains("operations-hook-prompt-missing", StringComparison.Ordinal) ? "--incident" : null;
+    }
 
     private static GateRecord? ParseArguments(string prompt, string mode, bool allowMissing)
     {
