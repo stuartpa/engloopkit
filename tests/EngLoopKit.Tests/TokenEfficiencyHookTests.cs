@@ -3,10 +3,12 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using EngLoopKit.Tool;
 using Xunit;
 
 namespace EngLoopKit.Tests;
 
+[Collection("OperationsHookConsole")]
 public sealed class TokenEfficiencyHookTests : IDisposable
 {
     private static readonly string Root = FindRepoRoot();
@@ -246,7 +248,7 @@ public sealed class TokenEfficiencyHookTests : IDisposable
     public void PromptEntryHook_emitsJsonMarkerAndShortCircuitingRejection()
     {
         var repo = CreateRepository();
-        var acceptedInput = Hook(repo, "entry-accepted", prompt: "--session current");
+        var acceptedInput = Hook(repo, "entry/accepted", prompt: "--session current");
         var accepted = RunTool(["validate", "agent-entry-hook", "--stage", "speckit.engloop.30-token-efficiency-analyze", "--root", repo], acceptedInput);
         Assert.Equal(0, accepted.ExitCode);
         using (var json = JsonDocument.Parse(accepted.Output))
@@ -255,12 +257,24 @@ public sealed class TokenEfficiencyHookTests : IDisposable
             Assert.Equal(JsonValueKind.Null, json.RootElement.GetProperty("stopReason").ValueKind);
             Assert.Contains("AGENT_ENTRY_OK", json.RootElement.GetProperty("systemMessage").GetString());
         }
+        Assert.True(File.Exists(EntryReceipt(repo, "entry_accepted", "analysis")));
 
         var rejected = RunTool(["validate", "agent-entry-hook", "--stage", "speckit.engloop.99-missing", "--root", repo], Hook(repo, "entry-rejected", prompt: "--session current"));
         Assert.Equal(0, rejected.ExitCode);
         using var rejectedJson = JsonDocument.Parse(rejected.Output);
         Assert.False(rejectedJson.RootElement.GetProperty("continue").GetBoolean());
         Assert.Contains("invalid-stage", rejectedJson.RootElement.GetProperty("stopReason").GetString());
+    }
+
+    [Fact]
+    public void CompiledPromptEntryHook_emitsJsonMarker()
+    {
+        var repo = CreateRepository();
+
+        var result = RunToolSubprocess(["validate", "agent-entry-hook", "--stage", "speckit.engloop.30-token-efficiency-analyze", "--root", repo], Hook(repo, "compiled-entry", prompt: "--session current"));
+
+        Assert.True(Continue(result), result.Output + "\n" + result.Error);
+        Assert.Contains("AGENT_ENTRY_OK", result.Output);
     }
 
     [Fact]
@@ -318,6 +332,18 @@ public sealed class TokenEfficiencyHookTests : IDisposable
         }
 
         Assert.False(Directory.Exists(Path.Combine(repo, ".engloop", "out", "token-efficiency", "gates")));
+
+        var noIgnore = CreateRepository();
+        File.WriteAllText(Path.Combine(noIgnore, ".gitignore"), string.Empty);
+        var noIgnoreResult = RunTool(["validate", "agent-entry-hook", "--stage", stage, "--root", noIgnore], Hook(noIgnore, "not-ignored", prompt: "--session current", timestamp: timestamp));
+        Assert.False(Continue(noIgnoreResult));
+        Assert.Contains("token-efficiency-output-not-ignored", noIgnoreResult.Output);
+        Assert.False(Directory.Exists(Path.Combine(noIgnore, ".engloop", "out", "token-efficiency", "gates")));
+
+        var camelInput = JsonSerializer.Serialize(new { timestamp, cwd = repo, sessionId = "camel-session", prompt = "--session current" });
+        var camel = RunTool(["validate", "agent-entry-hook", "--stage", stage, "--root", repo], camelInput);
+        Assert.True(Continue(camel), camel.Output + "\n" + camel.Error);
+        Assert.True(File.Exists(EntryReceipt(repo, "camel-session", "analysis")));
     }
 
     private string CreateRepository()
@@ -442,6 +468,30 @@ public sealed class TokenEfficiencyHookTests : IDisposable
     }
 
     private static (int ExitCode, string Output, string Error) RunTool(string[] args, string stdin)
+    {
+        var originalIn = Console.In;
+        var originalOut = Console.Out;
+        var originalError = Console.Error;
+        using var input = new StringReader(stdin);
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+        try
+        {
+            Console.SetIn(input);
+            Console.SetOut(output);
+            Console.SetError(error);
+            var exitCode = Program.Main(args);
+            return (exitCode, output.ToString().Trim(), error.ToString().Trim());
+        }
+        finally
+        {
+            Console.SetIn(originalIn);
+            Console.SetOut(originalOut);
+            Console.SetError(originalError);
+        }
+    }
+
+    private static (int ExitCode, string Output, string Error) RunToolSubprocess(string[] args, string stdin)
     {
         var start = new ProcessStartInfo("dotnet")
         {

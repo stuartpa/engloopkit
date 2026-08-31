@@ -68,6 +68,7 @@ public sealed class OperationsLearningHookTests : IDisposable
     }
 
     [Theory]
+    [InlineData("", "prompt-missing")]
     [InlineData("--incidents IN001", "--postmortem")]
     [InlineData("--postmortem .engloop/postmortems/PM005_example.md", "--incidents")]
     [InlineData("--incidents BAD --postmortem .engloop/postmortems/PM005_example.md", "incident-ids-invalid")]
