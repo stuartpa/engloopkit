@@ -144,7 +144,11 @@ public static class OperationsHookCommands
         }
     }
 
-    private static string Bound(string value) => value.Length <= 4096 ? value : value[..4096] + "...[truncated]";
+    private static string Bound(string value)
+    {
+        if (value.Length <= 4096) return value;
+        return value[..4096] + "...[truncated]";
+    }
 
     private static string IncidentDiagnosticCode(Exception exception)
         => exception switch

@@ -170,6 +170,16 @@ public sealed class PrivateGuardCoverageTests : IDisposable
         Assert.Throws<InvalidOperationException>(() => Invoke<string[]>(typeof(OperationsHookCommands), "IdList", "BAD", "^IN\\d{3}$", "incident"));
         Assert.Equal("short", Invoke<string>(typeof(OperationsHookCommands), "Bound", "short"));
         Assert.EndsWith("...[truncated]", Invoke<string>(typeof(OperationsHookCommands), "Bound", new string('x', 5000)));
+
+        Assert.Equal("operations-hook-json-invalid", Invoke<string>(typeof(OperationsHookCommands), "IncidentDiagnosticCode", new JsonException("invalid")));
+        Assert.Equal("operations-hook-storage-unavailable", Invoke<string>(typeof(OperationsHookCommands), "IncidentDiagnosticCode", new IOException("unavailable")));
+        Assert.Equal("operations-hook-storage-unavailable", Invoke<string>(typeof(OperationsHookCommands), "IncidentDiagnosticCode", new UnauthorizedAccessException("denied")));
+        Assert.Equal("operations-hook-known", Invoke<string>(typeof(OperationsHookCommands), "IncidentDiagnosticCode", new InvalidOperationException("operations-hook-known")));
+        Assert.Equal("operations-hook-invalid-state", Invoke<string>(typeof(OperationsHookCommands), "IncidentDiagnosticCode", new InvalidOperationException("uncoded")));
+        Assert.Equal("operations-hook-unexpected-failure", Invoke<string>(typeof(OperationsHookCommands), "IncidentDiagnosticCode", new Exception("unexpected")));
+        Assert.Equal("--incident", Invoke<string?>(typeof(OperationsHookCommands), "MissingOption", "operations-hook-option-missing:--incident"));
+        Assert.Equal("--incident", Invoke<string?>(typeof(OperationsHookCommands), "MissingOption", "operations-hook-prompt-missing"));
+        Assert.Null(Invoke<string?>(typeof(OperationsHookCommands), "MissingOption", "operations-hook-json-invalid"));
     }
 
     [Fact]
@@ -216,6 +226,8 @@ public sealed class PrivateGuardCoverageTests : IDisposable
         {
             Console.SetIn(input);
             Console.SetOut(hookOutput);
+            foreach (var phase in new[] { "start", "initialize", "stop", "unknown" })
+                Invoke<object?>(typeof(OperationsHookCommands), "WriteIncidentContextDeferred", phase, "operations-hook-unexpected-failure", "unexpected");
             Assert.Equal(0, Program.Main(["operations-hook", "start", "incident"]));
         }
         finally
@@ -223,7 +235,16 @@ public sealed class PrivateGuardCoverageTests : IDisposable
             Console.SetIn(originalIn);
             Console.SetOut(originalOut);
         }
-        Assert.Contains("continue", hookOutput.ToString());
+        var responses = hookOutput.ToString().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        Assert.Equal(5, responses.Length);
+        var messages = responses.Select(response =>
+        {
+            using var json = JsonDocument.Parse(response);
+            Assert.True(json.RootElement.GetProperty("continue").GetBoolean());
+            return json.RootElement.GetProperty("systemMessage").GetString() ?? string.Empty;
+        }).ToArray();
+        foreach (var phase in new[] { "start", "initialize", "stop", "unknown" })
+            Assert.Contains(messages, message => message.Contains($"\"phase\":\"{phase}\"", StringComparison.Ordinal));
     }
 
     private static T Invoke<T>(Type type, string name, params object?[] args)
