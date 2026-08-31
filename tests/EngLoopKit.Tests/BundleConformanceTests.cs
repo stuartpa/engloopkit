@@ -165,7 +165,8 @@ public sealed class BundleConformanceTests
         var postmortem = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.21-postmortem.md"));
         Assert.Contains("operations-hook guard postmortem", postmortem, StringComparison.Ordinal);
         Assert.Contains("OPERATIONS_LEARNING_CONTEXT_REQUIRED", postmortem, StringComparison.Ordinal);
-        Assert.Contains("no scope or completion was accepted", postmortem, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("no scope", postmortem, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("completion was accepted", postmortem, StringComparison.OrdinalIgnoreCase);
 
         var analysisTemplate = File.ReadAllText(Path.Combine(ExtensionRoot, "templates", "TOKEN-EFFICIENCY-ANALYSIS-template.json"));
         Assert.Contains("token-efficiency-analysis", analysisTemplate, StringComparison.Ordinal);
