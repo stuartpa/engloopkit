@@ -79,7 +79,7 @@ public static class OperationsHookCommands
             return 0;
         }
 
-        var arguments = ParseArguments(prompt, mode, allowMissing: false) ?? throw new InvalidOperationException("operations-hook-arguments-missing");
+        var arguments = ParseArguments(prompt, mode, allowMissing: false)!;
         var head = OperationsLearningPolicy.GitHead(root) ?? throw new InvalidOperationException("operations-hook-git-head-unavailable");
         if (mode == "postmortem") RequireCreateNewPostmortem(root, arguments.Postmortem!);
         if (mode == "repair") RequireCreateNewAcceptance(root, arguments.Acceptance!, arguments.Phase!);
