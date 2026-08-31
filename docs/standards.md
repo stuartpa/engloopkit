@@ -2,7 +2,7 @@
 
 **Workflow generation:** Ordered EngLoop v2.
 **Product SemVer:** EngLoopKit remains on the **1.x** line; this workflow ships as
-v1.15.2. “v2” describes the workflow generation, not a v2.0 release.
+v1.15.3. “v2” describes the workflow generation, not a v2.0 release.
 
 Durable workflow memory lives in exactly one tracked hidden root:
 
@@ -90,7 +90,10 @@ Stage 20 mitigates only. Its learning-context hook must keep recovery chat avail
 missing/malformed metadata or unavailable hook state, emit an explicit structured
 deferral, and leave failed evidence unaccepted. The standalone incident-context validator
 still fails closed on unsupported stabilization claims. Stage 21 analyzes a deliberately
-selected stabilized set. Stage 21 must consult current `NORTHSTAR.md` and the progressive
+selected stabilized set. Correctable missing/malformed Stage 21 options keep chat
+available only to report remediation; no scope or completion is accepted, and PreToolUse
+denies every tool until exact valid `--incidents` and `--postmortem` values are resubmitted.
+Stage 21 must consult current `NORTHSTAR.md` and the progressive
 `LEARNINGS.md → RULE:<card-slug> → PMxxx/LEARNxxx` path, classify reinforced,
 contradicted, and missing rules, and deterministically validate pyramid provenance and
 applicable retrieval before completion. `NO-CHANGE` means no new accepted source learning;

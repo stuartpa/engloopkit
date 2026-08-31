@@ -47,6 +47,7 @@ public static class OperationsHookCommands
             {
                 "start" => Start(mode, sessionHash),
                 "initialize" => Initialize(root, mode, sessionHash, gatePath, ReadString(input.RootElement, "prompt")),
+                "guard" => Guard(root, mode, sessionHash, gatePath),
                 "stop" => Stop(root, mode, sessionHash, gatePath),
                 _ => throw new InvalidOperationException("operations-hook-action-invalid"),
             };
@@ -79,7 +80,16 @@ public static class OperationsHookCommands
             return 0;
         }
 
-        var arguments = ParseArguments(prompt, mode, allowMissing: false)!;
+        GateRecord arguments;
+        try
+        {
+            arguments = ParseArguments(prompt, mode, allowMissing: false)!;
+        }
+        catch (InvalidOperationException ex) when (mode == "postmortem" && IsPostmortemContextDiagnostic(ex.Message))
+        {
+            WritePostmortemContextRequired("initialize", ex.Message);
+            return 0;
+        }
         var head = OperationsLearningPolicy.GitHead(root) ?? throw new InvalidOperationException("operations-hook-git-head-unavailable");
         if (mode == "postmortem") RequireCreateNewPostmortem(root, arguments.Postmortem!);
         if (mode == "repair") RequireCreateNewAcceptance(root, arguments.Acceptance!, arguments.Phase!);
@@ -96,8 +106,32 @@ public static class OperationsHookCommands
         return 0;
     }
 
+    private static int Guard(string root, string mode, string sessionHash, string gatePath)
+    {
+        Ensure(mode == "postmortem", "operations-hook-guard-mode-invalid");
+        try
+        {
+            Ensure(File.Exists(gatePath), "operations-hook-gate-missing");
+            var gate = ReadGate(gatePath);
+            Ensure(gate.SchemaVersion == "1.0" & gate.Mode == mode & gate.SessionHash == sessionHash & gate.Head == OperationsLearningPolicy.GitHead(root), "operations-hook-gate-identity-invalid");
+            ValidateToolIdentity(root, gate);
+            Ensure(HashArguments(gate) == gate.ArgumentsHash, "operations-hook-gate-arguments-tampered");
+            WriteResult(true, systemMessage: $"OPERATIONS_LEARNING_SCOPE_ACTIVE mode={mode} gate={gatePath}");
+        }
+        catch (Exception ex)
+        {
+            WritePostmortemPreToolDenied(IncidentDiagnosticCode(ex), ex.Message);
+        }
+        return 0;
+    }
+
     private static int Stop(string root, string mode, string sessionHash, string gatePath)
     {
+        if (mode == "postmortem" && !File.Exists(gatePath))
+        {
+            WritePostmortemContextRequired("stop", "operations-hook-gate-missing");
+            return 0;
+        }
         Ensure(File.Exists(gatePath), "operations-hook-gate-missing");
         var gate = ReadGate(gatePath);
         Ensure(gate.SchemaVersion == "1.0" & gate.Mode == mode & gate.SessionHash == sessionHash, "operations-hook-gate-identity-invalid");
@@ -191,6 +225,61 @@ public static class OperationsHookCommands
         var match = Regex.Match(diagnostic, @"operations-hook-option-missing:(?<option>--[a-z-]+)", RegexOptions.CultureInvariant);
         if (match.Success) return match.Groups["option"].Value;
         return diagnostic.Contains("operations-hook-prompt-missing", StringComparison.Ordinal) ? "--incident" : null;
+    }
+
+    private static bool IsPostmortemContextDiagnostic(string diagnostic)
+        => diagnostic == "operations-hook-prompt-missing"
+            || diagnostic is "operations-hook-path-invalid" or "operations-hook-incident-ids-invalid"
+            || diagnostic.StartsWith("operations-hook-option-missing:--postmortem", StringComparison.Ordinal)
+            || diagnostic.StartsWith("operations-hook-option-missing:--incidents", StringComparison.Ordinal);
+
+    private static void WritePostmortemContextRequired(string phase, string diagnostic)
+    {
+        var missingOption = Regex.Match(diagnostic, @"operations-hook-option-missing:(?<option>--[a-z-]+)", RegexOptions.CultureInvariant) is { Success: true } match
+            ? match.Groups["option"].Value
+            : diagnostic == "operations-hook-prompt-missing" ? "--incidents,--postmortem" : null;
+        var details = JsonSerializer.Serialize(new
+        {
+            status = "postmortem-context-required",
+            mode = "postmortem",
+            phase,
+            command = $"operations-hook {phase} postmortem",
+            diagnosticCode = diagnostic,
+            missingOption,
+            expectedSource = "UserPromptSubmit.prompt containing --incidents <INxxx,...> --postmortem <.engloop/postmortems/PMxxx_title.md>",
+            elkVersion = typeof(OperationsHookCommands).Assembly.GetName().Version?.ToString(3) ?? "unknown",
+            remediation = "No postmortem scope or completion was accepted. Resubmit this agent with exact --incidents and --postmortem values; use a create-new PM path for a new postmortem.",
+            completionAccepted = false,
+        });
+        WriteResult(true, systemMessage: "OPERATIONS_LEARNING_CONTEXT_REQUIRED " + details);
+    }
+
+    private static void WritePostmortemPreToolDenied(string diagnosticCode, string diagnostic)
+    {
+        const string remediation = "Stage 21 has no valid postmortem scope. Resubmit with --incidents <INxxx,...> --postmortem <.engloop/postmortems/PMxxx_title.md> before using tools.";
+        var details = JsonSerializer.Serialize(new
+        {
+            status = "postmortem-scope-denied",
+            mode = "postmortem",
+            phase = "pre-tool-use",
+            command = "operations-hook guard postmortem",
+            diagnosticCode,
+            diagnostic = Bound(diagnostic),
+            remediation,
+            completionAccepted = false,
+        });
+        Console.WriteLine(JsonSerializer.Serialize(new
+        {
+            @continue = true,
+            stopReason = (string?)null,
+            systemMessage = "OPERATIONS_LEARNING_CONTEXT_REQUIRED " + details,
+            hookSpecificOutput = new
+            {
+                hookEventName = "PreToolUse",
+                permissionDecision = "deny",
+                permissionDecisionReason = $"{remediation} Diagnostic: {diagnosticCode}",
+            },
+        }));
     }
 
     private static GateRecord? ParseArguments(string prompt, string mode, bool allowMissing)

@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$Root = (Join-Path $PSScriptRoot '..'),
-    [string]$Version = '1.15.2',
+    [string]$Version = '1.15.3',
     [string]$OutputPath = '',
     [switch]$SkipDisposableFixture
 )
@@ -360,6 +360,13 @@ try {
                 foreach ($marker in @("operations-hook start $mode", "operations-hook initialize $mode", "operations-hook stop $mode", 'NORTHSTAR.md', 'LEARNINGS.md')) {
                     if ($installedBody -notmatch [regex]::Escape($marker)) {
                         $mismatches.Add(@{ issue = 'installed-operations-learning-marker-missing'; id = $id; marker = $marker }) | Out-Null
+                    }
+                }
+                if ($mode -eq 'postmortem') {
+                    foreach ($marker in @('operations-hook guard postmortem', 'OPERATIONS_LEARNING_CONTEXT_REQUIRED', 'postmortem-context-required', 'no scope', 'completion was accepted')) {
+                        if ($installedBody -notmatch [regex]::Escape($marker)) {
+                            $mismatches.Add(@{ issue = 'installed-postmortem-recovery-marker-missing'; id = $id; marker = $marker }) | Out-Null
+                        }
                     }
                 }
                 if ($mode -eq 'incident') {

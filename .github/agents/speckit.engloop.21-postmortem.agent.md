@@ -26,6 +26,10 @@ hooks:
   - type: command
     command: dotnet tool run engloopkit -- operations-hook initialize postmortem
     timeout: 30
+  PreToolUse:
+  - type: command
+    command: dotnet tool run engloopkit -- operations-hook guard postmortem
+    timeout: 30
   Stop:
   - type: command
     command: dotnet tool run engloopkit -- operations-hook stop postmortem
@@ -74,8 +78,14 @@ Run before any action:
 
 This agent requires VS Code custom-agent hooks. Require the
 `OPERATIONS_LEARNING_GUARD_ACTIVE mode=postmortem` and
-`OPERATIONS_LEARNING_SCOPE_ACTIVE mode=postmortem` markers. The initial prompt must name
-the create-new PM path via `--postmortem`. The Stop hook runs:
+`OPERATIONS_LEARNING_SCOPE_ACTIVE mode=postmortem` markers before using any tool. The
+initial prompt must name both the exact incident IDs via `--incidents` and the create-new
+PM path via `--postmortem`. If `UserPromptSubmit` emits
+`OPERATIONS_LEARNING_CONTEXT_REQUIRED` with status `postmortem-context-required`, no scope
+or completion was accepted: do not use tools, report its phase/diagnostic/remediation, and ask the operator to resubmit both exact
+options. The `PreToolUse` hook mechanically denies tools until a valid scope gate exists;
+a gate-less Stop response may end that recovery message but never emits a completion
+marker. The Stop hook for a valid gate runs:
 
 `dotnet tool run engloopkit -- validate postmortem-learning --root . --incidents <INxxx,...> --postmortem <path>`
 

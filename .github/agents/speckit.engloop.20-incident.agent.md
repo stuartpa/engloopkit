@@ -32,9 +32,10 @@ hooks:
 handoffs:
 - label: Analyze stabilized incidents
   agent: speckit.engloop.21-postmortem
-  prompt: Analyze the selected stabilized incident set above with --postmortem <.engloop/postmortems/PMxxx_title.md>;
-    consult current NORTHSTAR.md and the relevant LEARNINGS.md card/source path, classify
-    rule effects, and produce validated learning-bound repair items.
+  prompt: Analyze the selected stabilized incident set above with --incidents <INxxx,...>
+    --postmortem <.engloop/postmortems/PMxxx_title.md>; replace both placeholders with
+    exact values, consult current NORTHSTAR.md and the relevant LEARNINGS.md card/source
+    path, classify rule effects, and produce validated learning-bound repair items.
   send: false
 ---
 

@@ -2,7 +2,7 @@
 
 **Workflow generation:** Ordered EngLoop v2.
 **Product versioning:** EngLoopKit remains on the **1.x** line; the ordered workflow
-ships in v1.7.0 and the current positive-history plus distinct refactor-plan/refactor workflow in v1.15.2. “v2” is not a v2.0 product release.
+ships in v1.7.0 and the current active-chat token-efficiency plus distinct refactor-plan/refactor workflow in v1.15.3. “v2” is not a v2.0 product release.
 
 EngLoopKit has independently invoked lifecycle, positive-history, and local utility lanes.
 Command ordinals give the picker a
@@ -83,7 +83,9 @@ Operations is not created merely because a delivery lane completed.
 2. **21 Post-mortem** requires a selected non-empty stabilized incident set. It emits
    PM/LEARN/RPI evidence only after current North Star/Learnings hashes, rule
    dispositions, pyramid update/no-change, source-card/history coverage, retrieval impact,
-   and RPI Rule-ID/executable-gate contracts pass deterministic validation.
+   and RPI Rule-ID/executable-gate contracts pass deterministic validation. Missing or
+   malformed initial incident/PM options return actionable recovery without authorizing
+   tools or completion; exact valid options must be resubmitted before work.
 3. **22 Repair** requires a concrete repair item and opens an obligation. It returns
    through Stage 04 and every applicable Stage 05–08 gate with exact PM Rule IDs and gate
    carried into immutable route acceptance. A separate close record requires the versioned

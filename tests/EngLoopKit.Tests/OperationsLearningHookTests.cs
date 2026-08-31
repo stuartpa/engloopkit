@@ -28,8 +28,58 @@ public sealed class OperationsLearningHookTests : IDisposable
         Assert.Contains("session-id-missing", noSession.Output);
 
         var missingPath = RunHook(repo, "postmortem", "initialize", "--incidents IN001", session: "pm-session");
-        Assert.False(Continues(missingPath));
-        Assert.Contains("--postmortem", missingPath.Output);
+        AssertPostmortemContextRequired(missingPath, "initialize", "--postmortem");
+    }
+
+    [Fact]
+    public void PostmortemMissingContext_keepsChatUsableButDeniesToolsAndAcceptsNoCompletion()
+    {
+        var repo = CreateRepository();
+        const string session = "postmortem-context-recovery";
+
+        var initialized = RunHook(repo, "postmortem", "initialize", "Continue the retrospective for the stabilized incidents.", session);
+        AssertPostmortemContextRequired(initialized, "initialize", "--postmortem");
+
+        var guarded = RunHook(repo, "postmortem", "guard", string.Empty, session);
+        Assert.True(Continues(guarded), guarded.Output + guarded.Error);
+        using (var guardJson = JsonDocument.Parse(guarded.Output))
+        {
+            var specific = guardJson.RootElement.GetProperty("hookSpecificOutput");
+            Assert.Equal("PreToolUse", specific.GetProperty("hookEventName").GetString());
+            Assert.Equal("deny", specific.GetProperty("permissionDecision").GetString());
+            Assert.Contains("--incidents", specific.GetProperty("permissionDecisionReason").GetString());
+            Assert.Contains("--postmortem", specific.GetProperty("permissionDecisionReason").GetString());
+        }
+
+        var stopped = RunHook(repo, "postmortem", "stop", string.Empty, session);
+        AssertPostmortemContextRequired(stopped, "stop", "operations-hook-gate-missing");
+        Assert.DoesNotContain("POSTMORTEM_LEARNING_OK", stopped.Output, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(Path.Combine(repo, ".engloop", "out", "operations-learning-gates")));
+
+        const string validPrompt = "--incidents IN001 --postmortem .engloop/postmortems/PM005_example.md";
+        var rebound = RunHook(repo, "postmortem", "initialize", validPrompt, session);
+        Assert.True(Continues(rebound), rebound.Output + rebound.Error);
+        Assert.Contains("OPERATIONS_LEARNING_SCOPE_ACTIVE", rebound.Output);
+
+        var allowed = RunHook(repo, "postmortem", "guard", string.Empty, session);
+        Assert.True(Continues(allowed), allowed.Output + allowed.Error);
+        using var allowedJson = JsonDocument.Parse(allowed.Output);
+        Assert.False(allowedJson.RootElement.TryGetProperty("hookSpecificOutput", out _));
+    }
+
+    [Theory]
+    [InlineData("--incidents IN001", "--postmortem")]
+    [InlineData("--postmortem .engloop/postmortems/PM005_example.md", "--incidents")]
+    [InlineData("--incidents BAD --postmortem .engloop/postmortems/PM005_example.md", "incident-ids-invalid")]
+    [InlineData("--incidents IN001 --postmortem C:/absolute.md", "path-invalid")]
+    public void PostmortemMalformedContext_reportsActionableRecoveryWithoutCreatingGate(string prompt, string diagnostic)
+    {
+        var repo = CreateRepository();
+
+        var result = RunHook(repo, "postmortem", "initialize", prompt, "postmortem-malformed");
+
+        AssertPostmortemContextRequired(result, "initialize", diagnostic);
+        Assert.False(Directory.Exists(Path.Combine(repo, ".engloop", "out", "operations-learning-gates")));
     }
 
     [Fact]
@@ -58,9 +108,50 @@ public sealed class OperationsLearningHookTests : IDisposable
         var repo = CreateRepository();
         Directory.CreateDirectory(Path.Combine(repo, ".engloop", "postmortems"));
         File.WriteAllText(Path.Combine(repo, ".engloop", "postmortems", "PM005_existing.md"), "existing\n");
+        var sameTarget = RunHook(repo, "postmortem", "initialize", "--incidents IN001 --postmortem .engloop/postmortems/PM005_existing.md", "pm-same-target");
+        Assert.False(Continues(sameTarget));
+        Assert.Contains("postmortem-target-already-exists", sameTarget.Output);
+
         var result = RunHook(repo, "postmortem", "initialize", "--incidents IN001 --postmortem .engloop/postmortems/PM005_new.md", "pm-existing");
         Assert.False(Continues(result));
         Assert.Contains("postmortem-number-already-used", result.Output);
+    }
+
+    [Fact]
+    public void PostmortemGuard_deniesInvalidGateStateWithoutStoppingChatOrDeletingEvidence()
+    {
+        void DenyMutation(Action<JsonObject> mutate, string expected)
+        {
+            var repo = CreateRepository();
+            const string session = "postmortem-guard-matrix";
+            Assert.True(Continues(RunHook(repo, "postmortem", "initialize", "--incidents IN001 --postmortem .engloop/postmortems/PM005_example.md", session)));
+            var path = Assert.Single(Directory.GetFiles(Path.Combine(repo, ".engloop", "out", "operations-learning-gates"), "*.json"));
+            var gate = JsonNode.Parse(File.ReadAllText(path))!.AsObject();
+            mutate(gate);
+            File.WriteAllText(path, gate.ToJsonString());
+
+            AssertPostmortemGuardDenied(RunHook(repo, "postmortem", "guard", string.Empty, session), expected);
+            Assert.True(File.Exists(path));
+        }
+
+        DenyMutation(gate => gate["Head"] = new string('0', 40), "gate-identity-invalid");
+        DenyMutation(gate => gate["Postmortem"] = ".engloop/postmortems/PM999_tampered.md", "arguments-tampered");
+
+        var corrupt = CreateRepository();
+        const string corruptSession = "postmortem-guard-corrupt";
+        Assert.True(Continues(RunHook(corrupt, "postmortem", "initialize", "--incidents IN001 --postmortem .engloop/postmortems/PM005_example.md", corruptSession)));
+        var corruptPath = Assert.Single(Directory.GetFiles(Path.Combine(corrupt, ".engloop", "out", "operations-learning-gates"), "*.json"));
+        File.WriteAllText(corruptPath, "{");
+        AssertPostmortemGuardDenied(RunHook(corrupt, "postmortem", "guard", string.Empty, corruptSession), "operations-hook-json-invalid");
+        Assert.True(File.Exists(corruptPath));
+
+        var identity = CreateRepository();
+        const string identitySession = "postmortem-guard-tool-identity";
+        Assert.True(Continues(RunHook(identity, "postmortem", "initialize", "--incidents IN001 --postmortem .engloop/postmortems/PM005_example.md", identitySession)));
+        var identityPath = Assert.Single(Directory.GetFiles(Path.Combine(identity, ".engloop", "out", "operations-learning-gates"), "*.json"));
+        File.AppendAllText(Path.Combine(identity, ".config", "dotnet-tools.json"), " ");
+        AssertPostmortemGuardDenied(RunHook(identity, "postmortem", "guard", string.Empty, identitySession), "tool-identity-changed");
+        Assert.True(File.Exists(identityPath));
     }
 
     [Fact]
@@ -200,7 +291,17 @@ public sealed class OperationsLearningHookTests : IDisposable
     }
 
     [Fact]
-    public void Hook_defersIncidentFailuresWhileRejectingInvalidNonIncidentDispatchAndArguments()
+    public void SubprocessPostmortemInitialize_withoutOption_returnsActionableNonAuthorizingRecovery()
+    {
+        var repo = CreateRepository();
+
+        var result = RunHookSubprocess(repo, "postmortem", "initialize", "Continue the retrospective.", "subprocess-postmortem-context");
+
+        AssertPostmortemContextRequired(result, "initialize", "operations-hook-option-missing:--postmortem");
+    }
+
+    [Fact]
+    public void Hook_defersRecoverableOperationsContextWhileRejectingInvalidDispatchAndRepairArguments()
     {
         var repo = CreateRepository();
         Assert.False(Continues(RunHookRaw(repo, [], "{}")));
@@ -216,8 +317,8 @@ public sealed class OperationsLearningHookTests : IDisposable
         AssertIncidentDeferred(RunHook(repo, "incident", "initialize", string.Empty, "empty-prompt"), "initialize", "prompt-missing");
         AssertIncidentDeferred(RunHook(repo, "incident", "initialize", "--incident C:/absolute.md", "absolute"), "initialize", "path-invalid");
         AssertIncidentDeferred(RunHook(repo, "incident", "initialize", "--incident .engloop/postmortems/PM001.md", "wrong-prefix"), "initialize", "path-invalid");
-        Assert.False(Continues(RunHook(repo, "postmortem", "initialize", "--incidents IN001,IN001 --postmortem .engloop/postmortems/PM005.md", "duplicate-incidents")));
-        Assert.False(Continues(RunHook(repo, "postmortem", "initialize", "--incidents BAD --postmortem .engloop/postmortems/PM005.md", "bad-incident")));
+        AssertPostmortemContextRequired(RunHook(repo, "postmortem", "initialize", "--incidents IN001,IN001 --postmortem .engloop/postmortems/PM005.md", "duplicate-incidents"), "initialize", "incident-ids-invalid");
+        AssertPostmortemContextRequired(RunHook(repo, "postmortem", "initialize", "--incidents BAD --postmortem .engloop/postmortems/PM005.md", "bad-incident"), "initialize", "incident-ids-invalid");
         Assert.False(Continues(RunHook(repo, "repair", "initialize", "--phase invalid --postmortem .engloop/postmortems/PM005.md --rpi RPI001 --rules RULE:x --acceptance .engloop/repairs/PM005-RPI001.route.json", "bad-phase")));
         Assert.False(Continues(RunHook(repo, "repair", "initialize", "--phase route --postmortem .engloop/postmortems/PM005.md --rpi BAD --rules RULE:x --acceptance .engloop/repairs/PM005-RPI001.route.json", "bad-rpi")));
         Assert.False(Continues(RunHook(repo, "repair", "initialize", "--phase route --postmortem .engloop/postmortems/PM005.md --rpi RPI001 --rules RULE:x,RULE:x --acceptance .engloop/repairs/PM005-RPI001.route.json", "duplicate-rules")));
@@ -346,7 +447,7 @@ public sealed class OperationsLearningHookTests : IDisposable
         File.WriteAllText(Path.Combine(repo, "LEARNINGS.md"), "# Learnings\n");
         File.WriteAllText(Path.Combine(repo, "src", "fixture.csproj"), "<Project Sdk=\"Microsoft.NET.Sdk\" />\n");
         File.WriteAllText(Path.Combine(repo, ".engloop", "config.json"), "{\"schemaVersion\":\"2.0\",\"productId\":\"fixture\",\"artifactRoot\":\".engloop\",\"transientOutputRoot\":\".engloop/out\",\"northstarPath\":\"NORTHSTAR.md\",\"validatorCommand\":[\"dotnet\",\"--version\"],\"moduleDiscoveryCommand\":[\"dotnet\",\"--version\"],\"architectureCommand\":[\"dotnet\",\"--version\"],\"regressionCommand\":[\"dotnet\",\"--version\"],\"coverageInputs\":{\"wholeProduct\":\"src/fixture.csproj\"},\"testRunway\":{\"status\":\"proven\",\"framework\":\"xunit\",\"terseCommand\":[\"dotnet\",\"--version\"],\"boundaryTest\":\"Fixture.Boundary\",\"generatedDestination\":\"tests/generated\",\"evidenceDigest\":\"fixture\",\"provenAtRevision\":\"content:fixture\"},\"moduleInventory\":[{\"id\":\"core\",\"path\":\"src/fixture.csproj\"}]}\n");
-        File.WriteAllText(Path.Combine(repo, ".config", "dotnet-tools.json"), "{\"version\":1,\"isRoot\":true,\"tools\":{\"engloopkit\":{\"version\":\"1.15.2\",\"commands\":[\"engloopkit\"]}}}\n");
+        File.WriteAllText(Path.Combine(repo, ".config", "dotnet-tools.json"), "{\"version\":1,\"isRoot\":true,\"tools\":{\"engloopkit\":{\"version\":\"1.15.3\",\"commands\":[\"engloopkit\"]}}}\n");
         var northstarHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(Path.Combine(repo, "NORTHSTAR.md")))).ToLowerInvariant();
         File.WriteAllText(Path.Combine(repo, ".engloop", "incidents", "IN001_example.md"), $"# IN001\n\n- **Status:** STABILIZED\n\n## Verification (stability, not root-cause fix)\n\n- [x] Health checks passing: service health remained continuously green for verification.\n- [x] User workflows unblocked: user workflow completed successfully without any errors.\n- [x] No fresh errors in the watch window: watch window reported zero additional errors.\n\n## Direction and learning context\n\n- **North Star SHA-256:** `{northstarHash}`\n- **Learning context:** `CONSULTED`\n- **Rule IDs:** `NONE`\n- **Source IDs:** `NONE`\n- **Deferral reason:** `NOT-REQUIRED`\n");
         Git(repo, "init");
@@ -434,6 +535,35 @@ public sealed class OperationsLearningHookTests : IDisposable
         Assert.Contains("\"expectedSource\":", message);
         Assert.Contains("\"elkVersion\":", message);
         Assert.Contains("\"remediation\":", message);
+    }
+
+    private static void AssertPostmortemContextRequired((int ExitCode, string Output, string Error) result, string phase, string expectedDiagnostic)
+    {
+        Assert.True(Continues(result), result.Output + result.Error);
+        using var json = JsonDocument.Parse(result.Output);
+        Assert.Equal(JsonValueKind.Null, json.RootElement.GetProperty("stopReason").ValueKind);
+        var message = json.RootElement.GetProperty("systemMessage").GetString();
+        Assert.Contains("OPERATIONS_LEARNING_CONTEXT_REQUIRED", message);
+        Assert.Contains("\"status\":\"postmortem-context-required\"", message);
+        Assert.Contains($"\"phase\":\"{phase}\"", message);
+        Assert.Contains($"\"command\":\"operations-hook {phase} postmortem\"", message);
+        Assert.Contains(expectedDiagnostic, message);
+        Assert.Contains("\"expectedSource\":", message);
+        Assert.Contains("\"elkVersion\":", message);
+        Assert.Contains("\"remediation\":", message);
+        Assert.Contains("\"completionAccepted\":false", message);
+    }
+
+    private static void AssertPostmortemGuardDenied((int ExitCode, string Output, string Error) result, string expectedDiagnostic)
+    {
+        Assert.True(Continues(result), result.Output + result.Error);
+        using var json = JsonDocument.Parse(result.Output);
+        Assert.Equal(JsonValueKind.Null, json.RootElement.GetProperty("stopReason").ValueKind);
+        Assert.Contains(expectedDiagnostic, json.RootElement.GetProperty("systemMessage").GetString(), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("POSTMORTEM_LEARNING_OK", result.Output, StringComparison.Ordinal);
+        var specific = json.RootElement.GetProperty("hookSpecificOutput");
+        Assert.Equal("PreToolUse", specific.GetProperty("hookEventName").GetString());
+        Assert.Equal("deny", specific.GetProperty("permissionDecision").GetString());
     }
 
     private static void Git(string repo, params string[] args)

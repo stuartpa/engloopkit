@@ -49,14 +49,15 @@ public sealed class BundleConformanceTests
         using var catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "catalog.json")));
 
         Assert.Contains("id: \"engloop\"", extension);
-        Assert.Contains("version: \"1.15.2\"", extension);
+        Assert.Contains("version: \"1.15.3\"", extension);
         Assert.Contains("id: \"engloopkit\"", bundle);
-        Assert.Contains("version: \"1.15.2\"", bundle);
+        Assert.Contains("version: \"1.15.3\"", bundle);
         Assert.Equal("engloop", catalog.RootElement.GetProperty("extensions")[0].GetProperty("id").GetString());
-        Assert.Equal("1.15.2", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
+        Assert.Equal("1.15.3", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
         Assert.Equal(26, catalog.RootElement.GetProperty("extensions")[0].GetProperty("provides").GetProperty("commands").GetInt32());
 
         var changelog = File.ReadAllText(Path.Combine(Root, "CHANGELOG.md"));
+        Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.15\.3\] - 2026-08-31\r?$").Cast<Match>());
         Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.15\.2\] - 2026-08-30\r?$").Cast<Match>());
         Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.15\.1\] - 2026-08-20\r?$").Cast<Match>());
         Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.15\.0\] - 2026-08-20\r?$").Cast<Match>());
@@ -157,6 +158,14 @@ public sealed class BundleConformanceTests
         Assert.Contains("-Mode implementation -Event UserPromptSubmit", implementation, StringComparison.Ordinal);
         Assert.DoesNotContain("-Mode implementation -Event SessionStart", implementation, StringComparison.Ordinal);
         Assert.DoesNotContain(".specify/scripts/", File.ReadAllText(Path.Combine(Root, ".github", "agents", "speckit.engloop.31-token-efficiency-implement.agent.md")), StringComparison.OrdinalIgnoreCase);
+
+        var incident = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.20-incident.md"));
+        Assert.Contains("--incidents <INxxx,...> --postmortem", incident, StringComparison.Ordinal);
+
+        var postmortem = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.21-postmortem.md"));
+        Assert.Contains("operations-hook guard postmortem", postmortem, StringComparison.Ordinal);
+        Assert.Contains("OPERATIONS_LEARNING_CONTEXT_REQUIRED", postmortem, StringComparison.Ordinal);
+        Assert.Contains("no scope or completion was accepted", postmortem, StringComparison.OrdinalIgnoreCase);
 
         var analysisTemplate = File.ReadAllText(Path.Combine(ExtensionRoot, "templates", "TOKEN-EFFICIENCY-ANALYSIS-template.json"));
         Assert.Contains("token-efficiency-analysis", analysisTemplate, StringComparison.Ordinal);

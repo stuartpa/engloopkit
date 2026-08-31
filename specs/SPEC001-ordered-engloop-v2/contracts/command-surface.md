@@ -1,7 +1,7 @@
 # Contract: Ordered v2 Command Surface
 
 - **Features:** SPEC001 ordered workflow + SPEC002 overlay utilities + positive history + numbered continuation handoffs + verified self-upgrade
-- **Contract version:** 1.15.2
+- **Contract version:** 1.15.3
 - **Owner:** first-party extension `engloopkit`
 
 ## Identity
@@ -262,6 +262,15 @@ blocks completion on stale/missing direction, pyramid, provenance, retrieval, ex
 gate, gate evidence, or readiness. These stages stop when custom-agent hooks are disabled;
 body guidance is not treated as equivalent completion enforcement.
 
+Stage 21 also requires `operations-hook guard postmortem` at `PreToolUse`. Correctable
+missing/malformed `--incidents` / `--postmortem` prompt context returns a structured
+`postmortem-context-required` message with `continue: true`, creates no scope gate, and
+accepts no completion. The PreToolUse guard denies every tool while no valid gate exists;
+the gate-less Stop permits only the agent's actionable recovery response to end and emits
+no completion marker. Resubmitting both exact options activates the original strict gate.
+Existing/create-new PM conflicts, corrupt/tampered gates, and every downstream
+`postmortem-learning` validation failure remain blocking.
+
 ### Pinned VS Code/schema baseline
 
 The 1.7.0 release accepts custom-agent behavior against exactly:
@@ -315,7 +324,7 @@ handoff-level `model` field is absent. No other edge is allowed.
 | `speckit.engloop.08-unittest` | `speckit.engloop.07-validate` | Revalidate deletion | Rerun the complete generated functional validation after the coherent residue deletion set above. | `false` | absent |
 | `speckit.engloop.08-unittest` | `speckit.engloop.09-debugger-walk-thru` | Walk through review code in debugger | Use the current readiness PASS and exact base-to-HEAD diff to prepare an engineer-led debugger walkthrough ledger for every changed executable code chunk. | `false` | absent |
 | `speckit.engloop.10-codereview-prepare` | `speckit.engloop.08-unittest` | Recompute readiness after review preparation | Re-run direct evidence and the sole readiness gate after the code-review preparation changes above; a new Stage 09 debugger walkthrough is recommended but not required. | `false` | absent |
-| `speckit.engloop.20-incident` | `speckit.engloop.21-postmortem` | Analyze stabilized incidents | Analyze the selected stabilized incident set above with --postmortem <.engloop/postmortems/PMxxx_title.md>; consult current NORTHSTAR.md and the relevant LEARNINGS.md card/source path, classify rule effects, and produce validated learning-bound repair items. | `false` | absent |
+| `speckit.engloop.20-incident` | `speckit.engloop.21-postmortem` | Analyze stabilized incidents | Analyze the selected stabilized incident set above with --incidents <INxxx,...> --postmortem <.engloop/postmortems/PMxxx_title.md>; replace both placeholders with exact values, consult current NORTHSTAR.md and the relevant LEARNINGS.md card/source path, classify rule effects, and produce validated learning-bound repair items. | `false` | absent |
 | `speckit.engloop.21-postmortem` | `speckit.engloop.22-repair` | Repair selected item | Invoke Stage 22 with --phase route, the exact --postmortem path, selected --rpi, concrete --rules from its RPI learning contract, and --acceptance path. Carry those rule IDs and the exact executable gate through Stage 04 and applicable Stage 05–08 gates; closure requires gate PASS plus current readiness. | `false` | absent |
 | `speckit.engloop.21-postmortem` | `speckit.engloop.42-learnings-pyramid` | Condense learnings when capacity exists | When spare stewardship capacity exists, condense the accepted learning backlog above and validate retrieval. | `false` | absent |
 | `speckit.engloop.22-repair` | `speckit.engloop.04-refactor` | Begin governed repair | Implement the selected repair under its exact PM Rule IDs and executable gate. Preserve both in SPEC acceptance, run the gate after implementation, then complete applicable Stage 05–08 validation; do not claim closure from the code diff. | `false` | absent |
@@ -423,9 +432,9 @@ it does not install a development source as an alternate success path.
 
 ## Version rule
 
-The current command-surface target is 1.15.2. “Ordered EngLoop v2” identifies this workflow
+The current command-surface target is 1.15.3. “Ordered EngLoop v2” identifies this workflow
 generation only and provides no authority for a 2.x product release. Bundle, extension,
-tool, catalog, archive names, and release notes MUST agree on 1.15.2. Catalog SHA-256
+tool, catalog, archive names, and release notes MUST agree on 1.15.3. Catalog SHA-256
 values are computed from final immutable artifacts. Rebuilding different bits under
-1.15.2 is forbidden. Any 2.x value is a release-blocking error unless a later explicit
+1.15.3 is forbidden. Any 2.x value is a release-blocking error unless a later explicit
 maintainer decision supersedes this contract.

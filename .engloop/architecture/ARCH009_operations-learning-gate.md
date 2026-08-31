@@ -1,7 +1,7 @@
 # ARCH009: Direction- and pyramid-bound operations learning gate
 
 - **Created:** 2026-08-15
-- **Amended:** 2026-08-30
+- **Amended:** 2026-08-31
 - **Status:** ACCEPTED
 - **Governs:** Stages 20 Incident, 21 Postmortem, 22 Repair, PM/RPI templates,
   operation-agent completion hooks, and repair acceptance evidence
@@ -60,6 +60,18 @@ This keeps mitigation available while applying `PM001/LEARN001` and `PM001/LEARN
 the actual completion boundary rather than treating lifecycle metadata collection as the
 readiness verdict.
 
+Stage 21 separates correctable prompt context from postmortem authorization. When an
+initial prompt omits `--incidents` or `--postmortem`, supplies malformed incident IDs, or
+uses an invalid governed PM path, `UserPromptSubmit` returns `continue: true` with a
+structured `postmortem-context-required` diagnostic. It creates no scope gate and accepts
+no completion. A Stage 21 `PreToolUse` hook denies every tool until a valid session/HEAD/
+argument/tool-identity-bound gate exists, so the agent can only report remediation and ask
+the operator to resubmit exact values. A gate-less Stop may end that recovery response but
+never emits `POSTMORTEM_LEARNING_OK`. Once valid context is rebound, the existing Stop
+validator remains fail closed on every direction, pyramid, provenance, retrieval, SEK,
+RPI, and artifact requirement. Unsupported existing/create-new PM identities and corrupt
+or tampered gates are not downgraded to context recovery.
+
 The validators fail closed on missing/stale North Star or Learnings hashes, absent rule
 dispositions, uncovered source provenance, missing historical coverage, required retrieval
 without PASS evidence, substituted Rule IDs/gates, missing gate evidence, or stale readiness.
@@ -77,8 +89,11 @@ checks, not prose claims supplied by the agent.
 
 - Missing or malformed Stage 20 hook context can reduce learning capture but cannot make
   the recovery agent unavailable. The diagnostic is explicit; there is no silent fallback.
-- Stage 21/22 scope and completion gates remain blocking because they accept durable
-  retrospective or repair evidence rather than performing urgent stabilization.
+- Correctable Stage 21 invocation context cannot dead-end chat, but it also cannot
+  authorize tools or completion. Scope and completion gates remain blocking because they
+  accept durable retrospective evidence.
+- Stage 22 scope and completion gates remain blocking because they accept durable repair
+  evidence rather than performing urgent stabilization.
 - Stage 41 remains useful for wider backlog condensation and sampled retrieval refresh,
   but it no longer excuses Stage 21 from considering/updating the living pyramid now.
 - Repairs carry the rule they implement into specification and executable acceptance.

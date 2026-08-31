@@ -58,7 +58,7 @@ if ($Release) {
     }
 
     Invoke-Step -Name 'immutable release packaging' -Action {
-        & "$repositoryRoot\scripts\validate-package.ps1" -Version '1.15.2'
+        & "$repositoryRoot\scripts\validate-package.ps1" -Version '1.15.3'
         if ($LASTEXITCODE -ne 0) { throw 'Package gate failed.' }
     }
 }

@@ -3,6 +3,27 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.3] - 2026-08-31
+
+### Fixed
+
+- Made user-invocable Agents 30 and 31 usable after selection in an existing chat and
+  after compaction by moving activation to an ordered `UserPromptSubmit` chain. A
+  root-local JSON entry hook emits the current `AGENT_ENTRY_OK` marker before Agent 30
+  activates its analysis guard or Agent 31 loads and initializes its approved scope.
+- Bound prompt activation to a transient, ignored, single-use receipt containing the
+  exact stage, safe session identity, same-event UTC ticks, and Git HEAD. Rejected,
+  stale, mismatched, corrupt, or replayed activation cannot create scope or evidence.
+- Preserved Agent 30's one-artifact read-only boundary and Agent 31's valid-analysis,
+  explicit unique `TE-Rxxx` approval, source-state, prerequisite, path, command, and
+  finalized-evidence gates. Wildcards, ranges, duplicates, machine repair IDs, unknown
+  repairs, stale analysis, unresolved prerequisites, and commit/deployment/global
+  mutation remain blocked.
+- Prevented missing or malformed Stage 21 `--incidents` / `--postmortem` context from
+  terminating the active chat. The hook now reports exact remediation, accepts no scope
+  or completion, and a new PreToolUse guard denies all tools until both valid options are
+  resubmitted; strict postmortem-learning completion validation is unchanged.
+
 ## [1.15.2] - 2026-08-30
 
 ### Fixed
