@@ -41,6 +41,9 @@ public sealed class OperationsLearningHookTests : IDisposable
         Assert.True(Continues(initialized), initialized.Output);
         Assert.Contains("OPERATIONS_LEARNING_SCOPE_ACTIVE", initialized.Output);
 
+        var repeated = RunHook(repo, "postmortem", "initialize", prompt, "pm-session");
+        Assert.True(Continues(repeated), repeated.Output);
+
         var followup = RunHook(repo, "postmortem", "initialize", "continue analysis", "pm-session");
         Assert.True(Continues(followup), followup.Output);
 
