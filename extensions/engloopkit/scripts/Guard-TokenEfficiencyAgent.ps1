@@ -5,7 +5,7 @@ param(
     [string]$Mode,
 
     [Parameter(Mandatory = $true)]
-    [ValidateSet('SessionStart', 'PreToolUse', 'Stop')]
+    [ValidateSet('UserPromptSubmit', 'PreToolUse', 'Stop')]
     [string]$Event
 )
 
@@ -16,19 +16,37 @@ try {
     $hook = Get-HookInput
     $session = Get-SafeSessionId $hook
 
-    if ($Event -eq 'SessionStart') {
+    if ($Event -eq 'UserPromptSubmit') {
         $root = Get-RepositoryRoot $hook
+        $stage = if ($Mode -eq 'analysis') { 'speckit.engloop.30-token-efficiency-analyze' } else { 'speckit.engloop.31-token-efficiency-implement' }
+        $entryGatePath = Assert-TokenEfficiencyPromptEntry $root $stage $hook
+        if ($Mode -eq 'analysis') { Remove-Item -LiteralPath $entryGatePath -Force }
         $gateDirectory = Join-Path $root '.engloop/out/token-efficiency/gates'
         & git -C $root check-ignore -q --no-index -- .engloop/out/token-efficiency/.elk-probe
         if ($LASTEXITCODE -ne 0) { throw '.engloop/out/token-efficiency is not ignored' }
         New-Item -ItemType Directory -Path $gateDirectory -Force | Out-Null
         if ($Mode -eq 'analysis') {
             $gatePath = Join-Path $gateDirectory ($session + '.analysis.json')
-            $gate = [ordered]@{ schemaVersion = '1.0'; mode = 'analysis'; sessionId = $session; artifactPath = $null }
-            [IO.File]::WriteAllText($gatePath, (ConvertTo-CompactJson $gate), (New-Object Text.UTF8Encoding($false)))
+            if (Test-Path -LiteralPath $gatePath -PathType Leaf) {
+                $gate = Get-Content -LiteralPath $gatePath -Raw | ConvertFrom-Json
+                if ([string]$gate.schemaVersion -ne '1.0' -or [string]$gate.mode -ne 'analysis' -or [string]$gate.sessionId -ne $session) {
+                    throw 'analysis-guard-state-invalid'
+                }
+                $artifactPath = [string]$gate.artifactPath
+                if (-not [string]::IsNullOrWhiteSpace($artifactPath)) {
+                    if ($artifactPath -notmatch '^\.engloop/evidence/token-efficiency-analysis-[A-Za-z0-9._-]+\.json$') {
+                        throw 'analysis-guard-artifact-path-invalid'
+                    }
+                    [void](Resolve-PolicyPath $root $artifactPath $false)
+                }
+            }
+            else {
+                $gate = [ordered]@{ schemaVersion = '1.0'; mode = 'analysis'; sessionId = $session; artifactPath = $null }
+                [IO.File]::WriteAllText($gatePath, (ConvertTo-CompactJson $gate), (New-Object Text.UTF8Encoding($false)))
+            }
         }
         $marker = if ($Mode -eq 'analysis') { 'TOKEN_EFFICIENCY_ANALYSIS_GUARD_ACTIVE' } else { 'TOKEN_EFFICIENCY_IMPLEMENTATION_GUARD_LOADED' }
-        Write-HookResult $true '' "$marker session=$session"
+        Write-HookResult $true '' "$marker session=$session activation=UserPromptSubmit"
         exit 0
     }
 

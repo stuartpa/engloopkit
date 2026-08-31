@@ -24,6 +24,8 @@ try {
     if ([string]::IsNullOrWhiteSpace($Prompt)) { $Prompt = [string](Get-PropertyValue $hook @('prompt')) }
     if ([string]::IsNullOrWhiteSpace($SessionId)) { $SessionId = Get-SafeSessionId $hook } else { $SessionId = [regex]::Replace($SessionId, '[^A-Za-z0-9._-]', '_') }
     $root = Get-RepositoryRoot $hook $RepositoryRoot
+    $entryGatePath = Assert-TokenEfficiencyPromptEntry $root 'speckit.engloop.31-token-efficiency-implement' $hook
+    Remove-Item -LiteralPath $entryGatePath -Force
 
     $existingGatePath = Join-Path (Join-Path $root '.engloop/out/token-efficiency/gates') ($SessionId + '.json')
     if (Test-Path -LiteralPath $existingGatePath -PathType Leaf) {
@@ -43,10 +45,14 @@ try {
     if ($approveArgument -match '(?i)(^|,)(all|\*)(,|$)' -or $approveArgument -match '\.\.') {
         throw 'Agent 31 approval cannot use all, wildcard, or ranges.'
     }
-    $approved = @($approveArgument.Split(',', [StringSplitOptions]::RemoveEmptyEntries) | ForEach-Object { $_.Trim() } | Sort-Object -Unique)
-    if ($approved.Count -eq 0 -or @($approved | Where-Object { -not (Test-RepairId $_) }).Count -ne 0) {
+    $requestedApprovals = @($approveArgument.Split(',', [StringSplitOptions]::RemoveEmptyEntries) | ForEach-Object { $_.Trim() })
+    if ($requestedApprovals.Count -eq 0 -or @($requestedApprovals | Where-Object { -not (Test-RepairId $_) }).Count -ne 0) {
         throw 'Agent 31 approval must contain only explicit TE-Rddd IDs.'
     }
+    if (@($requestedApprovals | Sort-Object -Unique).Count -ne $requestedApprovals.Count) {
+        throw 'Agent 31 approval contains duplicate repair IDs.'
+    }
+    $approved = @($requestedApprovals | Sort-Object)
 
     $analysisRelative = ConvertTo-NormalizedPolicyPath $analysisArgument
     if ($analysisRelative -notmatch '^\.engloop/evidence/token-efficiency-analysis-[A-Za-z0-9._-]+\.json$') {

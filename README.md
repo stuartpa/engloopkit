@@ -67,9 +67,12 @@ The released extension ID is **`engloop`**; product, bundle, and tool identity r
 | Local utility | `/speckit.engloop.80-upgrade-elk` | Upgrade root-local ELK and its SEK dependency to the latest verified release, or report already current. |
 
 Agents 30–31 require VS Code custom-agent hooks; the tracked workspace setting enables
-them. Agent 30 uses the local Chronicle index when available; its absence is reported as a
-measurement limitation. Organization policy that disables hooks makes both token agents
-fail closed before analysis/implementation mutation.
+them. Their ordered `UserPromptSubmit` activation works after selecting either agent in an
+existing chat and short-circuits invalid entry before scope state is created. Agent 30 uses
+the local Chronicle index when available; its absence is reported as a measurement
+limitation. Organization policy that disables hooks makes both token agents fail closed
+before analysis/implementation mutation; `PreToolUse` and Agent 31 `Stop` enforcement are
+unchanged.
 
 Stages 21–22 also require agent-scoped hooks. Their completion validators bind the named
 PM/repair acceptance to current `NORTHSTAR.md`, `LEARNINGS.md`, living rule cards,

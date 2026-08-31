@@ -242,6 +242,19 @@ alternate identity or accepted gate and deletes no failed gate. The standalone
 `validate incident-context` operation remains fail closed and is required before a
 stabilization claim can rely on that artifact.
 
+Stages 30 and 31 retain the common `SessionStart` entry hook but MUST NOT use it as their
+activation authority. They are user-invocable in active chats, while `SessionStart` runs
+only for the first prompt of a new session. Their ordered `UserPromptSubmit` chain starts
+with `validate agent-entry-hook`, whose JSON `continue: false` rejection short-circuits
+later prompt hooks. Agent 30 then idempotently activates its analysis guard without
+resetting an accepted artifact path. Agent 31 then loads its implementation guard and
+initializes or revalidates the exact analysis/explicit-approval scope. Every required
+marker comes from the current submitted prompt. `PreToolUse` remains authoritative for
+read/write/path/command scope, and Agent 31 `Stop` remains authoritative for completion.
+Disabled hooks, absent current-prompt markers, corrupt state, stale analysis, unresolved
+prerequisites, and missing/unknown/wildcard/range/duplicate/non-repository approvals all
+fail closed with actionable diagnostics; no fallback scope is inferred.
+
 Stages 21 and 22 additionally require agent-scoped `UserPromptSubmit` and `Stop` guards.
 The prompt hook binds explicit PM/RPI/Rule-ID/acceptance paths into ignored session state;
 the Stop hook invokes `validate postmortem-learning` or `validate repair-learning` and

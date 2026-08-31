@@ -31,7 +31,7 @@ public static class Program
 
         if (args.Length < 2 || !string.Equals(args[0], "validate", StringComparison.Ordinal))
         {
-            Console.Error.WriteLine("Usage: engloopkit validate <root|config|commands|reachability|learnings|incident-context|postmortem-learning|repair-learning|installation|agent-entry|agent-surfaces> [options] | engloopkit refactor-profile <bind|clear> | engloopkit repair-gate execute [options] | engloopkit readiness emit [options] | engloopkit overlay <install|register|verify|pack|unpack|remove|status>");
+            Console.Error.WriteLine("Usage: engloopkit validate <root|config|commands|reachability|learnings|incident-context|postmortem-learning|repair-learning|installation|agent-entry|agent-entry-hook|agent-surfaces> [options] | engloopkit refactor-profile <bind|clear> | engloopkit repair-gate execute [options] | engloopkit readiness emit [options] | engloopkit overlay <install|register|verify|pack|unpack|remove|status>");
             return 1;
         }
 
@@ -48,6 +48,7 @@ public static class Program
             "repair-learning" => ValidationCommands.ValidateRepairLearning(args),
             "installation" => ValidationCommands.ValidateInstallation(args),
             "agent-entry" => ValidationCommands.ValidateAgentEntry(args),
+            "agent-entry-hook" => ValidationCommands.ValidateAgentEntryHook(args),
             "agent-surfaces" => ValidationCommands.ValidateAgentSurfaces(args),
             _ => 1
         };

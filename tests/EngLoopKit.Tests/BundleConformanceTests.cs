@@ -139,6 +139,10 @@ public sealed class BundleConformanceTests
         Assert.Contains("polling-duplication", analysis, StringComparison.Ordinal);
         Assert.Contains("token-efficiency-analysis-", analysis, StringComparison.Ordinal);
         Assert.Contains("nothing was implemented", analysis, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("UserPromptSubmit:", analysis, StringComparison.Ordinal);
+        Assert.Contains("validate agent-entry-hook --stage speckit.engloop.30-token-efficiency-analyze", analysis, StringComparison.Ordinal);
+        Assert.Contains("-Mode analysis -Event UserPromptSubmit", analysis, StringComparison.Ordinal);
+        Assert.DoesNotContain("-Mode analysis -Event SessionStart", analysis, StringComparison.Ordinal);
         Assert.DoesNotContain(".specify/scripts/", File.ReadAllText(Path.Combine(Root, ".github", "agents", "speckit.engloop.30-token-efficiency-analyze.agent.md")), StringComparison.OrdinalIgnoreCase);
 
         var implementation = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.31-token-efficiency-implement.md"));
@@ -149,6 +153,9 @@ public sealed class BundleConformanceTests
         Assert.Contains("open-standard Agent Skill", implementation, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("focused validation", implementation, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Never commit or push", implementation, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("validate agent-entry-hook --stage speckit.engloop.31-token-efficiency-implement", implementation, StringComparison.Ordinal);
+        Assert.Contains("-Mode implementation -Event UserPromptSubmit", implementation, StringComparison.Ordinal);
+        Assert.DoesNotContain("-Mode implementation -Event SessionStart", implementation, StringComparison.Ordinal);
         Assert.DoesNotContain(".specify/scripts/", File.ReadAllText(Path.Combine(Root, ".github", "agents", "speckit.engloop.31-token-efficiency-implement.agent.md")), StringComparison.OrdinalIgnoreCase);
 
         var analysisTemplate = File.ReadAllText(Path.Combine(ExtensionRoot, "templates", "TOKEN-EFFICIENCY-ANALYSIS-template.json"));

@@ -12,10 +12,13 @@ hooks:
     - type: command
       command: dotnet tool run engloopkit validate agent-entry --stage speckit.engloop.31-token-efficiency-implement --root .
       timeout: 30
-    - type: command
-      command: pwsh -NoProfile -File .specify/extensions/engloop/scripts/Guard-TokenEfficiencyAgent.ps1 -Mode implementation -Event SessionStart
-      timeout: 30
   UserPromptSubmit:
+    - type: command
+      command: dotnet tool run engloopkit validate agent-entry-hook --stage speckit.engloop.31-token-efficiency-implement --root .
+      timeout: 30
+    - type: command
+      command: pwsh -NoProfile -File .specify/extensions/engloop/scripts/Guard-TokenEfficiencyAgent.ps1 -Mode implementation -Event UserPromptSubmit
+      timeout: 30
     - type: command
       command: pwsh -NoProfile -File .specify/extensions/engloop/scripts/Initialize-TokenEfficiencyImplementationGate.ps1
       timeout: 30
@@ -55,14 +58,19 @@ Put full command output in ignored `.engloop/out/token-efficiency/<revision>/`; 
 
 ## Required hook enforcement
 
-This agent requires `chat.useCustomAgentHooks` and its installed agent-scoped hooks. At
-session start require `AGENT_ENTRY_OK` and `TOKEN_EFFICIENCY_IMPLEMENTATION_GUARD_LOADED`.
-The `UserPromptSubmit` scope initializer validates `--analysis`, `--approve`, current
-HEAD/status, repair structure, resolved prerequisites, exact allowed/prohibited paths, and
-exact validation commands; require its
-`TOKEN_EFFICIENCY_IMPLEMENTATION_SCOPE_ACTIVE` marker before any edit or command. The
-`PreToolUse` guard denies out-of-scope paths, unapproved commands, deployment/global
-mutation, and all commit/push commands. If any marker is absent, stop.
+This agent requires `chat.useCustomAgentHooks` and its installed agent-scoped hooks. On
+every submitted invocation, ordered `UserPromptSubmit` hooks run the root-local JSON entry
+gate, load the implementation guard, and then initialize or revalidate the exact scope.
+Require `AGENT_ENTRY_OK`, `TOKEN_EFFICIENCY_IMPLEMENTATION_GUARD_LOADED`, and
+`TOKEN_EFFICIENCY_IMPLEMENTATION_SCOPE_ACTIVE` from that prompt before any edit or
+command. The scope initializer validates `--analysis`, `--approve`, current HEAD/status,
+repair structure, resolved prerequisites, exact allowed/prohibited paths, and exact
+validation commands. This chain works after selecting Agent 31 in an active chat and after
+compaction; `SessionStart` alone is not activation evidence. If any marker is absent, stop
+and tell the operator to enable `chat.useCustomAgentHooks`, select Agent 31, and resubmit
+the exact `--analysis` plus explicit `--approve` prompt. The `PreToolUse` guard still
+denies out-of-scope paths, unapproved commands, deployment/global mutation, and all
+commit/push commands.
 
 ## Entry and approval gate
 
@@ -108,7 +116,7 @@ For an approved new/changed skill:
 - specific `description` says what and when, at most 1024 chars;
 - keep main instructions under 500 lines and preferably under 5,000 tokens;
 - put reusable deterministic code in the Agent Skills standard skill-local executable-resource directory, detailed material in
-  `./references/`, and templates/static inputs in `./assets/`;
+  `./references/`, and static templates or inputs in `./assets/`;
 - reference resources directly with relative Markdown links one level deep;
 - scripts are self-contained, validate arguments, emit compact output, and return meaningful exit codes;
 - preserve portable standard fields and their length limits; add VS Code-only

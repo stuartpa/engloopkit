@@ -18,12 +18,16 @@ before joins, checks current customizations and declared/local toolchains, and r
 stable repair IDs. It never implements, installs, polls, commits, pushes, or claims
 closure.
 
-Agent 30 requires VS Code agent-scoped hooks (`chat.useCustomAgentHooks`) and the
-`TOKEN_EFFICIENCY_ANALYSIS_GUARD_ACTIVE` session marker. Its `PreToolUse` guard permits
-read/search/session-store work, bounded read-only probes, and exactly one create-new
-schema-valid analysis JSON; every other write or command is denied. Local Chronicle
-analysis requires `github.copilot.chat.localIndex.enabled`; without the index/tool, Agent
-30 records visible-only limitations rather than inventing session data.
+Agent 30 requires VS Code agent-scoped hooks (`chat.useCustomAgentHooks`). Every submitted
+prompt runs a root-local JSON entry hook followed by an idempotent prompt activator and
+must receive `AGENT_ENTRY_OK` plus `TOKEN_EFFICIENCY_ANALYSIS_GUARD_ACTIVE`. This works
+when Agent 30 is selected in an existing chat; `SessionStart` alone is not activation
+evidence. Its `PreToolUse` guard permits read/search/session-store work, bounded read-only
+probes, and exactly one create-new schema-valid analysis JSON; every other write or command
+is denied. Prompt reactivation preserves the accepted artifact path and fails closed on
+corrupt state. Local Chronicle analysis requires `github.copilot.chat.localIndex.enabled`;
+without the index/tool, Agent 30 records visible-only limitations rather than inventing
+session data.
 
 The review-first handoff (`send: false`) points to
 `speckit.engloop.31-token-efficiency-implement`. Agent 31 requires the analysis path and
@@ -33,12 +37,14 @@ command, validates the touched slice first, stores full logs under ignored
 `.engloop/out/token-efficiency/`, and writes one compact implementation JSON. It does not
 bypass Stages 04–08 or mutate deployments/global/user state.
 
-Agent 31 also requires agent-scoped hooks. Its `UserPromptSubmit` initializer validates
-the analysis identity/hash, exact HEAD and canonical Git-status digest, repository repair
-IDs, resolved prerequisites, allowed/prohibited paths, and argument-array validation
-commands. `PreToolUse` then denies paths/commands outside that scope and permanently
-denies deployment/global mutation and commit/push. `Stop` requires a durable evidence
-artifact finalized as `passed`, `blocked`, or `failed`.
+Agent 31 also requires agent-scoped hooks. Its ordered `UserPromptSubmit` chain first
+short-circuits invalid root/stage entry, then loads the implementation guard, then validates
+the analysis identity/hash, exact HEAD and canonical Git-status digest, explicit unique
+repository repair IDs, resolved prerequisites, allowed/prohibited paths, and argument-array
+validation commands. It emits all three current-prompt markers before work. `PreToolUse`
+then denies paths/commands outside that scope and permanently denies deployment/global
+mutation and commit/push. `Stop` requires a durable evidence artifact finalized as
+`passed`, `blocked`, or `failed`.
 
 ## Evidence hierarchy
 

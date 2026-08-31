@@ -38,7 +38,9 @@ model-derived negative conformance and materially branching paths.
 
 Use this lane whenever a chat shows repeated polling, oversized output, tool guessing,
 missing checkpoints, repeated context discovery, or slow serial work. Agent 30 hands off
-with `send: false`; Agent 31 requires the user to approve stable repair IDs again.
+with `send: false`; Agent 31 requires the user to approve stable repair IDs again. Both
+agents reactivate their ordered entry/scope hooks on each submitted prompt, including
+after switching agents in an existing chat; tool and completion guards remain fail closed.
 
 ## Refactor compute profiles: 40
 

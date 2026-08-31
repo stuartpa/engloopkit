@@ -647,25 +647,114 @@ public static class ValidationCommands
 
     public static int ValidateAgentEntry(string[] args)
     {
+        var result = EvaluateAgentEntry(args);
+        if (!result.Passed)
+        {
+            Console.Error.WriteLine(result.Reason);
+            return 2;
+        }
+
+        Console.WriteLine("AGENT_ENTRY_OK");
+        return 0;
+    }
+
+    public static int ValidateAgentEntryHook(string[] args)
+    {
+        var stage = GetOption(args, "--stage", string.Empty);
+        string? gatePath = null;
+        try
+        {
+            EnsureTokenEfficiencyStage(stage);
+            using var input = JsonDocument.Parse(Console.In.ReadToEnd());
+            var cwd = ReadHookString(input.RootElement, "cwd");
+            var sessionId = ReadHookString(input.RootElement, "session_id", "sessionId");
+            var timestamp = ReadHookString(input.RootElement, "timestamp");
+            if (string.IsNullOrWhiteSpace(cwd)) throw new InvalidOperationException("hook-cwd-missing");
+            if (string.IsNullOrWhiteSpace(sessionId)) throw new InvalidOperationException("hook-session-id-missing");
+            if (string.IsNullOrWhiteSpace(timestamp)) throw new InvalidOperationException("hook-timestamp-missing");
+            if (!DateTimeOffset.TryParse(timestamp, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var eventTime))
+                throw new InvalidOperationException("hook-timestamp-invalid");
+
+            var root = Path.GetFullPath(GetOption(args, "--root")).TrimEnd(Path.DirectorySeparatorChar);
+            var hookRoot = Path.GetFullPath(cwd).TrimEnd(Path.DirectorySeparatorChar);
+            if (!string.Equals(root, hookRoot, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("hook-cwd-root-mismatch");
+            gatePath = TokenEfficiencyEntryGatePath(root, sessionId, stage);
+            if (File.Exists(gatePath)) File.Delete(gatePath);
+
+            var result = EvaluateAgentEntry(args);
+            if (!result.Passed) throw new InvalidOperationException(result.Reason);
+            var head = GitHead(root) ?? throw new InvalidOperationException("agent-entry-git-head-unavailable");
+            if (!IsGitIgnored(root, ".engloop/out/token-efficiency/.elk-probe")) throw new InvalidOperationException("token-efficiency-output-not-ignored");
+            Directory.CreateDirectory(Path.GetDirectoryName(gatePath)!);
+            File.WriteAllText(gatePath, JsonSerializer.Serialize(new
+            {
+                schemaVersion = "1.0",
+                stage,
+                sessionId = SafeHookIdentity(sessionId),
+                eventUtcTicks = eventTime.UtcTicks,
+                head,
+            }));
+            WriteAgentEntryHookResult(true, stage, string.Empty);
+        }
+        catch (Exception ex)
+        {
+            if (!string.IsNullOrWhiteSpace(gatePath) && File.Exists(gatePath)) File.Delete(gatePath);
+            WriteAgentEntryHookResult(false, stage, ex.Message);
+        }
+        return 0;
+    }
+
+    private static void WriteAgentEntryHookResult(bool passed, string stage, string reason)
+        => Console.WriteLine(JsonSerializer.Serialize(new
+        {
+            @continue = passed,
+            stopReason = passed
+                ? null
+                : $"ELK agent entry rejected for stage={stage}: {reason}. Select the exact initialized Git root and correct the reported prerequisite; no scoped hook state was accepted.",
+            systemMessage = passed ? "AGENT_ENTRY_OK" : null,
+        }));
+
+    private static void EnsureTokenEfficiencyStage(string stage)
+    {
+        if (stage is not "speckit.engloop.30-token-efficiency-analyze" and not "speckit.engloop.31-token-efficiency-implement")
+            throw new InvalidOperationException($"invalid-stage:{stage}");
+    }
+
+    private static string TokenEfficiencyEntryGatePath(string root, string sessionId, string stage)
+    {
+        var mode = stage.EndsWith("30-token-efficiency-analyze", StringComparison.Ordinal) ? "analysis" : "implementation";
+        return Path.Combine(root, ".engloop", "out", "token-efficiency", "gates", SafeHookIdentity(sessionId) + "." + mode + ".entry.json");
+    }
+
+    private static string SafeHookIdentity(string value)
+        => new(value.Select(character => char.IsLetterOrDigit(character) || character is '.' or '_' or '-' ? character : '_').ToArray());
+
+    private static string ReadHookString(JsonElement element, params string[] names)
+    {
+        foreach (var name in names)
+            if (element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String)
+                return value.GetString() ?? string.Empty;
+        return string.Empty;
+    }
+
+    private static (bool Passed, string Reason) EvaluateAgentEntry(string[] args)
+    {
         var stage = GetOption(args, "--stage", string.Empty);
         if (string.IsNullOrWhiteSpace(stage))
         {
-            Console.Error.WriteLine("missing-stage");
-            return 2;
+            return (false, "missing-stage");
         }
 
         if (!ExpectedIds.Contains(stage, StringComparer.Ordinal))
         {
-            Console.Error.WriteLine($"invalid-stage:{stage}");
-            return 2;
+            return (false, $"invalid-stage:{stage}");
         }
 
         var root = GetOption(args, "--root");
         var rootResult = Evidence.ValidateRootLayout(root);
         if (!rootResult.Passed)
         {
-            Console.Error.WriteLine(rootResult.Reason);
-            return 2;
+            return (false, rootResult.Reason);
         }
 
         try
@@ -674,8 +763,7 @@ public static class ValidationCommands
             var configErrors = Evidence.ValidateConfigurationSafety(config);
             if (configErrors.Count > 0)
             {
-                Console.Error.WriteLine(configErrors[0]);
-                return 2;
+                return (false, configErrors[0]);
             }
 
             var runwayRequired = stage is "speckit.engloop.05-model"
@@ -685,28 +773,24 @@ public static class ValidationCommands
                 or "speckit.engloop.09-debugger-walk-thru";
             if (runwayRequired && !Evidence.IsTestRunwayProven(config))
             {
-                Console.Error.WriteLine("missing-proven-runway");
-                return 2;
+                return (false, "missing-proven-runway");
             }
 
             if (stage is "speckit.engloop.10-codereview-prepare" or "speckit.engloop.20-incident")
             {
                 if (!HasCurrentReadinessPass(rootResult.RepositoryRoot))
                 {
-                    Console.Error.WriteLine("missing-current-readiness");
-                    return 2;
+                    return (false, "missing-current-readiness");
                 }
             }
 
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine(ex.Message);
-            return 2;
+            return (false, ex.Message);
         }
 
-        Console.WriteLine("AGENT_ENTRY_OK");
-        return 0;
+        return (true, string.Empty);
     }
 
     public static int ValidateAgentSurfaces(string[] args)
@@ -900,6 +984,26 @@ public static class ValidationCommands
         var output = process.StandardOutput.ReadToEnd().Trim();
         process.WaitForExit();
         return process.ExitCode == 0 && output.Length > 0 ? output : null;
+    }
+
+    private static bool IsGitIgnored(string root, string relativePath)
+    {
+        var start = new ProcessStartInfo("git")
+        {
+            WorkingDirectory = root,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        start.ArgumentList.Add("check-ignore");
+        start.ArgumentList.Add("-q");
+        start.ArgumentList.Add("--no-index");
+        start.ArgumentList.Add("--");
+        start.ArgumentList.Add(relativePath);
+        using var process = Process.Start(start);
+        if (process is null) return false;
+        process.WaitForExit();
+        return process.ExitCode == 0;
     }
 
     private static void EnsureValidation(bool condition, string message)

@@ -12,8 +12,12 @@ hooks:
     - type: command
       command: dotnet tool run engloopkit validate agent-entry --stage speckit.engloop.30-token-efficiency-analyze --root .
       timeout: 30
+  UserPromptSubmit:
     - type: command
-      command: pwsh -NoProfile -File .specify/extensions/engloop/scripts/Guard-TokenEfficiencyAgent.ps1 -Mode analysis -Event SessionStart
+      command: dotnet tool run engloopkit validate agent-entry-hook --stage speckit.engloop.30-token-efficiency-analyze --root .
+      timeout: 30
+    - type: command
+      command: pwsh -NoProfile -File .specify/extensions/engloop/scripts/Guard-TokenEfficiencyAgent.ps1 -Mode analysis -Event UserPromptSubmit
       timeout: 30
   PreToolUse:
     - type: command
@@ -58,11 +62,16 @@ planned analysis path as `-ExcludePath`; copy its HEAD and canonical status dige
 
 ## Required hook enforcement
 
-This agent requires `chat.useCustomAgentHooks` and its installed agent-scoped hooks. At
-session start, require both `AGENT_ENTRY_OK` and the system marker
-`TOKEN_EFFICIENCY_ANALYSIS_GUARD_ACTIVE`. If either is absent, stop before reading session
-data or writing evidence. The `PreToolUse` guard denies non-read-only commands and every
-write except create-new valid analysis JSON at the governed path.
+This agent requires `chat.useCustomAgentHooks` and its installed agent-scoped hooks. On
+every submitted invocation, the ordered `UserPromptSubmit` hooks first run the root-local
+JSON entry gate and then idempotently activate the analysis guard. Require both
+`AGENT_ENTRY_OK` and `TOKEN_EFFICIENCY_ANALYSIS_GUARD_ACTIVE` from that prompt before
+reading session data or writing evidence. This works in a new chat, after selecting this
+agent in an active chat, and on the first prompt after compaction; `SessionStart` alone is
+not activation evidence. If either marker is absent, stop and tell the operator to enable
+`chat.useCustomAgentHooks`, select Agent 30, and resubmit the prompt from the exact Git
+root. The `PreToolUse` guard still denies non-read-only commands and every write except
+one create-new valid analysis JSON at the governed path.
 
 ## Non-negotiable read-only boundary
 

@@ -334,13 +334,23 @@ try {
 
             if ($id -in @('speckit.engloop.30-token-efficiency-analyze', 'speckit.engloop.31-token-efficiency-implement')) {
                 $installedBody = Get-Content (Join-Path $fixtureRoot ('.github/agents/' + $id + '.agent.md')) -Raw -Encoding UTF8
+                $mode = if ($id.EndsWith('30-token-efficiency-analyze')) { 'analysis' } else { 'implementation' }
                 if ($installedBody -match '(?i)\.specify/scripts/') {
                     $mismatches.Add(@{ issue = 'installed-body-skill-path-corruption'; id = $id }) | Out-Null
                 }
-                foreach ($marker in @('TOKEN_EFFICIENCY_')) {
+                foreach ($marker in @(
+                    'TOKEN_EFFICIENCY_',
+                    "validate agent-entry-hook --stage $id",
+                    "-Mode $mode -Event UserPromptSubmit")) {
                     if ($installedBody -notmatch $marker) {
                         $mismatches.Add(@{ issue = 'installed-body-required-marker-missing'; id = $id; marker = $marker }) | Out-Null
                     }
+                }
+                if ($installedBody -match [regex]::Escape("-Mode $mode -Event SessionStart")) {
+                    $mismatches.Add(@{ issue = 'installed-token-sessionstart-only-activation-forbidden'; id = $id }) | Out-Null
+                }
+                if ($mode -eq 'implementation' -and $installedBody -notmatch [regex]::Escape('Initialize-TokenEfficiencyImplementationGate.ps1')) {
+                    $mismatches.Add(@{ issue = 'installed-token-scope-initializer-missing'; id = $id }) | Out-Null
                 }
             }
 

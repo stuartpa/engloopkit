@@ -57,6 +57,32 @@ function Get-RepositoryRoot {
     return $resolved
 }
 
+function Assert-TokenEfficiencyPromptEntry {
+    param(
+        [Parameter(Mandatory = $true)][string]$Root,
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('speckit.engloop.30-token-efficiency-analyze', 'speckit.engloop.31-token-efficiency-implement')]
+        [string]$Stage,
+        [Parameter(Mandatory = $true)]$Hook
+    )
+    $session = Get-SafeSessionId $Hook
+    $timestamp = Get-PropertyValue $Hook @('timestamp')
+    if ($null -eq $timestamp -or [string]::IsNullOrWhiteSpace([string]$timestamp)) { throw 'prompt-entry-timestamp-missing' }
+    try { $eventUtcTicks = ([DateTimeOffset]$timestamp).UtcTicks } catch { throw 'prompt-entry-timestamp-invalid' }
+    $mode = if ($Stage.EndsWith('30-token-efficiency-analyze', [StringComparison]::Ordinal)) { 'analysis' } else { 'implementation' }
+    $gatePath = Join-Path $Root ".engloop/out/token-efficiency/gates/$session.$mode.entry.json"
+    if (-not (Test-Path -LiteralPath $gatePath -PathType Leaf)) { throw 'prompt-entry-receipt-missing' }
+    $gate = Get-Content -LiteralPath $gatePath -Raw | ConvertFrom-Json
+    if ([string]$gate.schemaVersion -ne '1.0' -or
+        [string]$gate.stage -ne $Stage -or
+        [string]$gate.sessionId -ne $session -or
+        [long]$gate.eventUtcTicks -ne $eventUtcTicks -or
+        [string]$gate.head -ne (Get-GitHead $Root)) {
+        throw 'prompt-entry-receipt-stale-or-invalid'
+    }
+    return $gatePath
+}
+
 function ConvertTo-NormalizedPolicyPath {
     param([Parameter(Mandatory = $true)][string]$Path)
     $normalized = $Path.Replace('\', '/').Trim()
