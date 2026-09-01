@@ -340,6 +340,14 @@ public sealed class OperationsLearningHookTests : IDisposable
         var wrongVersion = CreateRepository();
         File.WriteAllText(Path.Combine(wrongVersion, ".config", "dotnet-tools.json"), "{\"version\":1,\"isRoot\":true,\"tools\":{\"engloopkit\":{\"version\":\"9.9.9\",\"commands\":[\"engloopkit\"]}}}");
         AssertIncidentDeferred(RunHook(wrongVersion, "incident", "initialize", "--incident .engloop/incidents/IN002.md", "wrong-version"), "initialize", "manifest-assembly-version-mismatch");
+
+        var nullVersion = CreateRepository();
+        File.WriteAllText(Path.Combine(nullVersion, ".config", "dotnet-tools.json"), "{\"version\":1,\"isRoot\":true,\"tools\":{\"engloopkit\":{\"version\":null,\"commands\":[\"engloopkit\"]}}}");
+        AssertIncidentDeferred(RunHook(nullVersion, "incident", "initialize", "--incident .engloop/incidents/IN002.md", "null-version-incident"), "initialize", "tool-version-missing");
+        var nullVersionPostmortem = RunHook(nullVersion, "postmortem", "initialize", "--incidents IN001 --postmortem .engloop/postmortems/PM005.md", "null-version-postmortem");
+        Assert.False(Continues(nullVersionPostmortem));
+        Assert.Contains("tool-version-missing", nullVersionPostmortem.Output);
+
         AssertIncidentDeferred(RunHook(repo, "incident", "stop", string.Empty, "missing-gate"), "stop", "gate-missing");
 
         var unborn = CreateRepository();
