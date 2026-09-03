@@ -363,7 +363,7 @@ try {
                     }
                 }
                 if ($mode -eq 'postmortem') {
-                    foreach ($marker in @('operations-hook guard postmortem', 'OPERATIONS_LEARNING_CONTEXT_REQUIRED', 'postmortem-context-required', 'no scope', 'completion was accepted')) {
+                    foreach ($marker in @('operations-hook guard postmortem', 'OPERATIONS_LEARNING_CONTEXT_REQUIRED', 'postmortem-context-required', 'no scope', 'completion was accepted', 'unrelated command-style options', 'fill the missing value', 'Plain follow-up text cannot clear')) {
                         if ($installedBody -notmatch [regex]::Escape($marker)) {
                             $mismatches.Add(@{ issue = 'installed-postmortem-recovery-marker-missing'; id = $id; marker = $marker }) | Out-Null
                         }

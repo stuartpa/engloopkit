@@ -1,7 +1,7 @@
 # ARCH009: Direction- and pyramid-bound operations learning gate
 
 - **Created:** 2026-08-15
-- **Amended:** 2026-08-31
+- **Amended:** 2026-09-03
 - **Status:** ACCEPTED
 - **Governs:** Stages 20 Incident, 21 Postmortem, 22 Repair, PM/RPI templates,
   operation-agent completion hooks, and repair acceptance evidence
@@ -72,6 +72,17 @@ validator remains fail closed on every direction, pyramid, provenance, retrieval
 RPI, and artifact requirement. Unsupported existing/create-new PM identities and corrupt
 or tampered gates are not downgraded to context recovery.
 
+An already-bound Stage 21 gate does not make every later `--option` a scope update.
+Continuation parsing recognizes only Stage 21's exact `--incidents` and `--postmortem`
+tokens; unrelated options leave the existing identity-bound scope unchanged. Supplying
+only one relevant scope option is never completed from the old gate or silently ignored.
+Instead, the hook writes an ignored denial-only context marker, returns actionable
+`postmortem-context-required` output, and preserves the valid gate. `PreToolUse` denies
+all tools and gate-less completion remains unaccepted while that marker exists. Plain
+follow-up text cannot clear it; only resubmitting the complete original incident/PM pair
+and passing the existing argument hash, HEAD, assembly, manifest, and package identity
+checks removes the marker. Invalid marker contents deny rather than authorize.
+
 The validators fail closed on missing/stale North Star or Learnings hashes, absent rule
 dispositions, uncovered source provenance, missing historical coverage, required retrieval
 without PASS evidence, substituted Rule IDs/gates, missing gate evidence, or stale readiness.
@@ -92,6 +103,9 @@ checks, not prose claims supplied by the agent.
 - Correctable Stage 21 invocation context cannot dead-end chat, but it also cannot
   authorize tools or completion. Scope and completion gates remain blocking because they
   accept durable retrospective evidence.
+- Existing Stage 21 sessions remain usable with unrelated command-style options, while
+  partial relevant scope updates suspend authorization until exact full reactivation;
+  missing values are never borrowed from earlier prompts.
 - Stage 22 scope and completion gates remain blocking because they accept durable repair
   evidence rather than performing urgent stabilization.
 - Stage 41 remains useful for wider backlog condensation and sampled retrieval refresh,

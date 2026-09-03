@@ -104,6 +104,56 @@ public sealed class OperationsLearningHookTests : IDisposable
     }
 
     [Fact]
+    public void ExistingPostmortemGate_incompleteOrIrrelevantFollowupNeverDeadEndsChatOrAuthorizesWrongScope()
+    {
+        var repo = CreateRepository();
+        const string session = "pm-existing-continuation";
+        const string prompt = "--incidents IN001 --postmortem .engloop/postmortems/PM005_example.md";
+        Assert.True(Continues(RunHook(repo, "postmortem", "initialize", prompt, session)));
+
+        var unrelatedOption = RunHook(repo, "postmortem", "initialize", "Continue analysis --focus on the remaining repair item.", session);
+        Assert.True(Continues(unrelatedOption), unrelatedOption.Output + unrelatedOption.Error);
+        Assert.Contains("OPERATIONS_LEARNING_SCOPE_ACTIVE", unrelatedOption.Output);
+
+        var incompleteScope = RunHook(repo, "postmortem", "initialize", "--incidents IN001", session);
+        AssertPostmortemContextRequired(incompleteScope, "initialize", "--postmortem");
+
+        AssertPostmortemGuardDenied(RunHook(repo, "postmortem", "guard", string.Empty, session), "option-missing:--postmortem");
+        var stopped = RunHook(repo, "postmortem", "stop", string.Empty, session);
+        AssertPostmortemContextRequired(stopped, "stop", "option-missing:--postmortem");
+        Assert.DoesNotContain("POSTMORTEM_LEARNING_OK", stopped.Output, StringComparison.Ordinal);
+
+        var noArguments = RunHook(repo, "postmortem", "initialize", "Continue analysis without changing scope.", session);
+        AssertPostmortemContextRequired(noArguments, "initialize", "option-missing:--postmortem");
+
+        var rebound = RunHook(repo, "postmortem", "initialize", prompt, session);
+        Assert.True(Continues(rebound), rebound.Output + rebound.Error);
+        Assert.Contains("OPERATIONS_LEARNING_SCOPE_ACTIVE", rebound.Output);
+        var allowed = RunHook(repo, "postmortem", "guard", string.Empty, session);
+        Assert.True(Continues(allowed), allowed.Output + allowed.Error);
+        using var allowedJson = JsonDocument.Parse(allowed.Output);
+        Assert.False(allowedJson.RootElement.TryGetProperty("hookSpecificOutput", out _));
+    }
+
+    [Fact]
+    public void ExistingIncidentAndRepairGates_recognizeOnlyTheirOwnScopeOptions()
+    {
+        var incidentRepo = CreateRepository();
+        const string incidentPrompt = "--incident .engloop/incidents/IN001_example.md";
+        Assert.True(Continues(RunHook(incidentRepo, "incident", "initialize", incidentPrompt, "incident-continuation")));
+        var incidentUnrelated = RunHook(incidentRepo, "incident", "initialize", "Continue --focus on mitigation verification.", "incident-continuation");
+        Assert.True(Continues(incidentUnrelated), incidentUnrelated.Output + incidentUnrelated.Error);
+        Assert.True(Continues(RunHook(incidentRepo, "incident", "initialize", incidentPrompt, "incident-continuation")));
+
+        var repairRepo = CreateRepository();
+        const string repairPrompt = "--phase route --postmortem .engloop/postmortems/PM005.md --rpi RPI001 --rules RULE:x --acceptance .engloop/repairs/PM005-RPI001.route.json";
+        Assert.True(Continues(RunHook(repairRepo, "repair", "initialize", repairPrompt, "repair-continuation")));
+        var repairUnrelated = RunHook(repairRepo, "repair", "initialize", "Continue --focus on the approved repair.", "repair-continuation");
+        Assert.True(Continues(repairUnrelated), repairUnrelated.Output + repairUnrelated.Error);
+        Assert.True(Continues(RunHook(repairRepo, "repair", "initialize", repairPrompt, "repair-continuation")));
+    }
+
+    [Fact]
     public void PostmortemGate_rejectsExistingOrPreviouslyUsedNumber()
     {
         var repo = CreateRepository();
@@ -153,6 +203,27 @@ public sealed class OperationsLearningHookTests : IDisposable
         File.AppendAllText(Path.Combine(identity, ".config", "dotnet-tools.json"), " ");
         AssertPostmortemGuardDenied(RunHook(identity, "postmortem", "guard", string.Empty, identitySession), "tool-identity-changed");
         Assert.True(File.Exists(identityPath));
+    }
+
+    [Fact]
+    public void PostmortemGuard_deniesCorruptSuspensionStateUntilExactContextReactivatesGate()
+    {
+        var repo = CreateRepository();
+        const string session = "postmortem-corrupt-suspension";
+        const string prompt = "--incidents IN001 --postmortem .engloop/postmortems/PM005_example.md";
+        Assert.True(Continues(RunHook(repo, "postmortem", "initialize", prompt, session)));
+        var gatePath = Assert.Single(Directory.GetFiles(Path.Combine(repo, ".engloop", "out", "operations-learning-gates"), "*.json"));
+        var suspensionPath = gatePath + ".context-required";
+        File.WriteAllText(suspensionPath, "not-a-context-diagnostic");
+
+        AssertPostmortemGuardDenied(RunHook(repo, "postmortem", "guard", string.Empty, session), "postmortem-context-state-invalid");
+        AssertPostmortemContextRequired(RunHook(repo, "postmortem", "stop", string.Empty, session), "stop", "postmortem-context-state-invalid");
+        Assert.True(File.Exists(gatePath));
+        Assert.True(File.Exists(suspensionPath));
+
+        var rebound = RunHook(repo, "postmortem", "initialize", prompt, session);
+        Assert.True(Continues(rebound), rebound.Output + rebound.Error);
+        Assert.False(File.Exists(suspensionPath));
     }
 
     [Fact]
@@ -276,6 +347,10 @@ public sealed class OperationsLearningHookTests : IDisposable
     public void SubprocessStart_emitsOneJsonResponseFromCompiledTool()
     {
         var repo = CreateRepository();
+        var inProcess = RunHook(repo, "incident", "start", string.Empty, "in-process-start");
+        Assert.True(Continues(inProcess));
+        Assert.Contains("OPERATIONS_LEARNING_GUARD_ACTIVE", inProcess.Output);
+
         var result = RunHookSubprocess(repo, "incident", "start", string.Empty, "subprocess-session");
         Assert.True(Continues(result));
         Assert.Contains("OPERATIONS_LEARNING_GUARD_ACTIVE", result.Output);

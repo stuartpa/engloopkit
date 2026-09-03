@@ -271,6 +271,14 @@ no completion marker. Resubmitting both exact options activates the original str
 Existing/create-new PM conflicts, corrupt/tampered gates, and every downstream
 `postmortem-learning` validation failure remain blocking.
 
+For an existing valid Stage 21 gate, only exact mode-relevant option tokens participate in
+scope parsing; unrelated `--options` are ordinary continuation text. A partial relevant
+scope update MUST return actionable context-required output, preserve the gate, create an
+ignored denial-only marker, and deny PreToolUse/Stop authorization until the complete
+original `--incidents` / `--postmortem` pair passes the bound argument/HEAD/tool identity
+checks. Implementations MUST NOT infer the missing value from the old gate, silently ignore
+the partial update, delete the valid gate, or let plain text clear the denial marker.
+
 ### Pinned VS Code/schema baseline
 
 The 1.7.0 release accepts custom-agent behavior against exactly:

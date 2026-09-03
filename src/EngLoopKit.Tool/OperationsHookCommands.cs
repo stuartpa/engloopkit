@@ -74,8 +74,24 @@ public static class OperationsHookCommands
             Ensure(existing.SchemaVersion == "1.0" & existing.Mode == mode & existing.SessionHash == sessionHash & existing.Head == OperationsLearningPolicy.GitHead(root), "operations-hook-existing-gate-stale");
             ValidateToolIdentity(root, existing);
             Ensure(HashArguments(existing) == existing.ArgumentsHash, "operations-hook-gate-arguments-tampered");
-            var suppliedArguments = ParseArguments(prompt, mode, allowMissing: true);
+            GateRecord? suppliedArguments;
+            try
+            {
+                suppliedArguments = ParseArguments(prompt, mode, allowMissing: true);
+            }
+            catch (InvalidOperationException ex) when (mode == "postmortem" && IsPostmortemContextDiagnostic(ex.Message))
+            {
+                SuspendPostmortemContext(gatePath, ex.Message);
+                WritePostmortemContextRequired("initialize", ex.Message);
+                return 0;
+            }
+            if (mode == "postmortem" && suppliedArguments is null && TryReadPostmortemContext(gatePath, out var diagnostic))
+            {
+                WritePostmortemContextRequired("initialize", diagnostic);
+                return 0;
+            }
             Ensure(suppliedArguments is null || HashArguments(suppliedArguments) == existing.ArgumentsHash, "operations-hook-followup-arguments-changed");
+            if (mode == "postmortem") ClearPostmortemContext(gatePath);
             WriteResult(true, systemMessage: $"OPERATIONS_LEARNING_SCOPE_ACTIVE mode={mode} gate={gatePath}");
             return 0;
         }
@@ -102,6 +118,7 @@ public static class OperationsHookCommands
         };
         Directory.CreateDirectory(Path.GetDirectoryName(gatePath)!);
         File.WriteAllText(gatePath, JsonSerializer.Serialize(gate));
+        if (mode == "postmortem") ClearPostmortemContext(gatePath);
         WriteResult(true, systemMessage: $"OPERATIONS_LEARNING_SCOPE_ACTIVE mode={mode} gate={gatePath}");
         return 0;
     }
@@ -111,6 +128,11 @@ public static class OperationsHookCommands
         Ensure(mode == "postmortem", "operations-hook-guard-mode-invalid");
         try
         {
+            if (TryReadPostmortemContext(gatePath, out var diagnostic))
+            {
+                WritePostmortemPreToolDenied(diagnostic, diagnostic);
+                return 0;
+            }
             Ensure(File.Exists(gatePath), "operations-hook-gate-missing");
             var gate = ReadGate(gatePath);
             Ensure(gate.SchemaVersion == "1.0" & gate.Mode == mode & gate.SessionHash == sessionHash & gate.Head == OperationsLearningPolicy.GitHead(root), "operations-hook-gate-identity-invalid");
@@ -127,6 +149,11 @@ public static class OperationsHookCommands
 
     private static int Stop(string root, string mode, string sessionHash, string gatePath)
     {
+        if (mode == "postmortem" && TryReadPostmortemContext(gatePath, out var recoveryDiagnostic))
+        {
+            WritePostmortemContextRequired("stop", recoveryDiagnostic);
+            return 0;
+        }
         if (mode == "postmortem" && !File.Exists(gatePath))
         {
             WritePostmortemContextRequired("stop", "operations-hook-gate-missing");
@@ -233,6 +260,30 @@ public static class OperationsHookCommands
             || diagnostic.StartsWith("operations-hook-option-missing:--postmortem", StringComparison.Ordinal)
             || diagnostic.StartsWith("operations-hook-option-missing:--incidents", StringComparison.Ordinal);
 
+    private static string PostmortemContextPath(string gatePath) => gatePath + ".context-required";
+
+    private static void SuspendPostmortemContext(string gatePath, string diagnostic)
+        => File.WriteAllText(PostmortemContextPath(gatePath), diagnostic);
+
+    private static bool TryReadPostmortemContext(string gatePath, out string diagnostic)
+    {
+        var path = PostmortemContextPath(gatePath);
+        if (!File.Exists(path))
+        {
+            diagnostic = string.Empty;
+            return false;
+        }
+        var stored = File.ReadAllText(path).Trim();
+        diagnostic = IsPostmortemContextDiagnostic(stored) ? stored : "operations-hook-postmortem-context-state-invalid";
+        return true;
+    }
+
+    private static void ClearPostmortemContext(string gatePath)
+    {
+        var path = PostmortemContextPath(gatePath);
+        if (File.Exists(path)) File.Delete(path);
+    }
+
     private static void WritePostmortemContextRequired(string phase, string diagnostic)
     {
         var missingOption = Regex.Match(diagnostic, @"operations-hook-option-missing:(?<option>--[a-z-]+)", RegexOptions.CultureInvariant) is { Success: true } match
@@ -285,7 +336,7 @@ public static class OperationsHookCommands
     private static GateRecord? ParseArguments(string prompt, string mode, bool allowMissing)
     {
         if (string.IsNullOrWhiteSpace(prompt)) return allowMissing ? null : throw new InvalidOperationException("operations-hook-prompt-missing");
-        if (allowMissing && !prompt.Contains("--", StringComparison.Ordinal)) return null;
+        if (allowMissing && !ContainsRelevantArgument(prompt, mode)) return null;
         string Get(string name) => Argument(prompt, name);
         if (mode == "incident")
         {
@@ -308,6 +359,17 @@ public static class OperationsHookCommands
 
         static GateRecord New(string? incident = null, string? postmortem = null, string[]? incidents = null, string? phase = null, string? rpi = null, string[]? rules = null, string? acceptance = null)
             => new("", "", "", "", "", "", "", "", "", "", incident, postmortem, incidents, phase, rpi, rules, acceptance);
+    }
+
+    private static bool ContainsRelevantArgument(string prompt, string mode)
+    {
+        var names = mode switch
+        {
+            "incident" => new[] { "--incident" },
+            "postmortem" => new[] { "--incidents", "--postmortem" },
+            _ => new[] { "--phase", "--postmortem", "--rpi", "--rules", "--acceptance" },
+        };
+        return names.Any(name => Regex.IsMatch(prompt, "(?:^|\\s)" + Regex.Escape(name) + "(?:=|\\s|$)", RegexOptions.CultureInvariant));
     }
 
     private static void RequireCreateNewPostmortem(string root, string relative)

@@ -167,6 +167,9 @@ public sealed class BundleConformanceTests
         Assert.Contains("OPERATIONS_LEARNING_CONTEXT_REQUIRED", postmortem, StringComparison.Ordinal);
         Assert.Contains("no scope", postmortem, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("completion was accepted", postmortem, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("unrelated command-style options", postmortem, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("fill the missing value", postmortem, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Plain follow-up text cannot clear", postmortem, StringComparison.OrdinalIgnoreCase);
 
         var analysisTemplate = File.ReadAllText(Path.Combine(ExtensionRoot, "templates", "TOKEN-EFFICIENCY-ANALYSIS-template.json"));
         Assert.Contains("token-efficiency-analysis", analysisTemplate, StringComparison.Ordinal);

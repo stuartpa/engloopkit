@@ -91,6 +91,13 @@ marker. The Stop hook for a valid gate runs:
 
 and blocks completion on any missing/stale direction or pyramid evidence.
 
+After scope activation, ordinary continuation text and unrelated command-style options do
+not change the bound incident/PM identity. Supplying only `--incidents` or only
+`--postmortem` suspends tool authorization and emits context-required remediation; never
+fill the missing value from the existing gate. Plain follow-up text cannot clear the
+suspension. Resubmit the complete original `--incidents ... --postmortem ...` pair; only
+an exact argument-hash/HEAD/tool-identity match reactivates the preserved gate.
+
 Before root-cause analysis:
 
 1. Read current root `NORTHSTAR.md`; record its SHA-256, alignment
