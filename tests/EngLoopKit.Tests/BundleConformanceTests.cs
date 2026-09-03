@@ -49,14 +49,15 @@ public sealed class BundleConformanceTests
         using var catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "catalog.json")));
 
         Assert.Contains("id: \"engloop\"", extension);
-        Assert.Contains("version: \"1.15.3\"", extension);
+        Assert.Contains("version: \"1.15.4\"", extension);
         Assert.Contains("id: \"engloopkit\"", bundle);
-        Assert.Contains("version: \"1.15.3\"", bundle);
+        Assert.Contains("version: \"1.15.4\"", bundle);
         Assert.Equal("engloop", catalog.RootElement.GetProperty("extensions")[0].GetProperty("id").GetString());
-        Assert.Equal("1.15.3", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
+        Assert.Equal("1.15.4", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
         Assert.Equal(26, catalog.RootElement.GetProperty("extensions")[0].GetProperty("provides").GetProperty("commands").GetInt32());
 
         var changelog = File.ReadAllText(Path.Combine(Root, "CHANGELOG.md"));
+        Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.15\.4\] - 2026-09-03\r?$").Cast<Match>());
         Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.15\.3\] - 2026-08-31\r?$").Cast<Match>());
         Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.15\.2\] - 2026-08-30\r?$").Cast<Match>());
         Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.15\.1\] - 2026-08-20\r?$").Cast<Match>());

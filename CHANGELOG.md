@@ -3,6 +3,23 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.4] - 2026-09-03
+
+### Fixed
+
+- Fixed the remaining Stage 21 continuation path from `v1.15.3`: when a valid
+  postmortem gate already exists, unrelated command-style options no longer trigger
+  postmortem scope parsing, and supplying only `--incidents` or only `--postmortem`
+  no longer terminates the active chat.
+- A partial relevant scope update now preserves the valid identity-bound gate but writes
+  an ignored denial-only marker. `PreToolUse` denies all tools and Stop accepts no
+  completion until the complete original incident/PM pair passes the existing argument,
+  HEAD, assembly, manifest, and package checks. Plain text cannot clear the marker, and
+  missing values are never inferred from the previous gate.
+- Added regression coverage for existing incident/postmortem/repair continuations,
+  corrupt suspension state, exact reactivation, invalid/null tool identity, and both
+  in-process and compiled hook dispatch.
+
 ## [1.15.3] - 2026-08-31
 
 ### Fixed

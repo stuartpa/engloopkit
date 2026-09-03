@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$Root = (Join-Path $PSScriptRoot '..'),
-    [string]$Version = '1.15.3',
+    [string]$Version = '1.15.4',
     [string]$OutputPath = '',
     [switch]$SkipDisposableFixture
 )
