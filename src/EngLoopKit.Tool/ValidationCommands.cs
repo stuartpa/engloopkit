@@ -34,8 +34,8 @@ public static class ValidationCommands
         ["speckit.engloop.08-unittest"] = ["read", "search", "edit", "execute", "agent"],
         ["speckit.engloop.09-debugger-walk-thru"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.10-codereview-prepare"] = ["read", "search", "edit", "execute", "web"],
-        ["speckit.engloop.20-incident"] = ["read", "search", "edit", "execute"],
-        ["speckit.engloop.21-postmortem"] = ["read", "search", "edit", "execute", "agent"],
+        ["speckit.engloop.20-incident"] = ["read", "search", "edit", "execute", "agent"],
+        ["speckit.engloop.21-postmortem"] = ["read", "search", "edit", "execute", "agent", "vscode_askQuestions"],
         ["speckit.engloop.22-repair"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.23-happy-minute"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.30-token-efficiency-analyze"] = ["read", "search", "edit", "execute", "agent", "copilot_sessionStoreSql"],
@@ -59,7 +59,7 @@ public static class ValidationCommands
         ["speckit.engloop.05-model"] = ["Explore"], ["speckit.engloop.06-explore"] = [],
         ["speckit.engloop.07-validate"] = [], ["speckit.engloop.08-unittest"] = ["Explore"],
         ["speckit.engloop.09-debugger-walk-thru"] = [], ["speckit.engloop.10-codereview-prepare"] = [],
-        ["speckit.engloop.20-incident"] = [], ["speckit.engloop.21-postmortem"] = ["Explore"],
+        ["speckit.engloop.20-incident"] = ["speckit.engloop.21-postmortem"], ["speckit.engloop.21-postmortem"] = ["Explore"],
         ["speckit.engloop.22-repair"] = [], ["speckit.engloop.23-happy-minute"] = [], ["speckit.engloop.30-token-efficiency-analyze"] = ["Explore"],
         ["speckit.engloop.31-token-efficiency-implement"] = ["Explore"], ["speckit.engloop.40-refactor-plan"] = ["Explore"],
         ["speckit.engloop.41-deadcode"] = ["Explore"], ["speckit.engloop.42-learnings-pyramid"] = ["Explore"],
@@ -469,6 +469,15 @@ public static class ValidationCommands
                 return 1;
             }
 
+            var expectedModelInvocationDisabled = commandId != "speckit.engloop.21-postmortem";
+            if (!map.TryGetValue("disable-model-invocation", out var disabledValue)
+                || !bool.TryParse(disabledValue?.ToString(), out var disabled)
+                || disabled != expectedModelInvocationDisabled)
+            {
+                Console.Error.WriteLine($"wrong-model-invocation-policy:{commandId}");
+                return 1;
+            }
+
             if (!map.TryGetValue("tools", out var toolsValue) || toolsValue is not IEnumerable<object> toolsSequence)
             {
                 Console.Error.WriteLine($"wrong-tools:{commandId}");
@@ -737,7 +746,7 @@ public static class ValidationCommands
         return string.Empty;
     }
 
-    private static (bool Passed, string Reason) EvaluateAgentEntry(string[] args)
+    internal static (bool Passed, string Reason) EvaluateAgentEntry(string[] args)
     {
         var stage = GetOption(args, "--stage", string.Empty);
         if (string.IsNullOrWhiteSpace(stage))
@@ -796,13 +805,25 @@ public static class ValidationCommands
     public static int ValidateAgentSurfaces(string[] args)
     {
         var root = Path.GetFullPath(GetOption(args, "--root"));
+        var agentsDirectory = Path.Combine(root, ".github", "agents");
         var promptsDirectory = Path.Combine(root, ".github", "prompts");
+        if (!Directory.Exists(agentsDirectory))
+        {
+            Console.Error.WriteLine("missing-agents-directory");
+            return 1;
+        }
         if (!Directory.Exists(promptsDirectory))
         {
             Console.Error.WriteLine("missing-prompts-directory");
             return 1;
         }
 
+        var agents = Directory.GetFiles(agentsDirectory, "speckit.engloop.*.agent.md", SearchOption.TopDirectoryOnly);
+        if (agents.Length != ExpectedIds.Length)
+        {
+            Console.Error.WriteLine("wrong-agent-count");
+            return 1;
+        }
         var prompts = Directory.GetFiles(promptsDirectory, "speckit.engloop.*.prompt.md", SearchOption.TopDirectoryOnly);
         if (prompts.Length != ExpectedIds.Length)
         {
@@ -849,6 +870,29 @@ public static class ValidationCommands
             {
                 Console.Error.WriteLine($"missing-frontmatter:{id}");
                 return 1;
+            }
+
+            var agentPath = Path.Combine(agentsDirectory, id + ".agent.md");
+            if (!File.Exists(agentPath))
+            {
+                Console.Error.WriteLine($"missing-agent:{id}");
+                return 1;
+            }
+            var agentFrontmatter = SemanticProjection.ParseFrontmatter(File.ReadAllText(agentPath));
+            if (agentFrontmatter is not IDictionary<object, object> agentMap)
+            {
+                Console.Error.WriteLine($"missing-agent-frontmatter:{id}");
+                return 1;
+            }
+            foreach (var field in new[] { "name", "description", "argument-hint", "target", "user-invocable", "disable-model-invocation", "tools", "agents", "hooks", "handoffs" })
+            {
+                var sourceHas = map.TryGetValue(field, out var sourceValue);
+                var agentHas = agentMap.TryGetValue(field, out var agentValue);
+                if (sourceHas != agentHas || sourceHas && !SemanticallyEqual(sourceValue, agentValue))
+                {
+                    Console.Error.WriteLine($"agent-source-field-mismatch:{id}:{field}");
+                    return 1;
+                }
             }
 
             var actualTargets = new List<string>();
@@ -918,6 +962,9 @@ public static class ValidationCommands
         Console.WriteLine("AGENT_SURFACES_OK");
         return 0;
     }
+
+    private static bool SemanticallyEqual(object? left, object? right)
+        => JsonSerializer.Serialize(SemanticProjection.Canonicalize(left)) == JsonSerializer.Serialize(SemanticProjection.Canonicalize(right));
 
     private static bool HasCurrentReadinessPass(string root)
     {

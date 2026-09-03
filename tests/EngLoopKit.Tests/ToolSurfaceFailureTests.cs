@@ -258,6 +258,21 @@ public sealed class ToolSurfaceFailureTests : IDisposable
         Assert.Equal(1, ValidationCommands.ValidateAgentSurfaces(["--root", _root]));
     }
 
+    [Fact]
+    public void ValidateAgentSurfaces_rejectsCheckedInAgentLifecycleDrift()
+    {
+        CopyCommandSurface();
+        CopyPromptSurface();
+        var agent = Path.Combine(_root, ".github", "agents", "speckit.engloop.21-postmortem.agent.md");
+        var text = File.ReadAllText(agent);
+        text = text.Replace("operations-hook start postmortem", "operations-hook temporary-swap postmortem", StringComparison.Ordinal)
+            .Replace("operations-hook subagent-start postmortem", "operations-hook start postmortem", StringComparison.Ordinal)
+            .Replace("operations-hook temporary-swap postmortem", "operations-hook subagent-start postmortem", StringComparison.Ordinal);
+        File.WriteAllText(agent, text);
+
+        Assert.Equal(1, ValidationCommands.ValidateAgentSurfaces(["--root", _root]));
+    }
+
     private void CopyCommandSurface()
     {
         CopyDirectory(Path.Combine(SourceRoot, "extensions"), Path.Combine(_root, "extensions"), overwrite: true);
@@ -266,6 +281,7 @@ public sealed class ToolSurfaceFailureTests : IDisposable
     private void CopyPromptSurface(bool overwrite = false)
     {
         CopyDirectory(Path.Combine(SourceRoot, ".github", "prompts"), Path.Combine(_root, ".github", "prompts"), overwrite);
+        CopyDirectory(Path.Combine(SourceRoot, ".github", "agents"), Path.Combine(_root, ".github", "agents"), overwrite);
     }
 
     private static void CopyDirectory(string source, string destination, bool overwrite)

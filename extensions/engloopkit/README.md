@@ -34,6 +34,12 @@ authoritative solution graph; SEK v0.1.3 is a native .NET 10 external dependency
 Every command is a Trigger · Goal · Actions · Verification · Memory loop with a
 versioned entry validator, exact least-privilege tools, and review-first handoffs.
 
+Stage 21 is the sole model-invocable ELK agent. Plain-language postmortem requests can be
+delegated from the default agent or explicitly from Stage 20. Missing bindings enter a
+read/search/question-only collector that proposes the next registry-backed PM path and
+asks one confirmation; a trusted binder—not operator-entered flags—must validate the
+incident, registry, path, HEAD, and tool identity before edits or completion are possible.
+
 ## Install
 
 Install the released extension archive through Spec Kit after installing the matching

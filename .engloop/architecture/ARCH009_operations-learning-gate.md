@@ -1,7 +1,7 @@
 # ARCH009: Direction- and pyramid-bound operations learning gate
 
 - **Created:** 2026-08-15
-- **Amended:** 2026-09-03
+- **Amended:** 2026-09-03 (plain-language routing and collection)
 - **Status:** ACCEPTED
 - **Governs:** Stages 20 Incident, 21 Postmortem, 22 Repair, PM/RPI templates,
   operation-agent completion hooks, and repair acceptance evidence
@@ -82,6 +82,31 @@ all tools and gate-less completion remains unaccepted while that marker exists. 
 follow-up text cannot clear it; only resubmitting the complete original incident/PM pair
 and passing the existing argument hash, HEAD, assembly, manifest, and package identity
 checks removes the marker. Invalid marker contents deny rather than authorize.
+
+Before any Stage 21 gate exists, ordinary-language postmortem requests use an explicit
+collection state rather than exposing internal hook flags. Stage 21 is the sole
+model-invocable ELK stage; the default agent may route to it, and Stage 20 alone has an
+explicit Stage 21 subagent allowlist for an operator-requested postmortem. Delegated runs
+execute `SubagentStart`/`SubagentStop`, so Stage 21 declares entry/start and completion
+hooks there that are equivalent to its direct `SessionStart`/`Stop` hooks.
+
+The missing-binding hook writes only an ignored collection record bound to session, HEAD,
+executing assembly, local tool manifest, package version, and a random token. While that
+record exists, PreToolUse permits only read/search, the exact core
+`vscode_askQuestions` tool, and one exact internal binder command; edits, nested agents,
+and unrelated commands are denied. The model may use the user's wording to present
+candidate incident artifacts, but it may not silently select an ambiguous or active
+incident. It reads the tracked PM registry, proposes (without reserving) the next path,
+and asks one concise in-turn confirmation. The operator never reconstructs CLI flags.
+
+The versioned binder independently validates the collection identity/token, exact
+stabilized incident contract, next registry number, create-new path/history,
+confirmation, HEAD, assembly, and manifest before creating the original strict Stage 21
+gate. Only then may the agent reserve the PM number and create analysis artifacts. A
+proposal, question answer, collection record, or binder failure cannot satisfy
+postmortem-learning or repair closure. This applies `PM001/LEARN001` and
+`PM001/LEARN003`: conversational routing improves reachability, while deterministic
+validation remains the sole completion authority.
 
 The validators fail closed on missing/stale North Star or Learnings hashes, absent rule
 dispositions, uncovered source provenance, missing historical coverage, required retrieval

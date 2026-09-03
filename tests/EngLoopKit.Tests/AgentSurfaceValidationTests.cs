@@ -61,12 +61,14 @@ public sealed class AgentSurfaceValidationTests
     }
 
     [Fact]
-    public void OperationsPromptFiles_exposeLearningBoundRepairArguments()
+    public void OperationsPromptFiles_exposeConversationalPostmortemAndLearningBoundRepairArguments()
     {
         var postmortem = File.ReadAllText(Path.Combine(PromptsDir, "speckit.engloop.21-postmortem.prompt.md"));
         Assert.Contains("description:", postmortem, StringComparison.Ordinal);
         Assert.Contains("argument-hint:", postmortem, StringComparison.Ordinal);
-        Assert.Contains("--postmortem", postmortem, StringComparison.Ordinal);
+        Assert.Contains("plain-language context", postmortem, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("internal IDs and PM path are optional", postmortem, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("never ask the operator to reconstruct internal flags", postmortem, StringComparison.OrdinalIgnoreCase);
 
         var repair = File.ReadAllText(Path.Combine(PromptsDir, "speckit.engloop.22-repair.prompt.md"));
         Assert.Contains("description:", repair, StringComparison.Ordinal);
@@ -118,7 +120,10 @@ public sealed class AgentSurfaceValidationTests
             Assert.Contains("argument-hint:", text);
             Assert.Contains("target: vscode", text);
             Assert.Contains("user-invocable: true", text);
-            Assert.Contains("disable-model-invocation: true", text);
+            if (Path.GetFileName(file) == "speckit.engloop.21-postmortem.md")
+                Assert.Contains("disable-model-invocation: false", text);
+            else
+                Assert.Contains("disable-model-invocation: true", text);
             Assert.Contains("tools:", text);
             Assert.Contains("agents:", text);
             Assert.Contains("hooks:", text);

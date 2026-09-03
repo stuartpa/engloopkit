@@ -333,7 +333,7 @@ description: <stage-specific trigger and outcome>
 argument-hint: <stage-specific required input>
 target: vscode
 user-invocable: true
-disable-model-invocation: true
+disable-model-invocation: <false only for Stage 21; true otherwise>
 tools: <stage-specific least-privilege list>
 agents: <explicit allowlist or []>
 hooks:
@@ -379,8 +379,8 @@ change. `infer` is forbidden because VS Code deprecates it in favor of
 | 06 | `read, search, edit, execute` | none (`[]`) |
 | 07 | `read, search, edit, execute` | none (`[]`) |
 | 08 | `read, search, edit, execute, agent` | `Explore` |
-| 20 | `read, search, edit, execute` | none (`[]`) |
-| 21 | `read, search, edit, execute, agent` | `Explore` |
+| 20 | `read, search, edit, execute, agent` | `speckit.engloop.21-postmortem` |
+| 21 | `read, search, edit, execute, agent, vscode_askQuestions` | `Explore` |
 | 22 | `read, search, edit, execute` | none (`[]`) |
 | 30 | `read, search, edit, execute, agent` | `Explore` |
 | 31 | `read, search, edit, execute, agent` | `Explore` |
@@ -745,10 +745,11 @@ Deterministic checks MUST prove all of the following:
   `argument-hint`, `target`, `user-invocable`, `disable-model-invocation`, `tools`,
   `agents`, `hooks`, and applicable `handoffs` fields.
 - **FR-AGT-002:** Every `name` MUST equal its exact command ID, `target` MUST be
-  `vscode`, `user-invocable` MUST be true, and `disable-model-invocation` MUST be true.
+  `vscode`, and `user-invocable` MUST be true. `disable-model-invocation` MUST be false
+  only for Stage 21 plain-language postmortem routing and true for every other stage.
 - **FR-AGT-003:** Every agent MUST use exactly its ratified least-privilege tool list;
-  an `agent` tool MUST have the explicit `Explore` allowlist, and agents without that
-  tool MUST declare `agents: []`. Wildcard subagent access is forbidden.
+  an `agent` tool MUST have the exact named allowlist in the matrix, and agents without
+  that tool MUST declare `agents: []`. Wildcard subagent access is forbidden.
 - **FR-AGT-004:** Generated prompt files MUST select the exact matching custom agent
   and MUST omit `tools` so prompt precedence cannot widen or replace agent tools.
 - **FR-AGT-005:** Every agent except the unconditional terminal Stage 31 agent MUST
@@ -763,7 +764,9 @@ Deterministic checks MUST prove all of the following:
   invoking the versioned EngLoopKit validator with a 30-second timeout; the agent body
   MUST unconditionally invoke equivalent validation before any stage action, and every
   trusted operation that accepts durable stage state or evidence MUST independently
-  enforce the same prerequisites.
+  enforce the same prerequisites. Model-invocable Stage 21 MUST additionally declare
+  equivalent `SubagentStart` entry/start and `SubagentStop` completion hooks because
+  delegated runs do not execute direct-session start/stop hooks.
 - **FR-AGT-009:** Agent hooks MUST execute reviewed versioned tooling, accept no
   secrets, validate all inputs, remain cross-platform, and serve only as
   defense-in-depth. Hook-enabled rejection MUST be mechanically blocking. A disabled
@@ -781,6 +784,15 @@ Deterministic checks MUST prove all of the following:
 - **FR-AGT-013:** Stage 31 clean-context retrieval and every other allowed subagent use
   MUST respect the explicit allowlist, pass only focused context, and not require
   nested-subagent enablement.
+- **FR-AGT-014:** A plain-language postmortem request MUST be routable to Stage 21 from
+  the default agent and explicitly authorized Stage 20 parent. Missing internal bindings
+  MUST enter an ignored identity-bound read/search/question-only collection state. Stage
+  21 MUST present ambiguous or unstabilized incidents without choosing them, propose the
+  next tracked PM number, ask one concise in-turn confirmation, and invoke the trusted
+  binder internally. The operator MUST NOT reconstruct CLI flags. No edit, analysis,
+  repair routing, or completion is authorized until the binder validates confirmation,
+  collection token, incident contract, registry number, create-new path, HEAD, and tool
+  identity and creates the original strict gate.
 
 ### Northstar requirements
 

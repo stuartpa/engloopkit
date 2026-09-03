@@ -339,7 +339,8 @@ the prior command IDs; the maintainer-governed 1.x maturity policy deliberately 
 `name`, `description`, `argument-hint`, `target`, `user-invocable`,
 `disable-model-invocation`, `tools`, `agents`, `hooks`, and applicable `handoffs`.
 The name is the exact command ID, the target is `vscode`, the agent is visible, and
-model invocation is disabled. `infer` and `model` are absent. Every handoff has the
+model invocation is disabled except for Stage 21's explicit plain-language postmortem
+routing role. `infer` and `model` are absent. Every handoff has the
 contracted target, label, and prefilled prompt, with `send: false` and no model
 override.
 
@@ -351,6 +352,14 @@ when the user submits the reviewed prompt.
 **Rationale:** These are the supported VS Code fields and handoff behaviors. Making
 visibility, invocation protection, and review explicit avoids relying on defaults;
 keeping `send: false` preserves approval at every branch.
+
+Installed VS Code Insiders/Copilot source reviewed on 2026-09-03 confirms that delegated
+custom agents run `SubagentStart` instead of `SessionStart`, `SubagentStop` instead of
+`Stop`, and still run `UserPromptSubmit` plus `PreToolUse`; the child receives its
+delegation prompt and returns a nested result rather than switching the visible agent.
+The exact registered question tool is `vscode_askQuestions`. Stage 21 therefore declares
+both lifecycle pairs and retains one completion validator across direct and delegated
+runs.
 
 **Alternatives considered:**
 

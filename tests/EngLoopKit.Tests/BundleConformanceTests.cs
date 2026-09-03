@@ -164,6 +164,17 @@ public sealed class BundleConformanceTests
         Assert.Contains("--incidents <INxxx,...> --postmortem", incident, StringComparison.Ordinal);
 
         var postmortem = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.21-postmortem.md"));
+        Assert.Contains("disable-model-invocation: false", postmortem, StringComparison.Ordinal);
+        Assert.Contains("vscode_askQuestions", postmortem, StringComparison.Ordinal);
+        Assert.Contains("SubagentStart:", postmortem, StringComparison.Ordinal);
+        Assert.Contains("SubagentStop:", postmortem, StringComparison.Ordinal);
+        Assert.Contains("PostToolUse:", postmortem, StringComparison.Ordinal);
+        Assert.Contains("plain-language", postmortem, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("postmortem-route bind", postmortem, StringComparison.Ordinal);
+        Assert.Contains("--confirmation-receipt", postmortem, StringComparison.Ordinal);
+        Assert.Contains("Confirm postmortem", postmortem, StringComparison.Ordinal);
+        Assert.Contains("allowFreeformInput: false", postmortem, StringComparison.Ordinal);
+        Assert.Contains("never ask the operator to type", postmortem, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("operations-hook guard postmortem", postmortem, StringComparison.Ordinal);
         Assert.Contains("OPERATIONS_LEARNING_CONTEXT_REQUIRED", postmortem, StringComparison.Ordinal);
         Assert.Contains("no scope", postmortem, StringComparison.OrdinalIgnoreCase);

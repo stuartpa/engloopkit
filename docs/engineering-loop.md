@@ -42,6 +42,14 @@ with `send: false`; Agent 31 requires the user to approve stable repair IDs agai
 agents reactivate their ordered entry/scope hooks on each submitted prompt, including
 after switching agents in an existing chat; tool and completion guards remain fail closed.
 
+Stage 21 accepts ordinary-language postmortem intent. The default agent—or Stage 20 after
+an explicit operator request—may invoke it as a nested agent. When exact bindings are
+absent, Stage 21 reads only incident/registry evidence, presents ambiguity instead of
+guessing, proposes the next PM path, and asks one concise in-turn confirmation. The
+versioned binder activates edits only after stabilized-incident, registry, create-new,
+confirmation, HEAD, and tool-identity checks pass. Direct and delegated runs retain
+equivalent start and completion hooks.
+
 ## Refactor compute profiles: 40
 
 `/speckit.engloop.40-refactor-plan --scope <path-or-topic>` defaults to `--profile point`.
@@ -84,8 +92,9 @@ Operations is not created merely because a delivery lane completed.
    PM/LEARN/RPI evidence only after current North Star/Learnings hashes, rule
    dispositions, pyramid update/no-change, source-card/history coverage, retrieval impact,
    and RPI Rule-ID/executable-gate contracts pass deterministic validation. Missing or
-   malformed initial incident/PM options return actionable recovery without authorizing
-   tools or completion; exact valid options must be resubmitted before work.
+   malformed initial incident/PM context enters read-only conversational collection
+   without authorizing tools or completion; one confirmed registry-backed proposal must
+   pass the trusted binder before work.
 3. **22 Repair** requires a concrete repair item and opens an obligation. It returns
    through Stage 04 and every applicable Stage 05–08 gate with exact PM Rule IDs and gate
    carried into immutable route acceptance. A separate close record requires the versioned

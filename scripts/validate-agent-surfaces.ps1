@@ -160,6 +160,7 @@ $expectedHandoffTargets = @{
 }
 
 $commandsDir = Join-Path $repoRoot 'extensions/engloopkit/commands'
+$agentsDir = Join-Path $repoRoot '.github/agents'
 $promptsDir = Join-Path $repoRoot '.github/prompts'
 $fixtureRoot = Join-Path $repoRoot '.engloop/out/agent-surface-fixture'
 $sourceExtension = Join-Path $repoRoot 'extensions/engloopkit'
@@ -207,9 +208,11 @@ try {
     $steps.Add(@{ step = 'validate-agent-surfaces-source'; result = 'PASS' }) | Out-Null
 
     $commandFiles = @(Get-ChildItem $commandsDir -File -Filter 'speckit.engloop.*.md' | Sort-Object Name)
+    $agentFiles = @(Get-ChildItem $agentsDir -File -Filter 'speckit.engloop.*.agent.md' | Sort-Object Name)
     $promptFiles = @(Get-ChildItem $promptsDir -File -Filter 'speckit.engloop.*.prompt.md' | Sort-Object Name)
 
     $actualCommandIds = @($commandFiles | ForEach-Object { $_.BaseName })
+    $actualAgentIds = @($agentFiles | ForEach-Object { $_.BaseName -replace '\.agent$', '' })
     $actualPromptIds = @($promptFiles | ForEach-Object { $_.BaseName -replace '\.prompt$', '' })
 
     $report.deterministic.sourceCommands = [ordered]@{
@@ -227,20 +230,36 @@ try {
     }
 
     if ($actualCommandIds.Count -ne $expectedIds.Count) { $mismatches.Add(@{ issue = 'wrong-command-count'; actual = $actualCommandIds.Count }) | Out-Null }
+    if ($actualAgentIds.Count -ne $expectedIds.Count) { $mismatches.Add(@{ issue = 'wrong-checked-in-agent-count'; actual = $actualAgentIds.Count }) | Out-Null }
     if ($actualPromptIds.Count -ne $expectedIds.Count) { $mismatches.Add(@{ issue = 'wrong-prompt-count'; actual = $actualPromptIds.Count }) | Out-Null }
 
     foreach ($id in $expectedIds) {
         if (-not ($actualCommandIds -contains $id)) { $mismatches.Add(@{ issue = 'missing-command'; id = $id }) | Out-Null }
+        if (-not ($actualAgentIds -contains $id)) { $mismatches.Add(@{ issue = 'missing-checked-in-agent'; id = $id }) | Out-Null }
         if (-not ($actualPromptIds -contains $id)) { $mismatches.Add(@{ issue = 'missing-prompt'; id = $id }) | Out-Null }
     }
 
     $handoffCount = 0
     foreach ($id in $expectedIds) {
         $commandPath = Join-Path $commandsDir ($id + '.md')
+        $checkedInAgentPath = Join-Path $agentsDir ($id + '.agent.md')
         $promptPath = Join-Path $promptsDir ($id + '.prompt.md')
 
         $commandFm = Get-FrontmatterObject -Path $commandPath
+        $checkedInAgentFm = Get-FrontmatterObject -Path $checkedInAgentPath
         $promptFm = Get-FrontmatterObject -Path $promptPath
+
+        foreach ($field in @('name','description','argument-hint','target','user-invocable','disable-model-invocation','tools','agents','hooks','handoffs')) {
+            $sourceHas = $commandFm.Contains($field)
+            $agentHas = $checkedInAgentFm.Contains($field)
+            if ($sourceHas -ne $agentHas) {
+                $mismatches.Add(@{ issue = 'checked-in-agent-field-presence-mismatch'; id = $id; field = $field }) | Out-Null
+                continue
+            }
+            if ($sourceHas -and (ConvertTo-CanonicalJson $commandFm[$field]) -ne (ConvertTo-CanonicalJson $checkedInAgentFm[$field])) {
+                $mismatches.Add(@{ issue = 'checked-in-agent-semantic-field-mismatch'; id = $id; field = $field }) | Out-Null
+            }
+        }
 
         if ($promptFm.Contains('tools')) {
             $report.deterministic.sourcePrompts.promptToolsCount++
@@ -363,7 +382,7 @@ try {
                     }
                 }
                 if ($mode -eq 'postmortem') {
-                    foreach ($marker in @('operations-hook guard postmortem', 'OPERATIONS_LEARNING_CONTEXT_REQUIRED', 'postmortem-context-required', 'no scope', 'completion was accepted', 'unrelated command-style options', 'fill the missing value', 'Plain follow-up text cannot clear')) {
+                    foreach ($marker in @('disable-model-invocation: false', 'vscode_askQuestions', 'SubagentStart:', 'SubagentStop:', 'PostToolUse:', 'operations-hook post-tool postmortem', 'operations-hook guard postmortem', 'OPERATIONS_POSTMORTEM_CONTEXT_COLLECTION_ACTIVE', 'postmortem-route bind', '--confirmation-receipt', 'Confirm postmortem', 'allowFreeformInput: false', 'Never ask the operator to type', 'OPERATIONS_LEARNING_CONTEXT_REQUIRED', 'postmortem-context-required', 'no scope', 'completion was accepted', 'unrelated command-style options', 'fill the missing value', 'Plain follow-up text cannot clear')) {
                         if ($installedBody -notmatch [regex]::Escape($marker)) {
                             $mismatches.Add(@{ issue = 'installed-postmortem-recovery-marker-missing'; id = $id; marker = $marker }) | Out-Null
                         }

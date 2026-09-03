@@ -90,9 +90,12 @@ Stage 20 mitigates only. Its learning-context hook must keep recovery chat avail
 missing/malformed metadata or unavailable hook state, emit an explicit structured
 deferral, and leave failed evidence unaccepted. The standalone incident-context validator
 still fails closed on unsupported stabilization claims. Stage 21 analyzes a deliberately
-selected stabilized set. Correctable missing/malformed Stage 21 options keep chat
-available only to report remediation; no scope or completion is accepted, and PreToolUse
-denies every tool until exact valid `--incidents` and `--postmortem` values are resubmitted.
+selected stabilized set. Plain-language postmortem requests enter read/search/question-only
+collection when internal bindings are absent. Stage 21 presents ambiguous or active
+incidents, proposes the next registry-backed PM path, and asks one confirmation; it never
+asks the operator to reconstruct flags. No scope or completion is accepted until the
+trusted binder validates the stabilized incident, next PM number, create-new path,
+confirmation, HEAD, and tool identity.
 Stage 21 must consult current `NORTHSTAR.md` and the progressive
 `LEARNINGS.md → RULE:<card-slug> → PMxxx/LEARNxxx` path, classify reinforced,
 contradicted, and missing rules, and deterministically validate pyramid provenance and

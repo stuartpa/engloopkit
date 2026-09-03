@@ -5,8 +5,8 @@ argument-hint: "--incident <.engloop/incidents/INxxx_title.md> [incident demand 
 target: vscode
 user-invocable: true
 disable-model-invocation: true
-tools: [read, search, edit, execute]
-agents: []
+tools: [read, search, edit, execute, agent]
+agents: [speckit.engloop.21-postmortem]
 hooks:
   SessionStart:
     - type: command
@@ -61,6 +61,13 @@ treat deferred context as validated context, and resolve or create the incident 
 without delaying urgent stabilization. Before claiming stabilization, run the authoritative
 `validate incident-context --allow-deferred true` command against that artifact. Missing,
 malformed, or unavailable learning metadata never disables the recovery conversation.
+
+If the operator explicitly asks in plain language to start, continue, complete, or
+analyze a postmortem, delegate only to `speckit.engloop.21-postmortem`. Do not synthesize
+internal flags first: Stage 21 owns read-only incident/registry collection, one concise
+confirmation, and trusted binding. This explicit operator request is not automatic
+scheduling and does not itself prove stabilization, postmortem completion, or repair
+closure.
 
 ## Direction and learning context during stabilization
 

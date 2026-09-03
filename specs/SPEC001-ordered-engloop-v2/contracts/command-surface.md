@@ -91,7 +91,7 @@ Every command file MUST satisfy ARCH002 and contain:
 
 1. YAML frontmatter with explicit `name`, non-empty `description`, stage-specific
    `argument-hint`, `target: vscode`, `user-invocable: true`,
-   `disable-model-invocation: true`, exact least-privilege `tools`, explicit `agents`,
+   exact stage-specific `disable-model-invocation`, least-privilege `tools`, explicit `agents`,
    the versioned `SessionStart` entry hook, and exact applicable `handoffs`;
 2. `## User Input` and the `$ARGUMENTS` contract;
 3. `## Artifact root` that resolves only through `.engloop/config.json` at the
@@ -129,10 +129,11 @@ Every source command and generated agent has this common semantic projection:
 | `argument-hint` | Non-empty stage-specific required input. |
 | `target` | `vscode`. |
 | `user-invocable` | `true`. |
-| `disable-model-invocation` | `true`. |
+| `disable-model-invocation` | `false` only for Stage 21 plain-language postmortem routing; `true` for every other stage. |
 | `tools` | Exact row in the matrix below, with no duplicate/extra/missing value. |
-| `agents` | Exact row in the matrix below; `[Explore]` or `[]`, never `*`. |
+| `agents` | Exact row in the matrix below; named allowlist or `[]`, never `*`. |
 | `hooks.SessionStart` | Exact `EntryHook` below plus stage-specific fail-closed guards where specified. |
+| `hooks.SubagentStart` / `hooks.SubagentStop` | Required only for model-invocable Stage 21 and semantically equivalent to direct entry/start and Stop enforcement. |
 | `handoffs` | Exact ordered outgoing rows in the graph below; omitted only for Stages 09, 31, 41, 50, 61, 70, 71, 72, and 80. |
 | `infer` | Absent. |
 | `model` | Absent. |
@@ -155,8 +156,8 @@ handoffs compare as an ordered sequence because button order is visible UX.
 | `speckit.engloop.08-unittest` | `read, search, edit, execute, agent` | `[Explore]` |
 | `speckit.engloop.09-debugger-walk-thru` | `read, search, edit, execute` | `[]` |
 | `speckit.engloop.10-codereview-prepare` | `read, search, edit, execute, web` | `[]` |
-| `speckit.engloop.20-incident` | `read, search, edit, execute` | `[]` |
-| `speckit.engloop.21-postmortem` | `read, search, edit, execute, agent` | `[Explore]` |
+| `speckit.engloop.20-incident` | `read, search, edit, execute, agent` | `[speckit.engloop.21-postmortem]` |
+| `speckit.engloop.21-postmortem` | `read, search, edit, execute, agent, vscode_askQuestions` | `[Explore]` |
 | `speckit.engloop.22-repair` | `read, search, edit, execute` | `[]` |
 | `speckit.engloop.23-happy-minute` | `read, search, edit, execute` | `[]` |
 | `speckit.engloop.30-token-efficiency-analyze` | `read, search, edit, execute, agent, copilot_sessionStoreSql` | `[Explore]` |
@@ -174,7 +175,8 @@ handoffs compare as an ordered sequence because button order is visible UX.
 
 For every nonempty `agents` list, `tools` contains `agent`; for every empty list, it
 does not. The supported VS Code build must resolve every named tool and the `Explore`
-agent. VS Code's documented behavior of ignoring an unavailable tool is not an
+agent. Stage 21 also requires the exact core `vscode_askQuestions` tool. VS Code's
+documented behavior of ignoring an unavailable tool is not an
 EngLoopKit success path. Nested subagents are not required and acceptance does not
 enable `chat.subagents.allowInvocationsFromSubagents`.
 
@@ -278,6 +280,19 @@ ignored denial-only marker, and deny PreToolUse/Stop authorization until the com
 original `--incidents` / `--postmortem` pair passes the bound argument/HEAD/tool identity
 checks. Implementations MUST NOT infer the missing value from the old gate, silently ignore
 the partial update, delete the valid gate, or let plain text clear the denial marker.
+
+Stage 21 is the sole model-invocable EngLoop agent so ordinary-language requests can be
+routed from the default agent or the explicitly authorized Stage 20 parent. Missing
+internal bindings create ignored, session/HEAD/tool-identity-bound collection state.
+Before a gate exists, `PreToolUse` permits only read/search, `vscode_askQuestions`, and
+one exact internal `postmortem-route bind` command; every edit, subagent, and unrelated
+command is denied. The agent inspects incident artifacts and the tracked PM registry,
+fails closed on ambiguity or an unstabilized incident, proposes the next PM path, and asks
+one concise in-turn confirmation. The trusted binder revalidates collection token,
+incident contract, next registry number, create-new history, confirmation, HEAD, and tool
+identity before creating the original strict gate. The operator is never asked to type
+internal flags. Delegated runs require `SubagentStart` and `SubagentStop` equivalents
+because VS Code does not invoke direct `SessionStart`/`Stop` for nested custom agents.
 
 ### Pinned VS Code/schema baseline
 

@@ -1,16 +1,17 @@
 ---
 name: speckit.engloop.21-postmortem
-description: Analyze selected stabilized incidents into PM/LEARN/RPI outputs.
-argument-hint: --incidents <INxxx,...> --postmortem <.engloop/postmortems/PMxxx_title.md>
+description: "Use when a user asks in plain language to start, complete, continue, or analyze an incident postmortem; collect and confirm incident/PM context, then produce validated PM/LEARN/RPI outputs."
+argument-hint: "Describe the incident postmortem to start or continue; exact incident IDs and PM path are optional internal bindings."
 target: vscode
 user-invocable: true
-disable-model-invocation: true
+disable-model-invocation: false
 tools:
 - read
 - search
 - edit
 - execute
 - agent
+- vscode_askQuestions
 agents:
 - Explore
 hooks:
@@ -22,6 +23,14 @@ hooks:
   - type: command
     command: dotnet tool run engloopkit -- operations-hook start postmortem
     timeout: 30
+  SubagentStart:
+  - type: command
+    command: dotnet tool run engloopkit validate agent-entry --stage speckit.engloop.21-postmortem
+      --root .
+    timeout: 30
+  - type: command
+    command: dotnet tool run engloopkit -- operations-hook subagent-start postmortem
+    timeout: 30
   UserPromptSubmit:
   - type: command
     command: dotnet tool run engloopkit -- operations-hook initialize postmortem
@@ -30,9 +39,17 @@ hooks:
   - type: command
     command: dotnet tool run engloopkit -- operations-hook guard postmortem
     timeout: 30
+  PostToolUse:
+  - type: command
+    command: dotnet tool run engloopkit -- operations-hook post-tool postmortem
+    timeout: 30
   Stop:
   - type: command
     command: dotnet tool run engloopkit -- operations-hook stop postmortem
+    timeout: 30
+  SubagentStop:
+  - type: command
+    command: dotnet tool run engloopkit -- operations-hook subagent-stop postmortem
     timeout: 30
 handoffs:
 - label: Repair selected item
@@ -76,14 +93,60 @@ Run before any action:
 
 ## Mandatory consultation and completion gate
 
+### Plain-language routing and context collection
+
+This agent is eligible for model delegation when a user asks to start, complete,
+continue, or analyze an incident postmortem in ordinary language. Delegation is a nested
+Stage 21 run, not a visible agent-mode switch. Direct runs use `SessionStart`/`Stop`;
+delegated runs use equivalent `SubagentStart`/`SubagentStop` hooks. In both cases,
+`UserPromptSubmit`, `PreToolUse`, and the same trusted completion validator remain active.
+
+When the prompt lacks internal bindings and the hook emits
+`OPERATIONS_POSTMORTEM_CONTEXT_COLLECTION_ACTIVE`:
+
+1. Stay in collection mode. Use only `read`, `search`, and `vscode_askQuestions`; do not
+  edit source/evidence, invoke a subagent, or run any command except the exact trusted
+  binder after confirmation.
+2. Inspect `.engloop/incidents/` and the `PM` row in
+  `.engloop/numbering-registry.md`. Use an explicit incident ID when supplied. Otherwise,
+  compare the user's words with incident titles/content and present candidates for human
+  confirmation; never choose when more than one remains plausible.
+3. Require a stabilized, learning-context-complete incident. If it is active, malformed,
+  missing, or ambiguous, explain that condition and ask one concise clarification; do not
+  bind, analyze, or claim completion.
+4. Propose the next registry-backed `PM<NNN>-<brief-kebab-description>.md` path without
+  reserving or creating it. Ask exactly one concise question with
+  `vscode_askQuestions`: header `Confirm postmortem`; question
+  `Use incidents <INxxx,...> and create <path>?`; `multiSelect: false`;
+  `allowFreeformInput: false`; and exactly the ordered options `Confirm`,
+  `Choose different incident/path`, and `Cancel`.
+5. `PostToolUse` validates the exact question schema, selected option, session, and
+  `tool_use_id`. Confirm produces `POSTMORTEM_ROUTE_CONFIRMED` plus a one-time receipt;
+  Cancel produces `POSTMORTEM_ROUTE_CANCELLED` and requires no command; Choose different
+  keeps collection active. Only after the confirmed receipt, invoke this exact internal
+  shape with the hook-supplied collection path/token, receipt, and confirmed values:
+
+  `dotnet tool run engloopkit -- postmortem-route bind --collection <hook-path> --token <hook-token> --incidents <INxxx,...> --postmortem <proposed-path> --confirmation-receipt <hook-receipt>`
+
+  Never ask the operator to type or reconstruct that command or its flags. The trusted
+  binder independently requires exact collection/session/HEAD/tool identity, stabilized
+  incident validation, the next registry PM number, a create-new path, and the
+  PostToolUse confirmation receipt. Never leave cancellation state for the operator to
+  clean up.
+6. Continue into postmortem work only after `POSTMORTEM_ROUTE_BOUND` and
+  `OPERATIONS_LEARNING_SCOPE_ACTIVE`. Increment the tracked `PM` registry row before
+  creating the confirmed PM artifact. A proposal or confirmation is not analysis,
+  routing, repair acceptance, or closure evidence.
+
 This agent requires VS Code custom-agent hooks. Require the
 `OPERATIONS_LEARNING_GUARD_ACTIVE mode=postmortem` and
 `OPERATIONS_LEARNING_SCOPE_ACTIVE mode=postmortem` markers before using any tool. The
-initial prompt must name both the exact incident IDs via `--incidents` and the create-new
-PM path via `--postmortem`. If `UserPromptSubmit` emits
+initial prompt may carry exact internal bindings or may enter the plain-language collector
+above. If `UserPromptSubmit` emits
 `OPERATIONS_LEARNING_CONTEXT_REQUIRED` with status `postmortem-context-required`, no scope
-or completion was accepted: do not use tools, report its phase/diagnostic/remediation, and ask the operator to resubmit both exact
-options. The `PreToolUse` hook mechanically denies tools until a valid scope gate exists;
+or completion was accepted: follow the read-only collector and one-question confirmation
+flow; never ask the operator to reconstruct internal options. The `PreToolUse` hook
+mechanically denies non-collection tools until a valid scope gate exists;
 a gate-less Stop response may end that recovery message but never emits a completion
 marker. The Stop hook for a valid gate runs:
 
@@ -95,8 +158,9 @@ After scope activation, ordinary continuation text and unrelated command-style o
 not change the bound incident/PM identity. Supplying only `--incidents` or only
 `--postmortem` suspends tool authorization and emits context-required remediation; never
 fill the missing value from the existing gate. Plain follow-up text cannot clear the
-suspension. Resubmit the complete original `--incidents ... --postmortem ...` pair; only
-an exact argument-hash/HEAD/tool-identity match reactivates the preserved gate.
+suspension. Recollect and confirm the complete original incident/PM identity through the
+trusted internal binder; only an exact argument-hash/HEAD/tool-identity match reactivates
+the preserved gate.
 
 Before root-cause analysis:
 

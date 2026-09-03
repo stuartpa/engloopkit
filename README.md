@@ -88,10 +88,15 @@ deleted. The standalone `validate incident-context` command remains the fail-clo
 authority for stabilization evidence.
 
 Stage 21 keeps correctable invocation errors recoverable without weakening retrospective
-acceptance. Missing/malformed `--incidents` or `--postmortem` values produce an actionable
-`postmortem-context-required` response instead of terminating chat; no scope/completion is
-accepted, and a PreToolUse guard denies all tools until exact valid values are resubmitted.
-The original `postmortem-learning` Stop validator remains the completion authority.
+acceptance. A plain-language request to start, continue, complete, or analyze an incident
+postmortem can route to Stage 21 from the default agent or an explicitly requested Stage 20
+delegation. Missing internal bindings enter read/search/question-only collection: Stage 21
+presents plausible incident records, proposes the next registry-backed PM path, and asks
+one concise confirmation. The operator never types internal flags. A trusted binder still
+requires a stabilized incident, exact registry number, create-new path, confirmation,
+HEAD, and tool identity before enabling edits. The original `postmortem-learning` Stop
+validator remains the completion authority; collection/proposal/confirmation alone accept
+no scope, analysis, repair, or closure.
 
 ## Readiness gate
 
