@@ -1,6 +1,7 @@
 # ARCH006: Deterministic agent-surface validation — no UI validation
 
 - **Created:** 2026-07-13
+- **Amended:** 2026-09-03
 - **Status:** ACCEPTED
 - **Governs:** command/agent/prompt release validation, package validation, and consumer migration
 - **Consulted learnings:** [Readiness is a gate](../learnings/cards/readiness-is-a-gate.md)
@@ -18,8 +19,8 @@ Agent-surface acceptance is exclusively deterministic and headless:
 1. validate the exact source command set and frontmatter semantics;
 2. build the immutable extension archive;
 3. install that archive into a disposable root through Spec Kit's supported path;
-4. compare source, installed command/agent, and generated prompt semantic projections;
-5. validate exact tool/agent policies, 23 review-first handoff edges, absence rules,
+4. compare source, checked-in agent, installed agent, and generated prompt semantic projections;
+5. validate exact tool/agent policies, 31 review-first handoff edges, absence rules,
    local-tool entry rejection, and extension removal behavior.
 
 ## Context
@@ -35,7 +36,7 @@ necessary proof of archive/install semantics.
 - No ELK script may require or accept editor UI evidence.
 - No ELK release gate may block on picker counts, Problems-panel diagnostics, screenshots,
   browser/Electron debugging, accessibility scraping, or editor automation.
-- Command discoverability is proven by the exact ordered 13-ID source/archive/install set;
+- Command discoverability is proven by the exact ordered 28-ID source/archive/install set;
   semantic preservation is proven by parsed YAML projections.
 - A deterministic install mismatch fails closed. No UI fallback is attempted.
 

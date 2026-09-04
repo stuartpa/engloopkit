@@ -227,12 +227,12 @@ Custom-agent evidence is release/install evidence with its own typed result. It 
 cover:
 
 - the passing early Spec Kit preservation experiment and pinned generator identity;
-- 13/13 source command headers and 13/13 installed agent headers with semantic field
+- 28/28 source command headers and 28/28 installed agent headers with semantic field
   preservation;
-- the exact tools/subagent matrix and 23-edge handoff graph;
+- the exact tools/subagent matrix and 31-edge handoff graph;
 - exact versioned `SessionStart` hooks, unconditional body checks, assurance-mode
   reporting, and independent trusted durable-stage gates;
-- 13 generated prompts selecting their exact agent with zero `tools` overrides;
+- 28 generated prompts selecting their exact agent with zero `tools` overrides;
 - resolved handoff/`Explore` targets and exact ordered source/archive/install command
   identities;
 - controlled invalid-entry mechanical rejection with Preview hooks enabled; with hooks

@@ -12,7 +12,7 @@ The migration uses immutable artifacts built from one accepted revision:
 | Artifact | Identity | Required proof |
 |---|---|---|
 | EngLoopKit .NET tool | package/tool command `engloopkit`, version 1.7.0 | pack succeeds; command/version/config/validation smoke tests pass; SHA-256 recorded |
-| EngLoop command extension | extension ID `engloop`, version 1.7.0 | exact 13-command and 13-agent source/archive/install semantic inspection, exact prompts/matrix/graph, zero EngLoop-owned diagnostic errors or warnings; SHA-256 recorded |
+| EngLoop command extension | extension ID `engloop`, current version 1.16.0 | exact 28-command and 28-agent source/archive/install semantic inspection, exact prompts/matrix/graph, zero EngLoop-owned diagnostic errors or warnings; SHA-256 recorded |
 | EngLoopKit bundle | bundle ID `engloopkit`, version 1.7.0 | composition-only validation; exact pinned component versions; SHA-256 recorded |
 
 Spec Kit 0.12.4 declares required tools but does not install arbitrary tool components.
@@ -98,14 +98,14 @@ Run these phases from the selected root, one consumer at a time:
      terminal auto-approval;
    - do not use a sibling development install for final acceptance.
 8. **Prove surface**
-   - registry contains exactly the 13 ordered v2 IDs;
+  - registry contains exactly the 28 ordered v2 IDs;
    - installed command files, generated agents, and generated prompts contain exactly
      one file per ID and zero old ID;
-   - all 13 source/installed agent projections preserve every required common field,
-     exact tool/subagent policy, exact stage hook, and exact ordered 23-edge graph;
-   - Stage 31 has zero handoffs; every other agent has at least one; Stage 08 has no
+  - all 28 source/installed agent projections preserve every required common field,
+    exact tool/subagent policy, exact stage hook, and exact ordered 31-edge graph;
+  - terminal stages have zero handoffs; every nonterminal agent has at least one; Stage 08 has no
      20/30/31 edge; every target resolves; all edges use `send: false` and omit model;
-   - all 13 prompts select the exact matching agent and omit `tools`;
+  - all 28 prompts select the exact matching agent and omit `tools`;
    - deterministic source/archive/install semantic comparison passes;
    - extension/product ID remains `engloopkit`.
 9. **Prove standalone use**
@@ -148,7 +148,7 @@ For each consumer, remove these old EngLoop-owned current surfaces:
 - the `engloopkit` registry record containing the nine old IDs.
 
 Do not delete core `speckit.*` generated files or unrelated extension data. After v2
-installation, the corresponding new file stems are exactly the 13 IDs in
+installation, the corresponding new file stems are exactly the 28 IDs in
 [`command-surface.md`](command-surface.md).
 
 ## Repository-specific end states
@@ -162,8 +162,8 @@ installation, the corresponding new file stems are exactly the 13 IDs in
   `LEARNINGS.md`; update every moved-tree/reference link to `.engloop/`.
 - Source extension, executable core/model/tests, Learnings Pyramid, docs, and package
   metadata all implement v2.
-- Source, disposable install, and self-host install contain 13 semantically equivalent
-  rich agents, 13 matching prompts without tool overrides, the exact handoff graph,
+- Source, disposable install, and self-host install contain 28 semantically equivalent
+  rich agents, 28 matching prompts without tool overrides, the exact handoff graph,
   deterministic source/archive/install semantic equivalence and passing local-tool
   invalid-entry fixtures.
 - Root and self-host numbering registries contain no legacy numbered-direction row.
@@ -181,7 +181,7 @@ installation, the corresponding new file stems are exactly the 13 IDs in
 - Add explicit `.engloop/config.json`; test runway remains explicitly `unproven` until
   TTHP Stage 02 chooses and proves a framework—no stack is guessed.
 - Replace tracked v1 installed/generated surfaces with tracked v2 surfaces.
-- Prove all 13 rich agent headers/prompts and exact graph/matrix from the immutable
+- Prove all 28 rich agent headers/prompts and exact graph/matrix from the immutable
   release artifact; retain no v1 agent/prompt/header residue.
 - Add root `tthp.code-workspace` containing only `.`.
 
@@ -196,7 +196,7 @@ installation, the corresponding new file stems are exactly the 13 IDs in
 - Add config with an explicitly unproven runway; do not select a participant stack.
 - Replace tracked v1 generated/install surfaces and add
   `engloop-workshop.code-workspace` containing only `.`.
-- Prove all 13 rich agent headers/prompts, diagnostics, and both entry-validation
+- Prove all 28 rich agent headers/prompts, diagnostics, and both entry-validation
   modes against the immutable release artifact.
 
 ### VerifyExtremeEdgeWithTpcc
@@ -215,7 +215,7 @@ installation, the corresponding new file stems are exactly the 13 IDs in
   proof; runway state is explicit until re-proven.
 - Clean/reinstall v2 surfaces and add
   `VerifyExtremeEdgeWithTpcc.code-workspace` containing only `.`.
-- Prove all 13 rich agent headers/prompts, diagnostics, exact targets/edges, and both
+- Prove all 28 rich agent headers/prompts, diagnostics, exact targets/edges, and both
   entry-validation modes without changing TPC-C/ExtremeEdge application semantics.
 - Because the folder has no Git repository, capture a checksummed archive of all
   migration-owned paths before source-control bootstrap or removal. Rollback restores
@@ -252,7 +252,7 @@ to run the same entry validator, and trusted tooling independently rejects inval
 durable state/evidence acceptance.
 
 The existing mega-workspace is retained as the integration view. Because each root is
-independently installed, it may display one 13-command EngLoop registration per root.
+independently installed, it may display one 28-command EngLoop registration per root.
 Documentation must explain this and direct routine users to the focused entry point.
 No shared parent registry, symlink, sibling path, or deduplication extension is added.
 
@@ -269,20 +269,20 @@ current .engloopkit directory count == 0
 .engloop/out is ignored and durable .engloop content is not ignored
 all internal links resolve after the move
 current legacy numbered-direction artifacts/templates/counters == 0
-registry v2 ID set == exact expected 13
+registry v2 ID set == exact expected 28
 registry old ID count == 0
-generated v2 agents == 13 distinct
-generated v2 prompts == 13 distinct
+generated v2 agents == 28 distinct
+generated v2 prompts == 28 distinct
 generated old agents/prompts == 0
-source/installed required agent fields == exact semantic match for 13/13
-installed tools/subagent rows == exact ratified matrix for 13/13
-installed handoff edges == exact ordered 23-edge graph
-handoff targets resolved == 23/23
-handoff send values false == 23/23
+source/installed required agent fields == exact semantic match for 28/28
+installed tools/subagent rows == exact ratified matrix for 28/28
+installed handoff edges == exact ordered 31-edge graph
+handoff targets resolved == 31/31
+handoff send values false == 31/31
 handoff model overrides == 0
-Stage 31 handoffs == 0
-Stage 08 edges to 20/30/31 == 0
-prompt exact agent selectors == 13/13
+terminal-stage handoffs == 0 for 09/12/31/41/42/50/61/70/71/72/80
+Stage 08 edges to operations/token-efficiency/stewardship lanes == 0
+prompt exact agent selectors == 28/28
 prompt tools fields == 0
 customization diagnostics attributable to EngLoop == 0
 hook-enabled invalid entry blocked before stage action == PASS

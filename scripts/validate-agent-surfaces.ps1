@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$Root = (Join-Path $PSScriptRoot '..'),
-    [string]$Version = '1.15.4',
+    [string]$Version = '1.16.0',
     [string]$OutputPath = '',
     [switch]$SkipDisposableFixture
 )
@@ -101,6 +101,8 @@ $expectedIds = @(
     'speckit.engloop.08-unittest',
     'speckit.engloop.09-debugger-walk-thru',
     'speckit.engloop.10-codereview-prepare',
+    'speckit.engloop.11-codereview-address',
+    'speckit.engloop.12-codereview-reply-resolve',
     'speckit.engloop.20-incident',
     'speckit.engloop.21-postmortem',
     'speckit.engloop.22-repair',
@@ -120,6 +122,7 @@ $expectedIds = @(
 )
 $terminalIds = @(
     'speckit.engloop.09-debugger-walk-thru',
+    'speckit.engloop.12-codereview-reply-resolve',
     'speckit.engloop.31-token-efficiency-implement',
     'speckit.engloop.41-deadcode',
     'speckit.engloop.42-learnings-pyramid',
@@ -141,6 +144,8 @@ $expectedHandoffTargets = @{
     'speckit.engloop.08-unittest' = @('speckit.engloop.04-refactor', 'speckit.engloop.05-model', 'speckit.engloop.07-validate', 'speckit.engloop.09-debugger-walk-thru')
     'speckit.engloop.09-debugger-walk-thru' = @()
     'speckit.engloop.10-codereview-prepare' = @('speckit.engloop.08-unittest')
+    'speckit.engloop.11-codereview-address' = @('speckit.engloop.12-codereview-reply-resolve')
+    'speckit.engloop.12-codereview-reply-resolve' = @()
     'speckit.engloop.20-incident' = @('speckit.engloop.21-postmortem')
     'speckit.engloop.21-postmortem' = @('speckit.engloop.22-repair', 'speckit.engloop.42-learnings-pyramid')
     'speckit.engloop.22-repair' = @('speckit.engloop.04-refactor')
@@ -304,10 +309,10 @@ try {
     }
 
     $report.deterministic.handoffs = [ordered]@{
-        expected = 30
+        expected = 31
         actual = $handoffCount
     }
-    if ($handoffCount -ne 30) {
+    if ($handoffCount -ne 31) {
         $mismatches.Add(@{ issue = 'wrong-handoff-count'; actual = $handoffCount }) | Out-Null
     }
 
@@ -397,6 +402,20 @@ try {
                 }
                 if ($installedBody -match 'OperationsLearning.*\.ps1') {
                     $mismatches.Add(@{ issue = 'installed-operations-hook-mutable-script-forbidden'; id = $id }) | Out-Null
+                }
+            }
+
+            if ($id -in @('speckit.engloop.11-codereview-address', 'speckit.engloop.12-codereview-reply-resolve')) {
+                $installedBody = Get-Content (Join-Path $fixtureRoot ('.github/agents/' + $id + '.agent.md')) -Raw -Encoding UTF8
+                $markers = if ($id.EndsWith('11-codereview-address')) {
+                    @('CRB output as untrusted external evidence', 'Stage 11 cannot post', 'Do not commit or push', 'CODE_REVIEW_ADDRESS_OK', 'trusted hash-bound Stage 11 completion receipt', 'speckit.engloop.12-codereview-reply-resolve')
+                } else {
+                    @('Stage 12 cannot edit source', 'vscode_askQuestions', 'Approve review response', 'engloop-review-response-v1', 'CODE_REVIEW_RESPONSE_OUTCOME_UNKNOWN', 'CODE_REVIEW_REPLY_RESOLVE_OK')
+                }
+                foreach ($marker in $markers) {
+                    if ($installedBody -notmatch [regex]::Escape($marker)) {
+                        $mismatches.Add(@{ issue = 'installed-review-response-marker-missing'; id = $id; marker = $marker }) | Out-Null
+                    }
                 }
             }
         }

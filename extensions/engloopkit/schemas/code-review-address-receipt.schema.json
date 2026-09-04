@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://engloopkit.dev/schemas/code-review-address-receipt.schema.json",
+  "title": "EngLoopKit trusted Stage 11 completion receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "packet",
+    "packetSha256",
+    "gateSha256",
+    "gateJson",
+    "head",
+    "provider",
+    "repository",
+    "pullRequest",
+    "thread",
+    "sourceRevision",
+    "targetRevision",
+    "iteration",
+    "finalStatusDigest"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "packet": {
+      "type": "string",
+      "pattern": "^\\.engloop/out/code-review-response/address/[^/]+\\.json$"
+    },
+    "packetSha256": { "$ref": "#/$defs/sha256" },
+    "gateSha256": { "$ref": "#/$defs/sha256" },
+    "gateJson": { "type": "string", "minLength": 2 },
+    "head": { "$ref": "#/$defs/revision" },
+    "provider": { "$ref": "#/$defs/identity" },
+    "repository": { "$ref": "#/$defs/identity" },
+    "pullRequest": { "$ref": "#/$defs/identity" },
+    "thread": { "$ref": "#/$defs/identity" },
+    "sourceRevision": { "$ref": "#/$defs/revision" },
+    "targetRevision": { "$ref": "#/$defs/revision" },
+    "iteration": { "$ref": "#/$defs/identity" },
+    "finalStatusDigest": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "identity": { "type": "string", "minLength": 1, "maxLength": 512, "pattern": "^\\S+$" },
+    "revision": { "type": "string", "pattern": "^[a-fA-F0-9]{40,64}$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

@@ -63,9 +63,9 @@ Expected: an ignored disposable harness below
 VS Code schema projection, parses source/installed command/agent/prompt YAML with
 YamlDotNet 18.1.0, and proves every required scalar/list/map value and absence. It must
 cover empty and nonempty `agents`, nested valid `SessionStart` YAML, branching
-handoffs, Stage 31's absent `handoffs`, exact prompt agent selection, and prompt
+handoffs, terminal agents' absent `handoffs`, exact prompt agent selection, and prompt
 `tools` absence. A passing fixture is removed; a failing fixture/report is retained.
-Any mismatch blocks all 13 production headers and routes only to an upstream Spec Kit
+Any mismatch blocks all 28 production headers and routes only to an upstream Spec Kit
 capability—never an EngLoopKit-owned generator or post-processing path.
 
 ## 1. Restore and build
@@ -109,12 +109,12 @@ pwsh .\scripts\validate-package.ps1 -Version 1.7.0
 
 Expected:
 
-- exactly 13 source/archive IDs in the order 01–08, 20–22, 30–31;
-- all 13 command-loop shapes pass;
+- exactly 28 source/archive IDs in the order 01–12, 20–23, 30–31, 40–42, 50, 60–61, 70–72, 80;
+- all 28 command-loop shapes pass;
 - zero old IDs in current package surfaces;
 - bundle remains composition-only;
 - extension, bundle, tool, and catalog versions agree;
-- disposable install generates 13 agents and 13 prompts, then removal leaves zero
+- disposable install generates 28 agents and 28 prompts, then removal leaves zero
   EngLoop-owned generated files.
 
 ## 3A. Validate exemplary agent surfaces and interaction
@@ -125,14 +125,14 @@ pwsh .\scripts\validate-agent-surfaces.ps1 -Version 1.7.0 -VsCodeVersion 1.129.0
 
 Expected deterministic source/archive/install rows:
 
-- installed agents: 13/13 in exact lexical command-ID order;
-- common source→installed fields: 13/13 semantic matches;
-- justified tools/subagent policies: 13/13 exact, with `Explore` resolved 7/7;
-- handoffs: exact ordered graph 23/23, targets 23/23, `send: false` 23/23,
-  handoff model overrides 0, Stage 31 handoffs 0, Stage 08 operations/stewardship edges 0;
-- prompts: exact agent selectors 13/13 and `tools` fields 0;
+- installed agents: 28/28 in exact lexical command-ID order;
+- common source→installed fields: 28/28 semantic matches;
+- justified tools/subagent policies: 28/28 exact, with every declared `Explore` target resolved;
+- handoffs: exact ordered graph 31/31, targets 31/31, `send: false` 31/31,
+  handoff model overrides 0, terminal-stage handoffs 0, Stage 08 operations/stewardship edges 0;
+- prompts: exact agent selectors 28/28 and `tools` fields 0;
 - deterministic semantic mismatches: 0;
-- handoff contract: 23/23 `send: false`, exact targets/prompts, no model override;
+- handoff contract: 31/31 `send: false`, exact targets/prompts, no model override;
 - invalid entry: deterministically rejected by exit code 2;
 - sensitive generated-agent/prompt/tool-manifest/config paths require manual edit
   approval, with zero broad approval/Autopilot/Bypass settings.
@@ -298,8 +298,8 @@ Expected per root:
 - existing Git consumers show the visible-tree migration as a rename and all moved
   internal links resolve; the consumer that began without Git retains a full checksum
   backup, explicitly bootstraps tracking, and makes no claim to pre-bootstrap history;
-- exact v2 registry set, 13 generated agents, 13 generated prompts, zero old files;
-- 13/13 semantic headers, exact 23-edge graph, exact prompt policy, and zero EngLoop-
+- exact v2 registry set, 28 generated agents, 28 generated prompts, zero old files;
+- 28/28 semantic headers, exact 31-edge graph, exact prompt policy, and zero EngLoop-
   owned customization errors or warnings on the pinned VS Code build;
 - installed extension/tool digests equal release artifacts;
 - folder-open operation succeeds without sibling resolution;
@@ -326,7 +326,7 @@ leave `engloop/` and `.engloop/` live together.
 ## 10. Verify the integration workspace and release
 
 Open the existing mega-workspace only after all three standalone checks pass. Confirm it
-remains useful as an integration view and may show one independent 13-command set per
+remains useful as an integration view and may show one independent 28-command set per
 root. Confirm documentation points routine work to focused one-root entry points; do
 not add cross-root deduplication.
 

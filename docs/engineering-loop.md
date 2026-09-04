@@ -2,14 +2,14 @@
 
 **Workflow generation:** Ordered EngLoop v2.
 **Product versioning:** EngLoopKit remains on the **1.x** line; the ordered workflow
-ships in v1.7.0 and the current active-chat token-efficiency/postmortem plus distinct refactor-plan/refactor workflow in v1.15.4. “v2” is not a v2.0 product release.
+ships in v1.7.0 and the current author-response, active-chat postmortem, and distinct refactor-plan/refactor workflow in v1.16.0. “v2” is not a v2.0 product release.
 
 EngLoopKit has independently invoked lifecycle, positive-history, and local utility lanes.
 Command ordinals give the picker a
 predictable order; they do **not** schedule work automatically. Every accepted stage is
 an evidence-gated transition, not a narrated claim.
 
-## Delivery and readiness: 01–08
+## Delivery, readiness, and review: 01–12
 
 | Stage | Command | Gate and durable output |
 |---:|---|---|
@@ -23,11 +23,26 @@ an evidence-gated transition, not a narrated claim.
 | 08 | `speckit.engloop.08-unittest` | Disposition before direct tests, whole-product coverage, and the sole READY / NOT READY inventory verdict. |
 | 09 | `speckit.engloop.09-debugger-walk-thru` | Recommend and track an engineer-led line-by-line walkthrough without gating Stage 10. |
 | 10 | `speckit.engloop.10-codereview-prepare` | Minimize and validate the current PR after the current HEAD has Stage 08 readiness PASS. |
+| 11 | `speckit.engloop.11-codereview-address` | Bind one selected provider thread, address accepted feedback in the author checkout, validate it, and prepare a private response packet without provider mutation, commit, or push. |
+| 12 | `speckit.engloop.12-codereview-reply-resolve` | Revalidate a clean post-commit Stage 11 refresh packet through a non-mutating provider inspection, collect informed exact approval, and apply one reply/resolution through the same explicit adapter with reconciliation evidence. |
 
 The Stage 08 PASS requires current evidence for every configured module: architecture,
 regressions, artifact-appropriate verification, and measured **95% line + branch**
 coverage. The stateful vertical additionally needs behavior-level SEK evidence with
 model-derived negative conformance and materially branching paths.
+
+CRB produces reviewer-side findings/comments. ELK's author-side response starts only when
+an engineer explicitly selects one current provider thread. Stage 11 owns source edits,
+repository-declared validation, and an ignored immutable response packet, but never posts,
+resolves, commits, pushes, or edits ELK/provider control state. A separate workflow owns
+commit/push, after which Stage 11 creates a new clean refresh packet. Stage 12 owns no
+source edits; it requires that clean packet and the validated fix on authoritative provider
+head for resolution, requires its trusted Stage 11 completion receipt and one exact
+non-mutating provider inspection, displays the
+exact reply/operation/principal/evidence in the fixed approval message,
+collects one fixed-option approval, and invokes only a tracked provider adapter implementing
+`engloop-review-response-v1`. Ambiguous mutation outcomes reconcile with the same attempt
+identity and never retry blindly.
 
 ## Token efficiency: 30–31
 

@@ -2,7 +2,7 @@
 
 **Workflow generation:** Ordered EngLoop v2.
 **Product SemVer:** EngLoopKit remains on the **1.x** line; this workflow ships as
-v1.15.4. “v2” describes the workflow generation, not a v2.0 release.
+v1.16.0. “v2” describes the workflow generation, not a v2.0 release.
 
 Durable workflow memory lives in exactly one tracked hidden root:
 
@@ -107,3 +107,18 @@ immutable release artifact, exact target application/verification, and current r
 Route and close are separate immutable records. Gate PASS comes only from the versioned
 tool's process receipt; readiness and receipts are invalidated by changed worktree bytes,
 not merely by a changed Git status shape.
+
+## Code-review response rule
+
+CRB owns reviewer-side findings and publication; ELK owns the author's explicitly selected
+response. Stage 11 may edit source and validate but cannot mutate provider state, commit,
+or push, and it cannot edit Git/tool/config/adapter/response-authority control state. After
+an accepted edit, an external workflow owns commit/push and Stage 11 must produce a new
+clean refresh packet and trusted completion receipt at that head. Stage 12 may apply only one separately approved
+reply/resolution from that clean packet through a tracked hash-bound provider adapter and
+cannot edit source. The adapter must first complete a non-mutating exact provider-state
+inspection, and the approval message binds the exact reply/principal/evidence plus packet
+and inspection hashes. Resolution requires the validated fix on authoritative provider head.
+Every provider attempt is recorded before mutation and revalidated before reuse;
+ambiguous outcomes reconcile with the same marker and never retry blindly. Missing adapter,
+principal, revision, thread, or read-back capability fails closed without a fallback.

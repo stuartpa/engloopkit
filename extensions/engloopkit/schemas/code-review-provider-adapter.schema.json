@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://engloopkit.dev/schemas/code-review-provider-adapter.schema.json",
+  "title": "EngLoopKit explicit provider adapter manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "adapterId", "provider", "protocol", "command", "commandArtifact", "commandArtifactSha256", "timeoutSeconds", "capabilities"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "adapterId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-z0-9][a-z0-9._-]*$" },
+    "provider": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^\\S+$" },
+    "protocol": { "const": "engloop-review-response-v1" },
+    "command": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "commandArtifact": {
+      "type": "string",
+      "pattern": "^\\.engloop/provider-adapters/.+",
+      "description": "Self-contained, execution-location-independent artifact; ELK runs a hash-verified private copy."
+    },
+    "commandArtifactSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "timeoutSeconds": { "type": "integer", "minimum": 1, "maximum": 300 },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["inspect", "reply", "resolve", "reply-and-resolve"] },
+      "contains": { "const": "inspect" },
+      "minContains": 1,
+      "maxContains": 1
+    }
+  }
+}

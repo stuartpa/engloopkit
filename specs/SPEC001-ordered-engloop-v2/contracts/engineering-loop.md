@@ -41,10 +41,10 @@ different artifact:
 
 Therefore the handoff edge set is neither the state machine's transition table nor a
 numeric-adjacency scheduler. Stage 08 exposes only its 04/05/07 corrective branches and
-never offers 20/30/31; a readiness PASS authorizes operation but creates no incident or
-stewardship work. Stage 21's 31 button is a capacity-conditioned suggestion, not an
-automatic successor. Stage 31 has no static handoff and returns to its saved invoking
-context. Any implementation that mutates state on button rendering/click or submits a
+never offers operations, token-efficiency, or stewardship lanes; a readiness PASS
+authorizes operation but creates no incident or stewardship work. Stage 21's 42 button is
+a capacity-conditioned suggestion, not an automatic successor. Terminal stages have no
+static handoff. Any implementation that mutates state on button rendering/click or submits a
 handoff automatically is non-conformant.
 
 ## State required for every implementation/model
@@ -61,8 +61,8 @@ The SUT and independent model MUST distinguish at least:
 - Stage 08 reached/unreached path set and disposition status;
 - actual incident, stabilization, selected post-mortem set, and repair-item demand;
 - spare stewardship capacity;
-- Stage 30 no-work/selected-work, direction-change, and architecture-impact outcomes;
-- return context for independent Stage 31 work.
+- Stage 40 no-work/selected-work, direction-change, and architecture-impact outcomes;
+- return context for independent Stage 42 work.
 
 A model whose only durable state is a stage enum is non-conformant.
 
@@ -104,7 +104,7 @@ Non-reachability is evidence requiring classification. It is never an automatic
    stabilization only.
 4. Stage 21 requires a deliberately selected non-empty set of stabilized incidents.
 5. Stage 21 may create accepted source learnings and repair items. New learnings set the
-   independent Stage 31 refresh obligation; they do not close repair.
+   independent Stage 42 refresh obligation; they do not close repair.
 6. Stage 22 requires one or more repair items and creates/retains an open repair
    obligation.
 7. Stage 22 routes to Stage 04 and every applicable Stage 05–08 gate.
@@ -133,9 +133,27 @@ The record is complete on creation. A review-first handoff to Stage 42 may later
 genuinely reusable positive learnings with provenance; no handoff is required and no
 observation becomes a mandatory rule or proven cause merely because it appears in HAPPY.
 
-## Stewardship lane
+## Token-efficiency lane
 
 ### Stage 30
+
+Reads explicitly selected private session evidence through the accepted Chronicle store,
+aggregates one-to-many records independently, and emits one compact analysis with ranked
+`TE-Rxxx` repair candidates. It is read-only: no source, Git, package, global tool, or
+session-store mutation is authorized. Missing or ambiguous evidence is reported rather
+than guessed.
+
+### Stage 31
+
+Requires one exact current Stage 30 analysis and an explicit unique approved repair-ID
+set. It implements only that bounded scope, verifies prerequisites and package-supply
+policy, runs focused validation, and writes compact implementation evidence. It cannot
+commit, push, deploy, install global tools, or silently widen the approved repair set.
+Stage 31 is terminal and does not schedule stewardship or delivery work.
+
+## Stewardship lane
+
+### Stage 40
 
 Requires explicit spare engineering or agent-token capacity. It evaluates the ratified
 priority tree with the user and records exactly one confirmed REFACT plan/result:
@@ -171,10 +189,10 @@ extraction; `bounded` inspects one subsystem; `deep` permits repository-wide ana
 and selects one phased campaign. A profile changes investigation breadth only—it does
 not change transition order, authorize implementation, or bypass Stages 01/03/04.
 
-### Stage 31
+### Stage 42
 
 Requires explicit spare capacity and an accepted-learning backlog/pending source-set
-change. It may run independently from Stage 30 and returns to its saved invoking
+change. It may run independently from Stage 40 and returns to its saved invoking
 context. It clears the pending obligation only when static pyramid validation and the
 clean-context retrieval suite pass against identical input digests. It neither blocks
 incident stabilization nor substitutes for Stage 22.
@@ -194,11 +212,11 @@ The executable core and generated conformance MUST reject, with state unchanged:
 | 07→20 | `missing-current-readiness` |
 | 21→04 | `missing-repair-routing` |
 | 22→08 | `repair-gate-bypass` |
-| 30→08 | `refactor-gate-bypass` |
+| 40→08 | `refactor-gate-bypass` |
 | Stage 20 with no incident | `no-incident-demand` |
 | Stage 21 with no selected stabilized set | `no-postmortem-selection` |
 | Stage 22 with no repair item | `no-repair-demand` |
-| Stage 30/31 with no explicit capacity | `no-stewardship-capacity` |
+| Stage 40/42 with no explicit capacity | `no-stewardship-capacity` |
 | operation after product revision invalidated readiness | `stale-readiness` |
 | Stage 08 before all paths are classified | `unclassified-reachability` |
 | direct test addition before disposition completion | `unit-tests-too-early` |
@@ -236,8 +254,8 @@ paths and generated tests for:
 - 08 authorization with no automatic operation/stewardship action;
 - actual 20→21→22 repair route back through 04 and 05–08;
 - repeated incidents before a selected post-mortem set;
-- Stage 30 no-work and direction/architecture branches;
-- Stage 31 independent pending/clear behavior;
+- Stage 40 no-work and direction/architecture branches;
+- Stage 42 independent pending/clear behavior;
 - intended-gap return and residue-delete→07 revalidation;
 - representative illegal ordering, invalid command/input, duplicate start, stale
   readiness, and absent-demand attempts.
@@ -257,8 +275,8 @@ This contract passes only when:
 - required rejection classes have generated negative evidence;
 - generated tests drive one stateful SUT instance per path at the real boundary;
 - direct tests cover full finite transition/reason tables and invariants;
-- the installed 23-edge handoff graph equals the command-surface UI projection, every
+- the installed 31-edge handoff graph equals the command-surface UI projection, every
    edge is review-first, and handoff display/click tests prove zero state mutation or
    lane scheduling before target submission and validation;
 - prose, command package, SUT, model, CORD, generated suite, and tests contain the same
-  13-stage vocabulary and lane semantics.
+   28-command vocabulary and lane semantics.

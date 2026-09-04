@@ -1,5 +1,10 @@
 # SPEC001 Research: Ordered EngLoop v2
 
+> **Historical-scope note:** The 13-command findings and decisions below record the
+> original v1.7.0 investigation. They are preserved as provenance, not current product
+> acceptance. The evolved v1.16.0 authority is the exact 28-command/31-edge surface in
+> `spec.md` and `contracts/command-surface.md`.
+
 - **Status:** COMPLETE — AMENDED FOR CUSTOM-AGENT UX AND HIDDEN ROOT
 - **Date:** 2026-07-10
 - **Feature:** [SPEC001](spec.md)

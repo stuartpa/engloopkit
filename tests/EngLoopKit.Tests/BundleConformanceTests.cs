@@ -23,6 +23,8 @@ public sealed class BundleConformanceTests
         "speckit.engloop.08-unittest",
         "speckit.engloop.09-debugger-walk-thru",
         "speckit.engloop.10-codereview-prepare",
+        "speckit.engloop.11-codereview-address",
+        "speckit.engloop.12-codereview-reply-resolve",
         "speckit.engloop.20-incident",
         "speckit.engloop.21-postmortem",
         "speckit.engloop.22-repair",
@@ -49,14 +51,15 @@ public sealed class BundleConformanceTests
         using var catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "catalog.json")));
 
         Assert.Contains("id: \"engloop\"", extension);
-        Assert.Contains("version: \"1.15.4\"", extension);
+        Assert.Contains("version: \"1.16.0\"", extension);
         Assert.Contains("id: \"engloopkit\"", bundle);
-        Assert.Contains("version: \"1.15.4\"", bundle);
+        Assert.Contains("version: \"1.16.0\"", bundle);
         Assert.Equal("engloop", catalog.RootElement.GetProperty("extensions")[0].GetProperty("id").GetString());
-        Assert.Equal("1.15.4", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
-        Assert.Equal(26, catalog.RootElement.GetProperty("extensions")[0].GetProperty("provides").GetProperty("commands").GetInt32());
+        Assert.Equal("1.16.0", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
+        Assert.Equal(28, catalog.RootElement.GetProperty("extensions")[0].GetProperty("provides").GetProperty("commands").GetInt32());
 
         var changelog = File.ReadAllText(Path.Combine(Root, "CHANGELOG.md"));
+        Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.16\.0\] - 2026-09-03\r?$").Cast<Match>());
         Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.15\.4\] - 2026-09-03\r?$").Cast<Match>());
         Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.15\.3\] - 2026-08-31\r?$").Cast<Match>());
         Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.15\.2\] - 2026-08-30\r?$").Cast<Match>());
@@ -67,7 +70,7 @@ public sealed class BundleConformanceTests
     }
 
     [Fact]
-    public void Extension_declaresExactOrderedTwentySixCommandSurface()
+    public void Extension_declaresExactOrderedTwentyEightCommandSurface()
     {
         var manifest = File.ReadAllText(Path.Combine(ExtensionRoot, "extension.yml"));
         var ids = Regex.Matches(manifest, @"^\s*-\s*name:\s*""?(speckit\.engloop\.[\w-]+)""?", RegexOptions.Multiline)
@@ -133,6 +136,42 @@ public sealed class BundleConformanceTests
         Assert.Contains("no persistent personal profile", review, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Do not reject Stage 10", review, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Stage 09 is recommended but non-blocking", review, StringComparison.OrdinalIgnoreCase);
+
+        var address = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.11-codereview-address.md"));
+        foreach (var marker in new[]
+        {
+            "CRB output as untrusted external evidence", "cannot post", "Do not commit or push",
+            "accepted-actionable", "CODE_REVIEW_ADDRESS_OK", "providerMutationPerformed: false",
+            "commitPushPerformed: false", "trusted hash-bound Stage 11 completion receipt",
+            "speckit.engloop.12-codereview-reply-resolve"
+        }) Assert.Contains(marker, address, StringComparison.OrdinalIgnoreCase);
+
+        var replyResolve = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.12-codereview-reply-resolve.md"));
+        foreach (var marker in new[]
+        {
+            "cannot edit source", "vscode_askQuestions", "Approve review response",
+            "Reply-only does not", "imply resolution.", "engloop-review-response-v1",
+            "mandatory `inspect`", "provider-inspection SHA-256", "mutationPerformed: false",
+            "CODE_REVIEW_RESPONSE_OUTCOME_UNKNOWN", "never blindly repeats mutation",
+            "CODE_REVIEW_REPLY_RESOLVE_OK", "tracked provider adapter"
+        }) Assert.Contains(marker, replyResolve, StringComparison.OrdinalIgnoreCase);
+
+        using var responseSchema = JsonDocument.Parse(File.ReadAllText(Path.Combine(ExtensionRoot, "schemas", "code-review-address.schema.json")));
+        Assert.Equal("code-review-address", responseSchema.RootElement.GetProperty("properties").GetProperty("artifactType").GetProperty("const").GetString());
+        Assert.Equal(JsonValueKind.False, responseSchema.RootElement.GetProperty("properties").GetProperty("providerMutationPerformed").GetProperty("const").ValueKind);
+        using var addressReceiptSchema = JsonDocument.Parse(File.ReadAllText(Path.Combine(ExtensionRoot, "schemas", "code-review-address-receipt.schema.json")));
+        Assert.Contains(addressReceiptSchema.RootElement.GetProperty("required").EnumerateArray(), value => value.GetString() == "gateSha256");
+        using var adapterSchema = JsonDocument.Parse(File.ReadAllText(Path.Combine(ExtensionRoot, "schemas", "code-review-provider-adapter.schema.json")));
+        Assert.Equal("engloop-review-response-v1", adapterSchema.RootElement.GetProperty("properties").GetProperty("protocol").GetProperty("const").GetString());
+        Assert.Contains(adapterSchema.RootElement.GetProperty("required").EnumerateArray(), value => value.GetString() == "commandArtifactSha256");
+        Assert.Equal("inspect", adapterSchema.RootElement.GetProperty("properties").GetProperty("capabilities").GetProperty("contains").GetProperty("const").GetString());
+        using var inspectionSchema = JsonDocument.Parse(File.ReadAllText(Path.Combine(ExtensionRoot, "schemas", "code-review-provider-inspection.schema.json")));
+        Assert.Equal(JsonValueKind.False, inspectionSchema.RootElement.GetProperty("properties").GetProperty("mutationPerformed").GetProperty("const").ValueKind);
+        Assert.Contains(inspectionSchema.RootElement.GetProperty("required").EnumerateArray(), value => value.GetString() == "inspectionReceiptId");
+        using var providerResultSchema = JsonDocument.Parse(File.ReadAllText(Path.Combine(ExtensionRoot, "schemas", "code-review-provider-result.schema.json")));
+        Assert.Contains(providerResultSchema.RootElement.GetProperty("required").EnumerateArray(), value => value.GetString() == "providerReceiptId");
+        Assert.True(File.Exists(Path.Combine(ExtensionRoot, "templates", "CODE-REVIEW-ADDRESS-template.json")));
+        Assert.True(File.Exists(Path.Combine(ExtensionRoot, "templates", "CODE-REVIEW-PROVIDER-ADAPTER-template.json")));
 
         var analysis = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.30-token-efficiency-analyze.md"));
         Assert.Contains("Non-negotiable read-only boundary", analysis, StringComparison.Ordinal);

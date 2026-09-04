@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "1.0",
+  "adapterId": "<stable-adapter-id>",
+  "provider": "<provider-id>",
+  "protocol": "engloop-review-response-v1",
+  "command": [
+    "<executable>",
+    "<argument>",
+    ".engloop/provider-adapters/<adapter-artifact>"
+  ],
+  "commandArtifact": ".engloop/provider-adapters/<adapter-artifact>",
+  "commandArtifactSha256": "<sha256>",
+  "timeoutSeconds": 120,
+  "capabilities": [
+    "inspect",
+    "reply",
+    "resolve",
+    "reply-and-resolve"
+  ]
+}

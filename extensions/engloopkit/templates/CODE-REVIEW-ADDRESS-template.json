@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "1.0",
+  "artifactType": "code-review-address",
+  "provider": "<provider-id>",
+  "repository": "<repository-id>",
+  "pullRequest": "<pull-request-id>",
+  "thread": "<thread-id>",
+  "sourceRevision": "<authoritative-source-revision>",
+  "targetRevision": "<authoritative-target-revision>",
+  "iteration": "<provider-iteration-id>",
+  "actingPrincipal": "<authenticated-provider-principal>",
+  "threadStatus": "active",
+  "classification": "already-addressed",
+  "initialHead": "<local-head-before>",
+  "finalHead": "<local-head-after>",
+  "initialStatusDigest": "<sha256>",
+  "finalStatusDigest": "<sha256>",
+  "changedFiles": [],
+  "validationResults": [],
+  "evidence": [],
+  "unresolvedRisks": [],
+  "replyText": "<exact proposed reply>",
+  "allowedOperations": [
+    "reply"
+  ],
+  "requiredFixRevision": "",
+  "providerHead": "<authoritative-provider-head>",
+  "providerMutationPerformed": false,
+  "commitPushPerformed": false,
+  "adapterRequest": {}
+}

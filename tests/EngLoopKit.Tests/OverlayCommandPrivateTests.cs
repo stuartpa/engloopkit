@@ -220,6 +220,7 @@ public sealed class OverlayCommandPrivateTests : IDisposable
         {
             "01-northstar", "02-scaffold", "03-architect", "04-refactor", "05-model",
             "06-explore", "07-validate", "08-unittest", "09-debugger-walk-thru", "10-codereview-prepare",
+            "11-codereview-address", "12-codereview-reply-resolve",
             "20-incident", "21-postmortem", "22-repair", "23-happy-minute", "30-token-efficiency-analyze",
             "31-token-efficiency-implement", "40-refactor-plan", "41-deadcode", "42-learnings-pyramid",
             "50-handoff-create", "60-overlay-pack", "61-overlay-remove",

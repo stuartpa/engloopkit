@@ -20,7 +20,7 @@ public sealed class CommandSurfaceTests
     }
 
     [Fact]
-    public void HandoffGraph_hasExact30Edges_withHappyMinuteAndDeadCode()
+    public void HandoffGraph_hasExact31Edges_withHappyMinuteAndDeadCode()
     {
         var edges = 0;
 
@@ -98,7 +98,7 @@ public sealed class CommandSurfaceTests
 
         }
 
-        Assert.Equal(30, edges);
+        Assert.Equal(31, edges);
     }
 
     [Fact]

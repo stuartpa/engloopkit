@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://engloopkit.dev/schemas/code-review-address.schema.json",
+  "title": "EngLoopKit code-review author response packet",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "artifactType",
+    "provider",
+    "repository",
+    "pullRequest",
+    "thread",
+    "sourceRevision",
+    "targetRevision",
+    "iteration",
+    "actingPrincipal",
+    "threadStatus",
+    "classification",
+    "initialHead",
+    "finalHead",
+    "initialStatusDigest",
+    "finalStatusDigest",
+    "changedFiles",
+    "validationResults",
+    "evidence",
+    "unresolvedRisks",
+    "replyText",
+    "allowedOperations",
+    "requiredFixRevision",
+    "providerHead",
+    "providerMutationPerformed",
+    "commitPushPerformed",
+    "adapterRequest"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "artifactType": { "const": "code-review-address" },
+    "provider": { "$ref": "#/$defs/identity" },
+    "repository": { "$ref": "#/$defs/identity" },
+    "pullRequest": { "$ref": "#/$defs/identity" },
+    "thread": { "$ref": "#/$defs/identity" },
+    "sourceRevision": { "$ref": "#/$defs/revision" },
+    "targetRevision": { "$ref": "#/$defs/revision" },
+    "iteration": { "$ref": "#/$defs/identity" },
+    "actingPrincipal": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "threadStatus": { "enum": ["active", "resolved"] },
+    "classification": {
+      "enum": [
+        "accepted-actionable",
+        "already-addressed",
+        "stale",
+        "disputed",
+        "clarification-required",
+        "unsupported-out-of-scope"
+      ]
+    },
+    "initialHead": { "$ref": "#/$defs/revision" },
+    "finalHead": { "$ref": "#/$defs/revision" },
+    "initialStatusDigest": { "$ref": "#/$defs/sha256" },
+    "finalStatusDigest": { "$ref": "#/$defs/sha256" },
+    "changedFiles": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+    "validationResults": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "evidence": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "unresolvedRisks": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "replyText": { "type": "string", "minLength": 1 },
+    "allowedOperations": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["reply", "resolve", "reply-and-resolve"] }
+    },
+    "requiredFixRevision": {
+      "oneOf": [
+        { "const": "" },
+        { "$ref": "#/$defs/revision" }
+      ]
+    },
+    "providerHead": { "$ref": "#/$defs/revision" },
+    "providerMutationPerformed": { "const": false },
+    "commitPushPerformed": { "const": false },
+    "adapterRequest": { "type": "object" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "classification": { "const": "accepted-actionable" } },
+        "required": ["classification"]
+      },
+      "then": {
+        "properties": {
+          "changedFiles": { "minItems": 1 },
+          "validationResults": { "minItems": 1 }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "identity": { "type": "string", "minLength": 1, "maxLength": 512, "pattern": "^\\S+$" },
+    "revision": { "type": "string", "pattern": "^[a-fA-F0-9]{40,64}$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

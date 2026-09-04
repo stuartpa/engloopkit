@@ -3,6 +3,36 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.0] - 2026-09-03
+
+### Added
+
+- Added `speckit.engloop.11-codereview-address` as the author-side response entry point
+  for one explicitly selected current review thread. It may make the smallest source/test
+  repair and run repository-declared validation, then emits one ignored immutable response
+  packet; it cannot post, resolve, vote, commit, push, rearrange the checkout, or edit
+  Git/tool/config/adapter/response-authority control state. After external commit/push, a
+  new clean Stage 11 refresh packet is required before publication.
+- Added `speckit.engloop.12-codereview-reply-resolve` as a separate provider-authority
+  stage. It has no source-edit tools, requires the validated fix on authoritative provider
+  head for resolution, rejects dirty/pre-commit packets, displays the exact
+  trusted Stage 11 completion receipt and
+  packet/reply/operation/principal/evidence in a canonical message, and collects one
+  non-replaceable fixed-option approval only after a hash-bound non-mutating provider
+  inspection succeeds.
+- Added the generic `engloop-review-response-v1` tracked provider-adapter contract with
+  hash-bound artifact, mandatory read-only inspection, bounded timeout, pre-attempt identity, exact read-back, durable
+  receipts, operation-specific reply/resolution proof, tamper-checked idempotency,
+  outcome-unknown reconciliation, and no blind retry. CRB remains the
+  reviewer-side product and is external evidence, not an ELK runtime dependency.
+
+### Fixed
+
+- Completed natural-language Stage 21 routing: ordinary postmortem requests enter a
+  read/search/question-only collector, propose the next registry-backed PM path, and bind
+  only from a host-issued confirmation receipt. Direct and delegated lifecycle hooks are
+  equivalent, and checked-in agents are now semantically compared with command sources.
+
 ## [1.15.4] - 2026-09-03
 
 ### Fixed

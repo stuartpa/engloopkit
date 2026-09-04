@@ -1,5 +1,12 @@
 # Implementation Plan: Ordered EngLoop v2
 
+> **Current-surface amendment (v1.16.0):** This plan preserves the original v1.7.0
+> 13-command/23-edge cutover wording as implementation provenance. Those historical
+> counts are not current acceptance criteria. Current release acceptance is the exact
+> 28-command, 28-agent, 28-prompt, 31-edge surface in `spec.md` and
+> `contracts/command-surface.md`; later governed evolution supersedes conflicting count,
+> stage-identity, version, and nomenclature statements below.
+
 **Branch:** `master` (nomenclature checkpoint; implementation uses a dedicated SPEC001 branch)
 
 **Date:** 2026-07-10

@@ -60,7 +60,7 @@ public static class OverlayCommands
         "speckit.engloop.01-northstar", "speckit.engloop.02-scaffold", "speckit.engloop.03-architect",
         "speckit.engloop.04-refactor", "speckit.engloop.05-model", "speckit.engloop.06-explore",
         "speckit.engloop.07-validate", "speckit.engloop.08-unittest", "speckit.engloop.09-debugger-walk-thru",
-        "speckit.engloop.10-codereview-prepare",
+        "speckit.engloop.10-codereview-prepare", "speckit.engloop.11-codereview-address", "speckit.engloop.12-codereview-reply-resolve",
         "speckit.engloop.20-incident", "speckit.engloop.21-postmortem", "speckit.engloop.22-repair", "speckit.engloop.23-happy-minute",
         "speckit.engloop.30-token-efficiency-analyze", "speckit.engloop.31-token-efficiency-implement",
         "speckit.engloop.40-refactor-plan", "speckit.engloop.41-deadcode", "speckit.engloop.42-learnings-pyramid",

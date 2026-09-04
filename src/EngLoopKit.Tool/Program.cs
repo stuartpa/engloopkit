@@ -29,6 +29,16 @@ public static class Program
             return OperationsHookCommands.ExecutePostmortemRoute(args[1..]);
         }
 
+        if (args.Length >= 1 && string.Equals(args[0], "code-review-response-hook", StringComparison.Ordinal))
+        {
+            return CodeReviewResponseCommands.ExecuteHook(args[1..]);
+        }
+
+        if (args.Length >= 1 && string.Equals(args[0], "code-review-response", StringComparison.Ordinal))
+        {
+            return CodeReviewResponseCommands.Execute(args[1..]);
+        }
+
         if (args.Length >= 1 && string.Equals(args[0], "refactor-profile", StringComparison.Ordinal))
         {
             return RefactorProfileCommands.Execute(args[1..]);
@@ -36,7 +46,7 @@ public static class Program
 
         if (args.Length < 2 || !string.Equals(args[0], "validate", StringComparison.Ordinal))
         {
-            Console.Error.WriteLine("Usage: engloopkit validate <root|config|commands|reachability|learnings|incident-context|postmortem-learning|repair-learning|installation|agent-entry|agent-entry-hook|agent-surfaces> [options] | engloopkit postmortem-route bind --collection <path> --token <token> --incidents <INxxx,...> --postmortem <path> --confirmation-receipt <path> | engloopkit refactor-profile <bind|clear> | engloopkit repair-gate execute [options] | engloopkit readiness emit [options] | engloopkit overlay <install|register|verify|pack|unpack|remove|status>");
+            Console.Error.WriteLine("Usage: engloopkit validate <root|config|commands|reachability|learnings|incident-context|postmortem-learning|repair-learning|installation|agent-entry|agent-entry-hook|agent-surfaces> [options] | engloopkit code-review-response-hook <initialize|guard|post-tool|stop> <address|reply-resolve> | engloopkit code-review-response apply --gate <path> --approval <path> | engloopkit postmortem-route bind --collection <path> --token <token> --incidents <INxxx,...> --postmortem <path> --confirmation-receipt <path> | engloopkit refactor-profile <bind|clear> | engloopkit repair-gate execute [options] | engloopkit readiness emit [options] | engloopkit overlay <install|register|verify|pack|unpack|remove|status>");
             return 1;
         }
 

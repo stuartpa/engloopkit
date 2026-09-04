@@ -9,10 +9,10 @@ explicit trigger, goal, actions, verification, and durable memory.
 
 > **SemVer policy:** The phrase **“Ordered EngLoop v2”** refers to the second
 > *workflow/specification generation*, not a product major version. EngLoopKit remains
-> on the **1.x** maturity runway for the foreseeable future: this ordered release is
-> **v1.7.0** established the ordered baseline; review, handoff memory, and complete
+> on the **1.x** maturity runway for the foreseeable future: **v1.7.0** established
+> the ordered baseline; review, handoff memory, and complete
 > reusable debugger walkthroughs, generic readiness handoff, presentation generation, and
-> no-ID overlay installation, advisory debugger walkthroughs, resilient active-chat token-efficiency and postmortem hooks, direction/pyramid-bound operations learning, positive history, and distinct refactor planning/implementation agents ship as **v1.15.4**. No v2.0 release is implied.
+> no-ID overlay installation, author-side code-review response, resilient active-chat token-efficiency and postmortem hooks, direction/pyramid-bound operations learning, positive history, and distinct refactor planning/implementation agents ship as **v1.16.0**. No v2.0 release is implied.
 
 The v1.8 workflow separates delivery/readiness, operations, stewardship, and local
 overlay utility work into
@@ -32,7 +32,7 @@ A handoff is review-first (`send: false`), not a state transition.
 - **Components are generic:** non-domain runtime/BCL helpers live under language-appropriate
   component boundaries; the vertical composes them.
 
-## The 26 commands
+## The 28 commands
 
 The released extension ID is **`engloop`**; product, bundle, and tool identity remain
 **`engloopkit`**. Lexical picker order is the normal workflow order.
@@ -49,6 +49,8 @@ The released extension ID is **`engloop`**; product, bundle, and tool identity r
 | Delivery | `/speckit.engloop.08-unittest` | Classify residue, add direct tests after disposition, compute sole readiness verdict. |
 | Review advisory | `/speckit.engloop.09-debugger-walk-thru` | Prepare and track the engineer's recommended line-by-line debugger walkthrough; never block review preparation. |
 | Review | `/speckit.engloop.10-codereview-prepare` | Minimize and validate the current PR after the current Stage 08 readiness PASS. |
+| Review response | `/speckit.engloop.11-codereview-address` | Address one explicitly selected reviewer thread in the author checkout, validate the response, and prepare a private candidate without provider mutation, commit, or push. |
+| Review response | `/speckit.engloop.12-codereview-reply-resolve` | Consume a clean post-commit Stage 11 refresh packet, inspect exact provider state without mutation, and apply one informed separately approved reply and/or resolution through an explicit tracked adapter with reconciliation evidence. |
 | Operations | `/speckit.engloop.20-incident` | Stabilize a real disruption using mitigations under current North Star boundaries and immediately relevant learning cues. |
 | Operations | `/speckit.engloop.21-postmortem` | Analyze incidents against current direction/pyramid rules; update provenance/retrieval or record explicit no-change; emit rule-bound RPIs. |
 | Operations | `/speckit.engloop.22-repair` | Route/close permanent repair with exact Rule IDs, executable-gate evidence, Stage 04/applicable 05–08 gates, and current readiness. |
@@ -80,6 +82,18 @@ historical `PMxxx/LEARNxxx` provenance, and the selected RPI's executable gate. 
 still handles broader backlog condensation; it is not a fallback for skipping pyramid
 consideration during the dominant incident/postmortem/repair loop.
 
+CRB owns reviewer-side review findings and comment publication; ELK Stages 11–12 own the
+author-side engineering response. Stage 11 may edit the selected author checkout and run
+declared validation, but cannot post, resolve, commit, push, or edit ELK/provider control
+state. After source changes, an external workflow owns commit/push and Stage 11 creates a
+new clean refresh packet at that head. Stage 12 cannot edit source and requires that clean
+immutable packet, the fix on authoritative provider head for any
+resolution, a trusted Stage 11 completion receipt, one exact non-mutating provider inspection, an approval message containing the
+exact reply/principal/evidence and packet/Stage 11 receipt/inspection hashes, and one explicit tracked
+provider adapter. Missing
+provider capability fails closed; ELK never guesses Azure DevOps/GitHub semantics or calls
+CRB as a hidden runtime dependency.
+
 Stage 20's operations-learning hook binds an explicit incident artifact when available,
 but it is not allowed to disable the recovery conversation. Missing/malformed metadata,
 unavailable hook state, or failed hook validation emits a structured
@@ -109,10 +123,10 @@ never authorizes operations.
 
 ## Install a release
 
-ELK v1.15.4 requires the **.NET 10 SDK/runtime**. The repository pins SDK `10.0.303`
+ELK v1.16.0 requires the **.NET 10 SDK/runtime**. The repository pins SDK `10.0.303`
 and uses `EngLoopKit.slnx` as its only solution graph.
 
-A released v1.15.4 artifact set contains four immutable assets:
+A released v1.16.0 artifact set contains four immutable assets:
 
 1. `engloopkit.<version>.nupkg` — the root-local .NET tool (`engloopkit`);
 2. `engloopkit-extension-<version>.zip` — the ordered Spec Kit extension (`engloop`);
@@ -126,10 +140,10 @@ not point agent hooks at a sibling build output:
 ```powershell
 # From the consumer root, after downloading the released nupkg to <release-dir>.
 dotnet new tool-manifest --force
-dotnet tool install engloopkit --version 1.15.4 --add-source <release-dir>
+dotnet tool install engloopkit --version 1.16.0 --add-source <release-dir>
 
 # Install the exact released ordered extension archive.
-specify extension add engloop --from <release-dir>/engloopkit-extension-1.15.4.zip
+specify extension add engloop --from <release-dir>/engloopkit-extension-1.16.0.zip
 ```
 
 The extension’s `SessionStart` hook and command body both run:
@@ -185,16 +199,16 @@ explicit at install time and does **not** modify tracked `.gitignore` or product
 
 ```powershell
 # Do this in a private bootstrap directory OUTSIDE <git-root>.
-$bootstrap = Join-Path $env:LOCALAPPDATA 'EngLoopKit\bootstrap\1.15.4'
+$bootstrap = Join-Path $env:LOCALAPPDATA 'EngLoopKit\bootstrap\1.16.0'
 New-Item -ItemType Directory -Force $bootstrap | Out-Null
 Push-Location $bootstrap
 dotnet new tool-manifest --force
-dotnet tool install engloopkit --version 1.15.4 --add-source <release-dir>
+dotnet tool install engloopkit --version 1.16.0 --add-source <release-dir>
 
 # <release-dir> contains the downloaded .nupkg and extension .zip.
 dotnet tool run engloopkit -- overlay install --mode overlay --root <git-root> `
-  --tool-version 1.15.4 --tool-nupkg <release-dir>\engloopkit.1.15.4.nupkg `
-  --extension-archive <release-dir>\engloopkit-extension-1.15.4.zip
+  --tool-version 1.16.0 --tool-nupkg <release-dir>\engloopkit.1.16.0.nupkg `
+  --extension-archive <release-dir>\engloopkit-extension-1.16.0.zip
 Pop-Location
 ```
 

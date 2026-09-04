@@ -63,7 +63,7 @@ The Learnings Pyramid was consulted as required:
 
 ## Goals
 
-1. Make the complete EngLoop workflow visible in process order through 13 exact command
+1. Make the complete EngLoop workflow visible in process order through 28 exact command
    identities while retaining the EngLoopKit product and package identity.
 2. Replace numbered direction snapshots with one root-level living `NORTHSTAR.md` whose
    revisions are retained by Git.
@@ -80,7 +80,8 @@ The Learnings Pyramid was consulted as required:
    workspace entry points for routine work.
 8. Consolidate configuration and process memory under one tracked hidden `.engloop/`
   root while keeping `NORTHSTAR.md` and `LEARNINGS.md` visible.
-9. Ship this workflow generation as EngLoopKit 1.7.0 and keep product versions on 1.x
+9. Preserve the initially shipped 1.7.0 workflow and its governed 1.x evolution through
+  the current EngLoopKit 1.16.0 surface, and keep product versions on 1.x
   until the maintainer explicitly authorizes 2.x; the feature's “v2” label MUST NOT be
   interpreted as a package-version instruction.
 
@@ -91,7 +92,7 @@ The product, repository, bundle, tool, and package remain **EngLoopKit** with id
 Spec Kit binds command namespace to extension ID. The v2 command namespace is
 **`speckit.engloop`**.
 
-The shipped command set MUST contain exactly these 13 IDs. Ordinal lexical sorting of
+The shipped command set MUST contain exactly these 28 IDs. Ordinal lexical sorting of
 full IDs MUST produce this exact order:
 
 | Order | Exact command ID | Responsibility |
@@ -104,11 +105,26 @@ full IDs MUST produce this exact order:
 | 06 | `speckit.engloop.06-explore` | Explore behavior and generate functional tests into the proven runway. |
 | 07 | `speckit.engloop.07-validate` | Run generated functional tests against the real SUT and produce reachability evidence. |
 | 08 | `speckit.engloop.08-unittest` | Classify/delete scaffold residue, revalidate, add unit/property tests, and compute readiness. |
+| 09 | `speckit.engloop.09-debugger-walk-thru` | Record an optional engineer-attested debugger walkthrough without blocking review preparation. |
+| 10 | `speckit.engloop.10-codereview-prepare` | Minimize and validate the current PR from current Stage 08 readiness evidence. |
+| 11 | `speckit.engloop.11-codereview-address` | Address one selected review thread and create trusted private response evidence without provider/commit/push mutation. |
+| 12 | `speckit.engloop.12-codereview-reply-resolve` | Inspect current provider state, collect informed exact approval, and apply/reconcile one response operation. |
 | 20 | `speckit.engloop.20-incident` | Stabilize an operating disruption using mitigations only. |
 | 21 | `speckit.engloop.21-postmortem` | Analyze stabilized incident sets into source learnings and repair items. |
 | 22 | `speckit.engloop.22-repair` | Route permanent repairs through Stages 04 and 05–08. |
-| 30 | `speckit.engloop.30-refactor-scan` | Select and record the single highest-value periodic evolution refactor. |
-| 31 | `speckit.engloop.31-learnings-pyramid` | Condense accepted source learnings into traceable, retrievable living memory. |
+| 23 | `speckit.engloop.23-happy-minute` | Record one wonderful outcome and its readily available enabling conditions. |
+| 30 | `speckit.engloop.30-token-efficiency-analyze` | Analyze session evidence and propose ranked token-efficiency repairs without source mutation. |
+| 31 | `speckit.engloop.31-token-efficiency-implement` | Implement only explicitly approved token-efficiency repairs under a bounded scope. |
+| 40 | `speckit.engloop.40-refactor-plan` | Produce one user-confirmed North-Star-/architecture-aligned refactor plan without product edits. |
+| 41 | `speckit.engloop.41-deadcode` | Propose and, only after approval, remove one high-certainty dead-code candidate. |
+| 42 | `speckit.engloop.42-learnings-pyramid` | Condense accepted source learnings into traceable, retrievable living memory. |
+| 50 | `speckit.engloop.50-handoff-create` | Create one numbered evidence-backed continuation handoff. |
+| 60 | `speckit.engloop.60-overlay-pack` | Verify and package one private local overlay. |
+| 61 | `speckit.engloop.61-overlay-remove` | Remove one installed private overlay and restore prior local hooks. |
+| 70 | `speckit.engloop.70-six-pager-create` | Create and validate one Markdown-first six-page decision memo and DOCX. |
+| 71 | `speckit.engloop.71-powerpnt-create` | Create and validate one evidence-backed Markdown-first PowerPoint deck. |
+| 72 | `speckit.engloop.72-academic-paper-create` | Create and validate one evidence-backed systems paper and PDF. |
+| 80 | `speckit.engloop.80-upgrade-elk` | Verify or perform one root-local ELK/SEK upgrade with rollback evidence. |
 
 No `speckit.engloopkit.*` command may remain in a current v2 manifest, command package,
 registration, generated agent, generated prompt, or compatibility surface. There are
@@ -117,11 +133,12 @@ may retain old IDs as historical evidence.
 
 The number bands are distinct invocation lanes, not one mandatory automatic sequence:
 
-- 01–08 is the ordered delivery/readiness lane;
-- 20–22 is the on-demand operations lane, entered only for an incident, a warranted
+- 01–08 is the ordered delivery/readiness lane; 09–12 are advisory review and
+  author-response stages;
+- 20–23 is the on-demand operations/positive-history lane, entered only for an incident, a warranted
   post-mortem over stabilized incidents, and resulting repair items;
-- 30–31 is the spare-capacity stewardship lane, generally invoked when an engineer has
-  spare time or spare agent tokens, especially near month-end.
+- 30–31 is the explicit token-efficiency lane; 40–42 are spare-capacity stewardship;
+  50 is continuation; 60–61 and 80 are local utilities; 70–72 are publication.
 
 Completing a lower-numbered lane does not manufacture work in a higher-numbered lane.
 
@@ -206,7 +223,7 @@ remain distinct so that emergency pressure cannot disguise a mitigation as a ver
 fix.
 
 **Independent value:** A fixture with a prior Stage 08 PASS and a simulated operating
-disruption can demonstrate the complete 20–22 contract without running Stage 30 or 31.
+disruption can demonstrate the complete 20–22 contract without running Stage 40 or 42.
 
 **Acceptance scenarios:**
 
@@ -226,39 +243,42 @@ disruption can demonstrate the complete 20–22 contract without running Stage 3
    04 and all applicable Stages 05–08; it cannot bypass the governed loop because it is
    small, and it remains open until source, release, target verification, and a current
    readiness PASS prove the permanent fix.
-6. **Given** Stage 21 accepts new learnings, **then** it records a pending Stage 31
+6. **Given** Stage 21 accepts new learnings, **then** it records a pending Stage 42
    refresh obligation without delaying stabilization or allowing that obligation to
    replace Stage 22.
 
-### User Story 3 — Evolution and loss-aware learning, Stages 30–31 (Priority: P2)
+### User Story 3 — Stewardship and loss-aware learning, Stages 40–42 (Priority: P2)
 
 As a long-term maintainer, I want periodic refactoring and learning condensation to
 improve the product without manufacturing work, churning direction, or forgetting the
 source evidence.
 
 **Independent value:** A stable fixture with architecture, history, and accepted
-post-mortem learnings can demonstrate Stages 30–31 without creating an incident or a
+post-mortem learnings can demonstrate Stages 40–42 without creating an incident or a
 new product scaffold.
 
 **Acceptance scenarios:**
 
 1. **Given** useful evolution signals and spare engineering or agent-token capacity,
-  especially near month-end, **when** Stage 30 completes, **then** it records
+  especially near month-end, **when** Stage 40 completes, **then** it records
   exactly one numbered REFACT decision for the highest-value branch, or an explicit
   no-refactor decision, and creates no numbered direction snapshot.
 2. **Given** the selected refactor does not change repository direction, **then** the
    Northstar remains unchanged and delivery normally enters Stage 04.
-3. **Given** evidence genuinely changes direction, **then** Stage 30 requires Stage 01
+3. **Given** evidence genuinely changes direction, **then** Stage 40 requires Stage 01
    to update the same root Northstar before governed delivery continues.
 4. **Given** an accepted-learning backlog and spare engineering or agent-token
-  capacity, **when** Stage 31 completes, **then** every
+  capacity, **when** Stage 42 completes, **then** every
   `PMxxx/LEARNxxx` source is represented by at least one living subject card, every card
    has valid provenance and appears in root `LEARNINGS.md`, all links resolve, the page
    is within its ratified budget, and clean-context retrieval locates the correct card
    and source for the sampled questions.
 5. **Given** an omission, broken link, oversize page, conflict hidden by condensation,
-   or retrieval miss, **then** Stage 31 fails and repeats generation/condensation/
+  or retrieval miss, **then** Stage 42 fails and repeats generation/condensation/
    recreation rather than claiming completion.
+6. **Given** Stage 41 identifies a high-certainty dead-code candidate, **then** no source
+  deletion occurs until the user approves that exact candidate; rejection records the
+  decision without mutation.
 
 ### User Story 4 — Ordered picker and standalone consumers (Priority: P1)
 
@@ -272,7 +292,7 @@ installation.
 **Acceptance scenarios:**
 
 1. **Given** a clean single-root consumer workspace, **when** its picker is opened,
-   **then** exactly 13 EngLoop commands appear once, in the lexical order listed above,
+  **then** exactly 28 EngLoop commands appear once, in the lexical order listed above,
    and no old ID appears.
 2. **Given** `tthp`, `engloop-workshop`, or `VerifyExtremeEdgeWithTpcc` is opened alone,
    **when** any applicable v2 command is invoked, **then** it resolves its local
@@ -295,7 +315,7 @@ headers and handoffs without implementing a consumer application.
 **Acceptance scenarios:**
 
 1. **Given** a clean v2 install, **when** the agent picker and customization
-  diagnostics load, **then** exactly 13 visible EngLoop agents have explicit names,
+  diagnostics load, **then** exactly 28 visible EngLoop agents have explicit names,
   descriptions, argument hints, VS Code targets, least-privilege tools, protected
   model invocation, and zero EngLoop-owned diagnostic errors or warnings.
 2. **Given** any nonterminal or branching stage completes, **when** its response ends,
@@ -308,8 +328,8 @@ headers and handoffs without implementing a consumer application.
   refactor-scan, or Learnings Pyramid handoff is offered. **Given** a design defect,
   intended gap, or deletion requiring revalidation, **then** buttons route to 04, 05,
   or 07 respectively.
-5. **Given** Stage 31 completes, **then** it has no static handoff because it returns to
-  the invoking context. **Given** Stage 30 selects no work, **then** the user may stop;
+5. **Given** Stage 42 completes, **then** it has no static handoff because it returns to
+  the invoking context. **Given** Stage 40 selects no work, **then** the user may stop;
   its buttons remain available only for direction, architecture, or selected-refactor
   branches.
 6. **Given** a generated prompt file invokes one of these agents, **then** it does not
@@ -341,7 +361,7 @@ hooks:
     - type: command
       command: dotnet tool run engloopkit validate agent-entry --stage <exact command ID> --root .
       timeout: 30
-handoffs: <exact graph below, omitted only for Stage 31>
+handoffs: <exact graph below, omitted for the terminal stages in the command-surface contract>
 ```
 
 The entry hook is Preview automation and is the only VS Code platform-enforced
@@ -369,51 +389,19 @@ change. `infer` is forbidden because VS Code deprecates it in favor of
 
 ### Least-privilege tool and subagent matrix
 
-| Stage | Tools | Allowed subagents |
-|---|---|---|
-| 01 | `read, search, edit, execute, web, agent` | `Explore` |
-| 02 | `read, search, edit, execute, web` | none (`[]`) |
-| 03 | `read, search, edit, execute, agent` | `Explore` |
-| 04 | `read, search, edit, execute` | none (`[]`) |
-| 05 | `read, search, edit, execute, agent` | `Explore` |
-| 06 | `read, search, edit, execute` | none (`[]`) |
-| 07 | `read, search, edit, execute` | none (`[]`) |
-| 08 | `read, search, edit, execute, agent` | `Explore` |
-| 20 | `read, search, edit, execute, agent` | `speckit.engloop.21-postmortem` |
-| 21 | `read, search, edit, execute, agent, vscode_askQuestions` | `Explore` |
-| 22 | `read, search, edit, execute` | none (`[]`) |
-| 30 | `read, search, edit, execute, agent` | `Explore` |
-| 31 | `read, search, edit, execute, agent` | `Explore` |
-
-If the required `Explore` agent is not available in a target VS Code version, install
-validation fails; EngLoopKit does not silently widen to `*` or remove clean-context
-delegation. Whenever `agents` is nonempty, `tools` includes `agent`; otherwise it does
-not. Nested subagents are not required.
+The exact 28-row tool/subagent matrix is owned by
+[`contracts/command-surface.md`](contracts/command-surface.md#exact-least-privilege-tool-and-subagent-policy).
+Every source, checked-in agent, generated install, and archive MUST equal that matrix.
+If a required named agent is unavailable, installation fails; EngLoopKit never widens to
+`*`, substitutes another agent, or removes required clean-context delegation.
 
 ### Exact handoff graph
 
-Every handoff has a stage-specific label and prompt, `send: false`, and no model
-override. The allowed target IDs are:
-
-| From | Allowed handoff targets | Branch meaning |
-|---|---|---|
-| 01 | 02, 03, 04 | new product; architecture re-derivation; existing architecture |
-| 02 | 03 | scaffold and runway proven |
-| 03 | 04 | architecture accepted |
-| 04 | 05 | governed code ready to model |
-| 05 | 06 | model ready to explore |
-| 06 | 05, 07 | model deficiency; generated suite ready to validate |
-| 07 | 04, 05, 06, 08 | SUT defect; model gap; exploration gap; valid evidence |
-| 08 | 04, 05, 07 | design defect; intended functional gap; revalidate deletion |
-| 20 | 21 | selected stabilized incident set is ready for analysis |
-| 21 | 22, 31 | repair an RPI; condense accepted learnings when capacity exists |
-| 22 | 04 | permanent repair enters governed delivery |
-| 30 | 01, 03, 04 | direction change; architecture change; selected refactor |
-| 31 | none | unconditional natural end; return to invoking context |
-
-No handoff crosses from Stage 08 to 20, 30, or 31. No numeric sequence implies a
-handoff. Conditional end states require no button click; buttons represent only actual
-branches the user may review and choose.
+The exact ordered 31-edge graph—including label, target, prompt, `send: false`, and
+absence of handoff-level `model`—is owned by
+[`contracts/command-surface.md`](contracts/command-surface.md#exact-review-first-handoff-graph).
+No numeric sequence implies a handoff. Stage 08 offers only its ratified corrective and
+advisory branches, and conditional end states require no button click.
 
 ## Stage ownership and transition contract
 
@@ -429,12 +417,27 @@ failing. Numeric order communicates the normal flow; it does not permit gate byp
 | 05 Model | Faithful behavior-level model with state, actions, outcomes, guards, invariants, and rejection semantics | Generated tests or SUT conformance | 06 |
 | 06 Explore | Bounded, branching exploration and generated functional suite in the Stage 02 destination | Real-SUT pass or readiness | 07; model deficiency → 05 |
 | 07 Validate | Positive and negative real-SUT conformance plus generated-suite-only functional reachability | Dead-code verdict, unit coverage, or final readiness | Functional gap → 05/06; SUT defect → 04; valid evidence → 08 |
-| 08 Unit test | Reachability disposition, post-deletion revalidation, unit/property evidence, complete module inventory, final gate | Operational analysis | Intended gap → 05; deletion set → 07; design defect → 04; PASS enables 20/30 and steady-state 31 |
+| 08 Unit test | Reachability disposition, post-deletion revalidation, unit/property evidence, complete module inventory, final gate | Operational analysis | Intended gap → 05; deletion set → 07; design defect → 04; PASS authorizes operations while review/stewardship remain explicit |
+| 09 Debugger walk-through | Optional engineer-attested exact-HEAD walkthrough ledger | Readiness or review authorization | Advisory terminal; invoke independently when useful |
+| 10 Code-review prepare | Minimized current PR and current readiness-linked review report | Reviewer publication or author response | Return to 08 if preparation changes code; otherwise review externally |
+| 11 Code-review address | Selected-thread source/validation work, packet, and trusted completion receipt | Commit/push or provider mutation | External commit/push then clean Stage 11 refresh; eligible packet → 12 |
+| 12 Reply/resolve | Exact inspection, informed approval, attempt/reconciliation, provider read-back receipt | Source edits or review vote/merge | Terminal success, rejection, cancellation, or outcome-unknown reconciliation |
 | 20 Incident | Verified stabilization and mitigation audit trail | Permanent fix | Another incident or 21 |
-| 21 Post-mortem | Systemic cause analysis, accepted source learnings, actionable repair items | Repair implementation or readiness | 22; new learnings also create an independent 31 refresh obligation |
+| 21 Post-mortem | Systemic cause analysis, accepted source learnings, actionable repair items | Repair implementation or readiness | 22; new learnings also create an independent 42 refresh obligation |
 | 22 Repair | Traceable routing and closure evidence across 04 and applicable 05–08 plus target verification | A small-change bypass | 04; repair closes only after downstream evidence passes |
-| 30 Refactor scan | One justified REFACT decision (including an explicit no-work result) | Numbered direction snapshot or routine Northstar rewrite | Normally 04; genuine direction change → 01; no work → remain steady |
-| 31 Learnings Pyramid | Complete, linked, bounded, retrieval-tested condensation | Source rewriting, repair, or readiness | Clear the refresh obligation and return to the invoking steady/operations context |
+| 23 Happy Minute | One gratitude-first positive-history record | Mandatory causation or learning rule | Optional later 42 condensation |
+| 30 Token analysis | Compact private session analysis and ranked `TE-Rxxx` candidates | Source mutation | 31 only for exact explicitly approved repairs |
+| 31 Token implementation | Approved bounded token-efficiency repair plus focused evidence | Scope expansion, commit, push, or deployment | Terminal |
+| 40 Refactor plan | One user-confirmed justified REFACT decision (including an explicit no-work result) | Numbered direction snapshot or routine Northstar rewrite | Normally 04; genuine direction change → 01; dead-code branch → 41; no work → remain steady |
+| 41 Dead code | One evidence-backed exact candidate and explicit user decision | Broad cleanup or pre-approval deletion | Approved removal validates and stops; rejection records no mutation |
+| 42 Learnings Pyramid | Complete, linked, bounded, retrieval-tested condensation | Source rewriting, repair, or readiness | Clear the refresh obligation and return to the invoking steady/operations context |
+| 50 Handoff | One numbered evidence-backed continuation packet | Automatic continuation or source change | Terminal; receiving context revalidates independently |
+| 60 Overlay pack | Verified local-only portable overlay archive | Product/source mutation | Optional remove/restore path through explicit 61 |
+| 61 Overlay remove | Manifest-owned local overlay removal and prior-hook restoration | Product/source mutation | Terminal |
+| 70 Six-pager | Markdown/DOCX decision memo plus rendered validation | Product implementation | Terminal publication artifact |
+| 71 PowerPoint | Markdown/PPTX visual deck plus geometry/render validation | Product implementation | Terminal presentation artifact |
+| 72 Academic paper | Markdown/BibTeX/PDF paper plus claim/render validation | Product implementation | Terminal publication artifact |
+| 80 Upgrade ELK | Verified already-current result or root-local ELK/SEK upgrade with rollback evidence | Global tool mutation or unverified fallback | Terminal |
 
 ### Required transition behavior
 
@@ -451,13 +454,13 @@ failing. Numeric order communicates the normal flow; it does not permit gate byp
   incident set, Stage 22 waits for repair items, and repeated Stage 20 incidents may
   accumulate before review.
 5. Spare engineering or agent-token capacity, commonly near month-end, may invoke
-  Stage 30. It normally enters 04. A real direction change inserts Stage 01 first; a
+  Stage 40. It normally enters 04. A real direction change inserts Stage 01 first; a
   resulting architecture impact also requires Stage 03. A no-work REFACT changes no
    product stage.
-6. Stage 31 is an independent, opportunistic maintenance obligation over accepted
+6. Stage 42 is an independent, opportunistic maintenance obligation over accepted
   learning memory. New source learnings make it pending; spare engineering or
   agent-token capacity normally services that backlog. It neither blocks incident
-  stabilization nor bypasses repair, does not require Stage 30 to have run, and has a
+  stabilization nor bypasses repair, does not require Stage 40 to have run, and has a
   PASS/FAIL state separate from product readiness.
 7. The executable core and independent model MUST reject every transition that skips
    an owned gate, including 02→04, 04→07, 07→20, 21→04, 22→08, and 30→08 as a claimed
@@ -604,13 +607,13 @@ an explicit FAIL. The only honest status without a complete PASS is **NOT READY*
   change is in source, represented in release artifacts, applied to the target, and
   verified by all required evidence including a current Stage 08 PASS.
 
-### Refactor scan
+### Refactor planning
 
 When spare engineering or agent-token capacity is available—especially near
-month-end—Stage 30 evaluates accumulated operational, architecture, reachability,
-coverage, complexity, duplication, and component-leakage signals in priority order.
-It records one numbered REFACT for the single highest-value warranted refactor, or records
-that no refactor is warranted. It produces **REFACT only**, never a numbered direction snapshot. A selected
+month-end—Stage 40 evaluates accumulated operational, architecture, reachability,
+coverage, complexity, duplication, and component-leakage signals with the user. It records
+one user-confirmed numbered REFACT for the selected warranted refactor, or records that no
+refactor is warranted. It produces **REFACT only**, never a numbered direction snapshot. A selected
 refactor normally enters Stage 04. `NORTHSTAR.md` changes only when the evidence
 changes repository direction, not for routine cleanup or completion.
 
@@ -624,9 +627,9 @@ Retrieval drills back down as:
 
 `.github/instructions/project-learnings.instructions.md → LEARNINGS.md → relevant card → PMxxx/LEARNxxx source`
 
-Stage 31 is normally invoked when accepted learnings have accumulated and spare
+Stage 42 is normally invoked when accepted learnings have accumulated and spare
 engineering or agent-token capacity is available, particularly near month-end. It is
-not an automatic successor to Stage 30, Stage 21, or Stage 22; those stages only leave
+not an automatic successor to Stage 40, Stage 21, or Stage 22; those stages only leave
 a visible refresh obligation when relevant.
 
 ### Layer 1 — authoritative source-learning sequence
@@ -655,12 +658,12 @@ organization that makes subject relationships visible, and a resolving link for 
 cue. It does not duplicate card explanations or source narratives. Every current card
 appears exactly as an index target, and every page → card → source link resolves.
 
-Stage 31 cannot PASS unless the index contains no more than **500 words and 60
+Stage 42 cannot PASS unless the index contains no more than **500 words and 60
 nonblank lines**. Both deterministic limits must pass.
 
 ### Layer 4 — on-demand retrieval instruction
 
-Stage 31 creates or updates
+Stage 42 creates or updates
 `.github/instructions/project-learnings.instructions.md`. Its discovery description is
 keyword-rich for architecture, scaffold, refactor, model, exploration, validation,
 unit-test, readiness, incident, repair, and evolution decisions. Its body tells an
@@ -670,7 +673,7 @@ learnings before a consequential decision.
 The instruction does not duplicate the pyramid, has no `applyTo: "**"`, and is not
 registered as a command, custom agent, or picker item.
 
-### Stage 31 gate
+### Stage 42 gate
 
 Deterministic checks MUST prove all of the following:
 
@@ -703,7 +706,7 @@ Deterministic checks MUST prove all of the following:
 | Readiness Gate | Deterministic Stage 08 PASS/FAIL over the complete inventory; the sole source of readiness. |
 | IN / MIT | Operating disruption and its temporary stabilization actions. |
 | PM / LEARN / RPI | Systemic analysis, accepted source learning identified as `PMxxx/LEARNxxx`, and permanent repair item. |
-| REFACT | Stage 30's single evolution decision; it never creates a numbered direction snapshot. |
+| REFACT | Stage 40's single user-confirmed evolution decision; it never creates a numbered direction snapshot. |
 | Subject card | Living subject condensation with many-to-many source provenance. |
 | Learnings index | Root one-page cue map linking every current card. |
 | Retrieval instruction | On-demand discovery entry point that loads the pyramid progressively without picker clutter. |
@@ -717,10 +720,10 @@ Deterministic checks MUST prove all of the following:
 - **FR-CMD-001:** The product/bundle/tool/package identity MUST remain `engloopkit` /
   EngLoopKit, while the first-party command extension ID MUST be `engloop` so the host
   can register the exact `speckit.engloop.*` namespace.
-- **FR-CMD-002:** The extension MUST expose exactly the 13 command IDs in the command
+- **FR-CMD-002:** The extension MUST expose exactly the 28 command IDs in the command
   table and no other `speckit.engloop.*` command.
 - **FR-CMD-003:** Full-ID lexical ordering MUST equal numeric process ordering
-  01–08, 20–22, 30–31.
+  01–12, 20–23, 30–31, 40–42, 50, 60–61, 70–72, 80.
 - **FR-CMD-004:** Current v2 install and package surfaces MUST contain zero
   `speckit.engloopkit.*` registrations or aliases.
 - **FR-CMD-005:** Every command MUST satisfy ARCH002's frontmatter, Trigger, Goal,
@@ -729,7 +732,7 @@ Deterministic checks MUST prove all of the following:
   command logic MUST remain owned by the single `engloopkit` extension.
 - **FR-CMD-007:** Prose, manifests, catalog/release metadata, executable stages,
   independent model, exploration, generated tests, and direct tests MUST agree on the
-  same 13-stage contract.
+  same 28-command contract.
 - **FR-CMD-008:** Missing or ambiguous command identity or stage evidence MUST fail
   explicitly; no fallback identity, stale artifact, alternate path, or guessed default
   may mask it.
@@ -740,7 +743,7 @@ Deterministic checks MUST prove all of the following:
 
 ### Custom-agent requirements
 
-- **FR-AGT-001:** Each of the 13 v2 command sources and generated VS Code agent files
+- **FR-AGT-001:** Each of the 28 command sources and generated VS Code agent files
   MUST contain explicit, semantically equivalent `name`, `description`,
   `argument-hint`, `target`, `user-invocable`, `disable-model-invocation`, `tools`,
   `agents`, `hooks`, and applicable `handoffs` fields.
@@ -752,13 +755,15 @@ Deterministic checks MUST prove all of the following:
   that tool MUST declare `agents: []`. Wildcard subagent access is forbidden.
 - **FR-AGT-004:** Generated prompt files MUST select the exact matching custom agent
   and MUST omit `tools` so prompt precedence cannot widen or replace agent tools.
-- **FR-AGT-005:** Every agent except the unconditional terminal Stage 31 agent MUST
+- **FR-AGT-005:** Every nonterminal agent MUST
   declare at least one handoff, and the complete edge set MUST equal the exact handoff
-  graph in this specification.
+  graph in this specification. Stages 09, 12, 31, 41, 42, 50, 61, 70, 71, 72, and 80
+  are explicit terminals and MUST omit handoffs.
 - **FR-AGT-006:** Every handoff MUST use an exact installed target ID, a meaningful
   branch label and prefilled prompt, `send: false`, and no model override.
 - **FR-AGT-007:** Handoffs MUST NOT imply automatic scheduling: Stage 08 MUST expose
-  no 20/30/31 edge, Stage 21's Stage 31 edge MUST state the capacity condition, and
+  no operations/token-efficiency/stewardship edge, Stage 21's Stage 42 edge MUST state
+  the capacity condition, and
   conditional terminal outcomes require no handoff.
 - **FR-AGT-008:** Every agent MUST declare the stage-specific `SessionStart` entry hook
   invoking the versioned EngLoopKit validator with a 30-second timeout; the agent body
@@ -780,8 +785,8 @@ Deterministic checks MUST prove all of the following:
   EngLoopKit MUST NOT post-process a partial install or silently weaken the contract.
 - **FR-AGT-012:** Disposable-install acceptance MUST parse source and generated YAML,
   prove semantic field preservation, resolve every handoff target, run customization
-  diagnostics, and prove the picker contains exactly the intended 13 visible agents.
-- **FR-AGT-013:** Stage 31 clean-context retrieval and every other allowed subagent use
+  diagnostics, and prove the installed surface contains exactly the intended 28 visible agents.
+- **FR-AGT-013:** Stage 42 clean-context retrieval and every other allowed subagent use
   MUST respect the explicit allowlist, pass only focused context, and not require
   nested-subagent enablement.
 - **FR-AGT-014:** A plain-language postmortem request MUST be routable to Stage 21 from
@@ -793,6 +798,38 @@ Deterministic checks MUST prove all of the following:
   repair routing, or completion is authorized until the binder validates confirmation,
   collection token, incident contract, registry number, create-new path, HEAD, and tool
   identity and creates the original strict gate.
+- **FR-AGT-015:** Stage 11 MUST bind one explicitly selected provider/repository/PR/thread,
+  source/target revisions, iteration, authenticated principal, clean or explicitly
+  isolated author checkout, and ignored create-new packet path. It MAY edit source and run
+  repository-declared validation, but MUST NOT post, reply, resolve, vote, mutate PR state,
+  commit, push, clean, reset, stash, switch, merge, or rebase. Its packet MUST bind actual
+  changed paths/status, evidence, exact reply candidate, allowed operations, fix/provider
+  revisions, and explicit false provider/commit-push mutation claims. Git metadata, ELK
+  configuration/tool identity, provider adapters, and response authority state MUST remain
+  outside its edit authority. If source changes, commit/push remains external and Stage 11
+  MUST create a new clean refresh packet at the resulting head before Stage 12.
+- **FR-AGT-016:** Stage 12 MUST have no source-edit or subagent tool. It MUST consume one
+  immutable clean refreshed Stage 11 packet with no current changed paths and a trusted
+  hash-bound Stage 11 completion receipt, revalidate exact
+  principal/thread/revisions/iteration and current provider state through a mandatory
+  non-mutating adapter inspection, and collect a separate fixed-option approval whose
+  canonical message contains the exact reply, operation, principal, evidence, packet hash,
+  Stage 11 receipt hash, and inspection hash. Arbitrary questions and replacement approvals MUST be denied. Reply
+  approval MUST NOT imply resolution.
+  Resolution MUST require the validated fix revision on both local and authoritative
+  provider head.
+- **FR-AGT-017:** Provider reply/resolution MUST execute only through one explicit tracked,
+  hash-bound, bounded-time adapter implementing `engloop-review-response-v1` with an exact
+  `inspect` capability plus the selected mutation capability. Inspection MUST prove one
+  exact current target, an authenticated principal, current revisions/head/status, a
+  receipt, and no mutation before approval. The trusted engine MUST record pre-attempt identity before mutation and
+  require authoritative read-back of exactly one matching target/result, matching reply
+  content for reply-bearing operations, required resolved state for resolution-bearing
+  operations, and a provider receipt. Existing attempt identity/marker/adapter/state/receipt
+  MUST be revalidated before reconciliation or idempotent completion. Failure, timeout,
+  malformed output, or ambiguous result MUST
+  remain outcome-unknown and MAY only reconcile with the same attempt/marker; blind retry,
+  alternate adapter/provider/path, and inferred success are forbidden.
 
 ### Northstar requirements
 
@@ -890,7 +927,7 @@ Deterministic checks MUST prove all of the following:
   an open repair obligation until downstream and target evidence passes.
 - **FR-TRN-004:** Refactor scan MUST normally enter Stage 04, inserting Stage 01 only
   for direction change and Stage 03 when architecture must be re-derived.
-- **FR-TRN-005:** New accepted learnings MUST create a separately tracked Stage 31
+- **FR-TRN-005:** New accepted learnings MUST create a separately tracked Stage 42
   refresh obligation without satisfying or blocking repair.
 - **FR-TRN-006:** Illegal ordering, invalid input, gate bypass, duplicate start, and
   stale-evidence transition attempts MUST be rejected with an actionable reason.
@@ -919,18 +956,18 @@ Deterministic checks MUST prove all of the following:
 
 ### Evolution and learning requirements
 
-- **FR-EVO-001:** Stage 30 MUST evaluate evidence in a stable, documented priority
-  order and select at most one highest-value refactor per run.
+- **FR-EVO-001:** Stage 40 MUST evaluate evidence with the user and select at most one
+  explicitly confirmed highest-value refactor per run.
 - **FR-EVO-002:** Every completed scan MUST create one numbered REFACT decision,
   including a justified no-refactor result, and MUST create no numbered direction snapshot.
 - **FR-EVO-003:** A selected refactor MUST normally enter Stage 04; no-work leaves the
   product unchanged.
-- **FR-EVO-004:** Stage 30 MUST request a Northstar update only for evidence-backed
+- **FR-EVO-004:** Stage 40 MUST request a Northstar update only for evidence-backed
   direction change.
-- **FR-EVO-005:** Stages 30 and 31 MUST support opportunistic invocation when spare
+- **FR-EVO-005:** Stages 40 and 42 MUST support opportunistic invocation when spare
   engineering or agent-token capacity is available, commonly near month-end, and MUST
   remain independently invocable rather than forming an automatic pair.
-- **FR-LRN-001:** Stage 31 MUST treat the chronological accepted `PMxxx/LEARNxxx`
+- **FR-LRN-001:** Stage 42 MUST treat the chronological accepted `PMxxx/LEARNxxx`
   sequence as immutable source memory.
 - **FR-LRN-002:** Every source MUST be globally identified by its PM/LEARN pair even
   though LEARN numbering resets per PM.
@@ -947,7 +984,7 @@ Deterministic checks MUST prove all of the following:
 - **FR-LRN-008:** All page → card → source links MUST resolve to the claimed IDs and
   content.
 - **FR-LRN-009:** The root index MUST contain no more than 500 words and 60 nonblank
-  lines; either limit being exceeded MUST fail Stage 31.
+  lines; either limit being exceeded MUST fail Stage 42.
 - **FR-LRN-010:** The on-demand instruction MUST exist at the exact required path,
   carry the required discovery concepts, and direct progressive page → card → source
   retrieval.
@@ -960,8 +997,9 @@ Deterministic checks MUST prove all of the following:
 
 ### Nomenclature requirements
 
-- **FR-NOM-001:** Current v2 artifact nomenclature MUST contain exactly the nine global
-  prefixes `SPEC`, `SCAF`, `ARCH`, `MODEL`, `CORD`, `COV`, `IN`, `PM`, and `REFACT`;
+- **FR-NOM-001:** Current v2 artifact nomenclature MUST contain exactly the sixteen global
+  prefixes `SPEC`, `SCAF`, `ARCH`, `MODEL`, `CORD`, `COV`, `IN`, `PM`, `HAPPY`,
+  `REFACT`, `DEADCODE`, `DBG`, `SIX`, `PPT`, `PAP`, and `HANDOFF`;
   exactly the three parent-local prefixes `MIT`, `LEARN`, and `RPI`; and the living,
   unnumbered root documents `NORTHSTAR.md` and `LEARNINGS.md`. No other artifact prefix
   may be allocated, recognized, aliased, translated, or used as a fallback.
@@ -985,7 +1023,7 @@ Deterministic checks MUST prove all of the following:
   otherwise refreshed cleanly so stale old command files, generated agents, generated
   prompts, registry entries, and cached install outputs are removed rather than
   accumulated.
-- **FR-MIG-006:** Each migrated current install surface MUST register exactly the 13 v2
+- **FR-MIG-006:** Each migrated current install surface MUST register exactly the 28 current
   IDs and zero old IDs; historical Git/doc evidence is exempt from destructive
   rewriting.
 - **FR-MIG-007:** EngLoopKit's manifests, bundle/catalog/release metadata, commands,
@@ -1005,10 +1043,10 @@ Deterministic checks MUST prove all of the following:
 
 | Repository | Required v2 end state |
 |---|---|
-| EngLoopKit | One `.engloop/` root with config and retained artifact ancestry; one visible Northstar evolved from its initial direction content; retained Learnings Pyramid prototype refined to the Stage 31 contract; one 13-command extension/package; no `.engloopkit/`, current `engloop/`, legacy numbered-direction machinery, or old command surface. |
-| tthp | One `.engloop/` root; initial direction content evolved into visible root `NORTHSTAR.md`; no `.engloopkit/`, current `engloop/`, duplicate live direction, or legacy counter/template; clean 13-command local installation; standalone and focused picker proof. |
-| engloop-workshop | One `.engloop/` root and visible Northstar for the workshop's own direction; curriculum/docs use the ordered v2 workflow; no `.engloopkit/`, current `engloop/`, or legacy numbered-direction machinery; clean 13-command local installation; standalone and focused picker proof. |
-| VerifyExtremeEdgeWithTpcc | One `.engloop/` root and visible Northstar for verification-product direction; current model/test entry points remain independently usable; no `.engloopkit/` or current `engloop/`; clean 13-command local installation; standalone and focused picker proof. |
+| EngLoopKit | One `.engloop/` root with config and retained artifact ancestry; one visible Northstar evolved from its initial direction content; retained Learnings Pyramid refined to the Stage 42 contract; one 28-command extension/package; no `.engloopkit/`, current `engloop/`, legacy numbered-direction machinery, or old command surface. |
+| tthp | One `.engloop/` root; initial direction content evolved into visible root `NORTHSTAR.md`; no `.engloopkit/`, current `engloop/`, duplicate live direction, or legacy counter/template; clean 28-command local installation; standalone and focused picker proof. |
+| engloop-workshop | One `.engloop/` root and visible Northstar for the workshop's own direction; curriculum/docs use the ordered v2 workflow; no `.engloopkit/`, current `engloop/`, or legacy numbered-direction machinery; clean 28-command local installation; standalone and focused picker proof. |
+| VerifyExtremeEdgeWithTpcc | One `.engloop/` root and visible Northstar for verification-product direction; current model/test entry points remain independently usable; no `.engloopkit/` or current `engloop/`; clean 28-command local installation; standalone and focused picker proof. |
 
 ## Failure modes and edge cases
 
@@ -1027,11 +1065,11 @@ Deterministic checks MUST prove all of the following:
 | Aggregate coverage exceeds 95% while one module is below threshold | Readiness is FAIL; aggregate coverage cannot hide a weak module. |
 | A mitigation appears to fix the cause | It remains a MIT until a source repair traverses 04 and 05–08 and passes target verification. |
 | No incident, selected incident set, or repair item exists | Create no Stage 20, 21, or 22 work respectively; readiness authorization is not demand. |
-| No Stage 30 decision-tree branch fires | Record a no-refactor REFACT, create no work, and leave Northstar unchanged. |
-| No spare stewardship capacity is available | Keep refactor/learning opportunities visible and defer Stages 30/31; do not steal capacity from incident stabilization or required repair. |
+| No Stage 40 refactor branch is selected | Record a no-refactor REFACT, create no work, and leave Northstar unchanged. |
+| No spare stewardship capacity is available | Keep refactor/learning opportunities visible and defer Stages 40/42; do not steal capacity from incident stabilization or required repair. |
 | One learning applies to two subjects | Link it from both cards; this is valid and counted once in source completeness. |
 | Cards disagree or a later source supersedes an earlier principle | Record the conflict/supersession and provenance; do not silently flatten it. |
-| A card or source link is broken, the index exceeds budget, or retrieval selects the wrong evidence | Stage 31 fails and iterates; no partial completion claim. |
+| A card or source link is broken, the index exceeds budget, or retrieval selects the wrong evidence | Stage 42 fails and iterates; no partial completion claim. |
 | Mega-workspace shows duplicate EngLoop rows | Treat it as expected integration-view behavior; use the focused single-root entry point for routine work. |
 | Old generated files survive a consumer upgrade | Migration fails even if new commands also exist; clean removal is required. |
 
@@ -1052,7 +1090,7 @@ Deterministic checks MUST prove all of the following:
 - Requiring a bespoke behavioral model for every pure component or internal pipeline
   assembly.
 - Making permanent source fixes during incident stabilization.
-- Creating a numbered direction snapshot from Stage 30 or retaining legacy direction machinery.
+- Creating a numbered direction snapshot from Stage 40 or retaining legacy direction machinery.
 - Updating Northstar for routine feature, repair, or refactor completion.
 - Automatically running operations or stewardship stages merely because their numeric
   predecessors completed.
@@ -1080,11 +1118,12 @@ Deterministic checks MUST prove all of the following:
 
 ## Measurable success criteria
 
-- **SC-001:** A clean extension/package inspection finds exactly 13 current command
+- **SC-001:** A clean extension/package inspection finds exactly 28 current command
   registrations, all matching the table, and 0 old registrations or aliases.
-- **SC-002:** In a clean single-root picker, all 13 commands appear exactly once and
-  their displayed lexical sequence matches 01–08, 20–22, 30–31 with 0 inversions.
-- **SC-003:** 100% of the 13 command files pass the ARCH002 command-loop conformance
+- **SC-002:** In a clean single-root picker, all 28 commands appear exactly once and
+  their displayed lexical sequence matches 01–12, 20–23, 30–31, 40–42, 50, 60–61,
+  70–72, 80 with 0 inversions.
+- **SC-003:** 100% of the 28 command files pass the ARCH002 command-loop conformance
   checks and reference only existing required artifacts.
 - **SC-004:** Each of the four migrated repositories has exactly 1 root
   `NORTHSTAR.md`, 0 current legacy numbered-direction artifacts/templates/counters, and Git evidence of
@@ -1107,18 +1146,18 @@ Deterministic checks MUST prove all of the following:
   and model-derived tests reject representative illegal order, invalid input, gate
   bypass, stale-evidence, and duplicate-start attempts.
 - **SC-011:** `tthp`, `engloop-workshop`, and `VerifyExtremeEdgeWithTpcc` each pass a
-  standalone invocation check and a focused single-root picker check with exactly 13
+  standalone invocation check and a focused single-root picker check with exactly 28
   v2 rows and 0 stale old rows.
 - **SC-012:** The mega-workspace remains usable for cross-repository integration and
   its documentation explains focused-workspace mitigation without claiming global
   deduplication.
-- **SC-013:** Stage 31 checks report 100% source-to-card coverage, 100% cards indexed,
+- **SC-013:** Stage 42 checks report 100% source-to-card coverage, 100% cards indexed,
   100% valid card provenance, 100% resolving page/card/source links, an index within
   500 words and 60 nonblank lines, and 100% correct retrieval for a clean-context
   sample covering every card and every PM.
-- **SC-014:** Independent acceptance suites for the three stage groups (01–08, 20–22,
-  and 30–31) all pass from their documented fixtures without relying on an unrelated
-  group.
+- **SC-014:** Independent acceptance suites for delivery/readiness, review response,
+  operations, token efficiency, and the remaining stewardship/utility lanes all pass
+  from their documented fixtures without relying on an unrelated lane.
 - **SC-015:** In a clean-context usability check, every evaluator can identify the
   next normal delivery command from picker order alone and can locate the command's
   Trigger, Goal, Verification, Memory, and Done-when gate without external workflow
@@ -1131,15 +1170,15 @@ Deterministic checks MUST prove all of the following:
   and planning contract finds exactly the `FR-NOM-001` global/local prefix sets and
   living root documents, with zero current allocation, alias, translation, fallback,
   or active filename outside that vocabulary.
-- **SC-018:** A clean disposable install contains 13/13 visible EngLoop agent files
-  with all common required fields preserved, Stage 31 has 0 handoffs, every other
-  agent has at least 1 handoff, and VS Code customization diagnostics report 0
+- **SC-018:** A clean disposable install contains 28/28 visible EngLoop agent files
+  with all common required fields preserved, terminal Stages 09, 12, 31, 41, 42, 50,
+  61, 70, 71, 72, and 80 have 0 handoffs, every other agent has at least 1 handoff, and VS Code customization diagnostics report 0
   EngLoop-owned errors and 0 EngLoop-owned warnings.
 - **SC-019:** The installed handoff edge set equals the ratified graph exactly; 100% of
   targets resolve, 100% use `send: false`, 0 specify a model override, and Stage 08 has
   0 edges to operations or stewardship.
-- **SC-020:** All 13 installed agents match the least-privilege tools/subagent matrix,
-  all 13 entry hooks invoke the exact versioned validator contract, generated prompts
+- **SC-020:** All 28 installed agents match the least-privilege tools/subagent matrix,
+  all 28 entry hooks invoke the exact versioned validator contract, generated prompts
   contain 0 `tools` overrides, and controlled invalid-entry fixtures prove mechanical
   blocking with hooks enabled, observed unconditional body rejection with hooks
   disabled, and trusted-tool rejection of every invalid durable transition/evidence

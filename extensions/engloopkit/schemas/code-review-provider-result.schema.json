@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://engloopkit.dev/schemas/code-review-provider-result.schema.json",
+  "title": "EngLoopKit provider mutation/read-back result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "status",
+    "provider",
+    "repository",
+    "pullRequest",
+    "thread",
+    "sourceRevision",
+    "targetRevision",
+    "iteration",
+    "actingPrincipal",
+    "threadStatus",
+    "providerHead",
+    "operation",
+    "packetSha256",
+    "addressReceiptSha256",
+    "inspectionSha256",
+    "inspectionReceiptId",
+    "marker",
+    "replySha256",
+    "replyObserved",
+    "resolveObserved",
+    "matchCount",
+    "providerReceiptId"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "status": { "enum": ["success", "rejected", "outcome-unknown"] },
+    "provider": { "$ref": "#/$defs/identity" },
+    "repository": { "$ref": "#/$defs/identity" },
+    "pullRequest": { "$ref": "#/$defs/identity" },
+    "thread": { "$ref": "#/$defs/identity" },
+    "sourceRevision": { "$ref": "#/$defs/revision" },
+    "targetRevision": { "$ref": "#/$defs/revision" },
+    "iteration": { "$ref": "#/$defs/identity" },
+    "actingPrincipal": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "threadStatus": { "enum": ["active", "resolved"] },
+    "providerHead": { "$ref": "#/$defs/revision" },
+    "operation": { "enum": ["reply", "resolve", "reply-and-resolve"] },
+    "packetSha256": { "$ref": "#/$defs/sha256" },
+    "addressReceiptSha256": { "$ref": "#/$defs/sha256" },
+    "inspectionSha256": { "$ref": "#/$defs/sha256" },
+    "inspectionReceiptId": { "type": "string", "minLength": 1 },
+    "marker": { "type": "string", "pattern": "^elk-review-response:[a-f0-9]{16}:[a-f0-9]{32}$" },
+    "replySha256": { "$ref": "#/$defs/sha256" },
+    "replyObserved": { "type": "boolean" },
+    "resolveObserved": { "type": "boolean" },
+    "matchCount": { "type": "integer", "minimum": 0 },
+    "providerReceiptId": { "type": "string" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "const": "success" } },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "matchCount": { "const": 1 },
+          "providerReceiptId": { "minLength": 1 }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "success" }, "operation": { "enum": ["reply", "reply-and-resolve"] } },
+        "required": ["status", "operation"]
+      },
+      "then": { "properties": { "replyObserved": { "const": true } } }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "success" }, "operation": { "enum": ["resolve", "reply-and-resolve"] } },
+        "required": ["status", "operation"]
+      },
+      "then": {
+        "properties": {
+          "resolveObserved": { "const": true },
+          "threadStatus": { "const": "resolved" }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "identity": { "type": "string", "minLength": 1, "maxLength": 512, "pattern": "^\\S+$" },
+    "revision": { "type": "string", "pattern": "^[a-fA-F0-9]{40,64}$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}
