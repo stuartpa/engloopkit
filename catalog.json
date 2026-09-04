@@ -4,11 +4,11 @@
     {
       "name": "EngLoopKit",
       "id": "engloop",
-      "description": "Ordered evidence-gated delivery, operations learning, positive history, handoffs, verified ELK/SEK upgrades, stewardship, publication, and private overlay workflow for Spec Kit.",
+      "description": "Ordered evidence-gated delivery, author-side code-review response, operations learning, positive history, handoffs, verified ELK/SEK upgrades, stewardship, publication, and private overlay workflow for Spec Kit.",
       "author": "stuartpa",
-      "version": "1.15.4",
-      "download_url": "https://github.com/stuartpa/engloopkit/releases/download/v1.15.4/engloopkit-extension-1.15.4.zip",
-      "sha256": "45eb49931c1681e05f81a5315bb3fe0be891caa8aacddfeec1291fdcbcab01cb",
+      "version": "1.16.0",
+      "download_url": "https://github.com/stuartpa/engloopkit/releases/download/v1.16.0/engloopkit-extension-1.16.0.zip",
+      "sha256": "25de5836fe6ee7a5516d7cf13b1c5abe0bf39bc67d11a3cf8cde6d19604985b5",
       "repository": "https://github.com/stuartpa/engloopkit",
       "homepage": "https://github.com/stuartpa/engloopkit",
       "documentation": "https://github.com/stuartpa/engloopkit/blob/main/README.md",
@@ -30,7 +30,7 @@
         ]
       },
       "provides": {
-        "commands": 26,
+        "commands": 28,
         "hooks": 0
       },
       "tags": [
