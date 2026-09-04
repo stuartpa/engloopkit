@@ -78,9 +78,9 @@ public sealed class OperationsLearningHookTests : IDisposable
         using var initializedJson = JsonDocument.Parse(initialized.Output);
         var message = initializedJson.RootElement.GetProperty("systemMessage").GetString()!;
         Assert.Contains("OPERATIONS_POSTMORTEM_CONTEXT_COLLECTION_ACTIVE", message);
-        var collection = JsonDocument.Parse(message[message.IndexOf('{')..]).RootElement;
-        var collectionPath = collection.GetProperty("collectionPath").GetString()!;
-        var token = collection.GetProperty("token").GetString()!;
+        Assert.DoesNotContain("collectionPath", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"token\"", message, StringComparison.Ordinal);
+        var collectionPath = $".engloop/out/postmortem-context/{Sha256ForTest(session)}.json";
         Assert.True(File.Exists(Path.Combine(repo, collectionPath.Replace('/', Path.DirectorySeparatorChar))));
 
         AssertPostmortemCollectionDecision(RunGuard(repo, session, "read_file", new { filePath = Path.Combine(repo, ".engloop", "incidents", "IN001_example.md") }), "allow");
@@ -89,14 +89,10 @@ public sealed class OperationsLearningHookTests : IDisposable
         AssertPostmortemCollectionDecision(RunGuard(repo, session, "run_in_terminal", new { command = "git status --short" }), "deny");
 
         var postmortem = ".engloop/postmortems/PM005-known-incident.md";
-        var confirmation = AnswerCollection(repo, session, ["IN001"], postmortem, "Confirm", answerByQuestion: true);
-        Assert.Contains("POSTMORTEM_ROUTE_CONFIRMED", confirmation.Result.Output);
-        var command = $"dotnet tool run engloopkit -- postmortem-route bind --collection {collectionPath} --token {token} --incidents IN001 --postmortem {postmortem} --confirmation-receipt {confirmation.ReceiptPath}";
-        AssertPostmortemCollectionDecision(RunGuard(repo, session, "run_in_terminal", new { command }), "allow");
-        var bound = RunPostmortemRoute(repo, ["bind", "--collection", collectionPath, "--token", token, "--incidents", "IN001", "--postmortem", postmortem, "--confirmation-receipt", confirmation.ReceiptPath]);
-        Assert.Equal(0, bound.ExitCode);
-        Assert.Contains("POSTMORTEM_ROUTE_BOUND", bound.Output);
-        Assert.Contains("OPERATIONS_LEARNING_SCOPE_ACTIVE", bound.Output);
+        var confirmation = AnswerCollection(repo, session, ["IN001"], postmortem, "Confirm", answerByQuestion: true, autoBind: true);
+        Assert.Contains("POSTMORTEM_ROUTE_BOUND", confirmation.Result.Output);
+        Assert.Contains("OPERATIONS_LEARNING_SCOPE_ACTIVE", confirmation.Result.Output);
+        Assert.True(File.Exists(Path.Combine(repo, confirmation.ReceiptPath.Replace('/', Path.DirectorySeparatorChar))));
         Assert.False(File.Exists(Path.Combine(repo, collectionPath.Replace('/', Path.DirectorySeparatorChar))));
 
         var editAllowed = RunGuard(repo, session, "apply_patch", new { input = "*** Begin Patch" });
@@ -107,6 +103,73 @@ public sealed class OperationsLearningHookTests : IDisposable
         var stop = RunHook(repo, "postmortem", "stop", string.Empty, session);
         Assert.False(Continues(stop));
         Assert.Contains("validation failed", stop.Output, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void NaturalLanguagePostmortem_IN011Pm055ConfirmBindsAndAuthorizesWorkInSameTurn()
+    {
+        var repo = CreateRepository();
+        var incidentDirectory = Path.Combine(repo, ".engloop", "incidents");
+        var oldIncident = Path.Combine(incidentDirectory, "IN001_example.md");
+        var incident = Path.Combine(incidentDirectory, "IN011-benji-front-middle-placement-reliability.md");
+        File.Move(oldIncident, incident);
+        File.WriteAllText(incident, File.ReadAllText(incident).Replace("# IN001", "# IN011", StringComparison.Ordinal));
+        var registryPath = Path.Combine(repo, ".engloop", "numbering-registry.md");
+        File.WriteAllText(registryPath, File.ReadAllText(registryPath)
+            .Replace("`IN001`", "`IN011`", StringComparison.Ordinal)
+            .Replace("`PM004`", "`PM054`", StringComparison.Ordinal));
+        Git(repo, "add", ".");
+        Git(repo, "commit", "-m", "benji incident fixture");
+        const string session = "benji-in011-pm055";
+        var collection = BeginCollection(repo, session);
+        const string postmortem = ".engloop/postmortems/PM055-benji-front-middle-placement-reliability.md";
+
+        var confirmed = AnswerCollection(repo, session, ["IN011"], postmortem,
+            "Confirm", answerByQuestion: true, autoBind: true);
+
+        Assert.Contains("POSTMORTEM_ROUTE_BOUND", confirmed.Result.Output);
+        Assert.Contains("OPERATIONS_LEARNING_SCOPE_ACTIVE", confirmed.Result.Output);
+        Assert.Contains("incidents=IN011", confirmed.Result.Output);
+        Assert.Contains("postmortem=" + postmortem, confirmed.Result.Output);
+        Assert.True(File.Exists(Path.Combine(repo, confirmed.ReceiptPath.Replace('/', Path.DirectorySeparatorChar))));
+        Assert.False(File.Exists(Path.Combine(repo, collection.Path.Replace('/', Path.DirectorySeparatorChar))));
+        var allowed = RunGuard(repo, session, "apply_patch", new { input = "*** Add File: " + postmortem });
+        Assert.True(Continues(allowed), allowed.Output + allowed.Error);
+        using var allowedJson = JsonDocument.Parse(allowed.Output);
+        Assert.False(allowedJson.RootElement.TryGetProperty("hookSpecificOutput", out _));
+    }
+
+    [Fact]
+    public void NaturalLanguagePostmortem_bindingFailureIsCorrelatedRetryableAndStage50Escalatable()
+    {
+        var repo = CreateRepository();
+        const string session = "binding-recovery";
+        var collection = BeginCollection(repo, session);
+        const string postmortem = ".engloop/postmortems/PM005-binding-recovery.md";
+        var registryPath = Path.Combine(repo, ".engloop", "numbering-registry.md");
+        var registry = File.ReadAllText(registryPath);
+        File.WriteAllText(registryPath, "# invalid registry\n");
+
+        var failed = AnswerCollection(repo, session, ["IN001"], postmortem,
+            "Confirm", autoBind: true);
+
+        Assert.Contains("POSTMORTEM_ROUTE_BIND_FAILED", failed.Result.Output);
+        Assert.Contains("completionAccepted=false", failed.Result.Output);
+        Assert.Contains("correlation=", failed.Result.Output);
+        Assert.Contains("handoff:speckit.engloop.50-handoff-create", failed.Result.Output);
+        Assert.DoesNotContain("POSTMORTEM_ROUTE_BOUND", failed.Result.Output);
+        Assert.True(File.Exists(Path.Combine(repo, collection.Path.Replace('/', Path.DirectorySeparatorChar))));
+        Assert.Empty(Directory.Exists(Path.Combine(repo, ".engloop", "out", "operations-learning-gates"))
+            ? Directory.GetFiles(Path.Combine(repo, ".engloop", "out", "operations-learning-gates"), "*.json")
+            : []);
+        var failurePath = Path.Combine(repo, ".engloop", "out", "postmortem-context", Sha256ForTest(session) + ".binding-failure.json");
+        Assert.True(File.Exists(failurePath));
+
+        File.WriteAllText(registryPath, registry);
+        var retried = AnswerCollection(repo, session, ["IN001"], postmortem,
+            "Confirm", autoBind: true);
+        Assert.Contains("POSTMORTEM_ROUTE_BOUND", retried.Result.Output);
+        Assert.False(File.Exists(failurePath));
     }
 
     [Fact]
@@ -134,11 +197,10 @@ public sealed class OperationsLearningHookTests : IDisposable
 
         var invalidRepo = CreateRepository();
         const string invalidSession = "delegated-invalid-postmortem";
-        var invalidCollection = BeginCollection(invalidRepo, invalidSession);
+        _ = BeginCollection(invalidRepo, invalidSession);
         var invalidPostmortem = ".engloop/postmortems/PM005-invalid.md";
-        var invalidConfirmation = AnswerCollection(invalidRepo, invalidSession, ["IN001"], invalidPostmortem, "Confirm");
-        var bound = RunPostmortemRoute(invalidRepo, ["bind", "--collection", invalidCollection.Path, "--token", invalidCollection.Token, "--incidents", "IN001", "--postmortem", invalidPostmortem, "--confirmation-receipt", invalidConfirmation.ReceiptPath]);
-        Assert.Equal(0, bound.ExitCode);
+        var invalidConfirmation = AnswerCollection(invalidRepo, invalidSession, ["IN001"], invalidPostmortem, "Confirm", autoBind: true);
+        Assert.Contains("POSTMORTEM_ROUTE_BOUND", invalidConfirmation.Result.Output);
         File.WriteAllText(Path.Combine(invalidRepo, ".engloop", "postmortems", "PM005-invalid.md"), "# invalid PM\n");
         AssertSubagentStopBlocked(RunHook(invalidRepo, "postmortem", "subagent-stop", string.Empty, invalidSession), "validation failed");
     }
@@ -304,8 +366,9 @@ public sealed class OperationsLearningHookTests : IDisposable
 
         var flattened = RunPostTool(repo, session, "vscode_askQuestions", JsonSerializer.Serialize(validQuestion), JsonSerializer.Serialize(validResponse));
         Assert.True(Continues(flattened), flattened.Output + flattened.Error);
-        Assert.Contains("POSTMORTEM_ROUTE_CONFIRMED", flattened.Output);
-        Assert.True(File.Exists(receiptPath));
+        Assert.Contains("POSTMORTEM_ROUTE_BOUND", flattened.Output);
+        Assert.False(File.Exists(receiptPath));
+        Assert.True(File.Exists(Path.Combine(repo, ".engloop", "out", "postmortem-context", Sha256ForTest(session) + ".binding.json")));
     }
 
     [Fact]
@@ -486,7 +549,7 @@ public sealed class OperationsLearningHookTests : IDisposable
             toolUseId = "camel-question",
         }));
         Assert.True(Continues(camel), camel.Output + camel.Error);
-        Assert.Contains("POSTMORTEM_ROUTE_CONFIRMED", camel.Output);
+        Assert.Contains("POSTMORTEM_ROUTE_BOUND", camel.Output);
     }
 
     [Fact]
@@ -1049,21 +1112,53 @@ public sealed class OperationsLearningHookTests : IDisposable
         Assert.True(Continues(result), result.Output + result.Error);
         using var json = JsonDocument.Parse(result.Output);
         var message = json.RootElement.GetProperty("systemMessage").GetString()!;
-        var collection = JsonDocument.Parse(message[message.IndexOf('{')..]).RootElement;
-        return (collection.GetProperty("collectionPath").GetString()!, collection.GetProperty("token").GetString()!);
+        Assert.DoesNotContain("collectionPath", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"token\"", message, StringComparison.Ordinal);
+        var relative = $".engloop/out/postmortem-context/{Sha256ForTest(session)}.json";
+        using var collection = JsonDocument.Parse(File.ReadAllText(Path.Combine(repo, relative.Replace('/', Path.DirectorySeparatorChar))));
+        return (relative, collection.RootElement.GetProperty("Token").GetString()!);
     }
 
-    private static ((int ExitCode, string Output, string Error) Result, string ReceiptPath) AnswerCollection(string repo, string session, string[] incidents, string postmortem, string decision, bool answerByQuestion = false)
+    private static ((int ExitCode, string Output, string Error) Result, string ReceiptPath) AnswerCollection(string repo, string session, string[] incidents, string postmortem, string decision, bool answerByQuestion = false, bool autoBind = false)
     {
         var header = "Confirm postmortem";
         var question = ConfirmationQuestion(incidents, postmortem);
         var questionText = question["questions"]![0]!["question"]!.GetValue<string>();
         var response = ConfirmationResponse(answerByQuestion ? questionText : header, decision);
+        if (decision == "Confirm" && !autoBind)
+            return WriteConfirmationForBinderTest(repo, session, incidents, postmortem, question, response);
         var result = RunPostTool(repo, session, "vscode_askQuestions", question, response);
         var receipt = string.Empty;
-        if (decision == "Confirm" && result.Output.Contains("receipt=", StringComparison.Ordinal))
-            receipt = result.Output[(result.Output.IndexOf("receipt=", StringComparison.Ordinal) + "receipt=".Length)..].Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
+        if (decision == "Confirm" && result.Output.Contains("bindingReceipt=", StringComparison.Ordinal))
+            receipt = result.Output[(result.Output.IndexOf("bindingReceipt=", StringComparison.Ordinal) + "bindingReceipt=".Length)..].Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
         return (result, receipt);
+    }
+
+    private static ((int ExitCode, string Output, string Error) Result, string ReceiptPath) WriteConfirmationForBinderTest(
+        string repo, string session, string[] incidents, string postmortem, JsonObject question, JsonObject response)
+    {
+        var sessionHash = Sha256ForTest(session);
+        var collectionRelative = $".engloop/out/postmortem-context/{sessionHash}.json";
+        using var collection = JsonDocument.Parse(File.ReadAllText(Path.Combine(repo, collectionRelative.Replace('/', Path.DirectorySeparatorChar))));
+        var value = collection.RootElement;
+        var receiptRelative = $".engloop/out/postmortem-context/{sessionHash}.confirmation.json";
+        var receipt = new
+        {
+            SchemaVersion = "1.0",
+            SessionHash = sessionHash,
+            Head = value.GetProperty("Head").GetString(),
+            AssemblySha256 = value.GetProperty("AssemblySha256").GetString(),
+            ManifestSha256 = value.GetProperty("ManifestSha256").GetString(),
+            CollectionToken = value.GetProperty("Token").GetString(),
+            ToolUseId = "binder-test-" + Guid.NewGuid().ToString("N"),
+            Incidents = incidents,
+            Postmortem = postmortem,
+            QuestionSha256 = Sha256ForTest(question.ToJsonString()),
+            ResponseSha256 = Sha256ForTest(response.ToJsonString()),
+        };
+        File.WriteAllText(Path.Combine(repo, receiptRelative.Replace('/', Path.DirectorySeparatorChar)), JsonSerializer.Serialize(receipt));
+        var result = (0, JsonSerializer.Serialize(new { @continue = true, systemMessage = "POSTMORTEM_ROUTE_CONFIRMED" }), string.Empty);
+        return (result, receiptRelative);
     }
 
     private static JsonObject ConfirmationQuestion(string[] incidents, string postmortem)

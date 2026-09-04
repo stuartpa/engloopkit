@@ -14,11 +14,6 @@ public static class OperationsHookCommands
         "read", "search", "read_file", "file_search", "grep_search", "semantic_search", "list_dir", "vscode_askQuestions",
     };
 
-    private static readonly HashSet<string> CollectionCommandTools = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "execute", "run_in_terminal",
-    };
-
     private sealed record GateRecord(
         string SchemaVersion,
         string Mode,
@@ -61,6 +56,29 @@ public static class OperationsHookCommands
         string Postmortem,
         string QuestionSha256,
         string ResponseSha256);
+
+    private sealed record PostmortemBindingRecord(
+        string SchemaVersion,
+        string SessionHash,
+        string Head,
+        string[] Incidents,
+        string Postmortem,
+        string Gate,
+        string GateSha256,
+        string ConfirmationSha256,
+        string ToolUseId,
+        string CorrelationId);
+
+    private sealed record PostmortemBindingFailureRecord(
+        string SchemaVersion,
+        string SessionHash,
+        string Head,
+        string[] Incidents,
+        string Postmortem,
+        string DiagnosticCode,
+        string Diagnostic,
+        string CorrelationId,
+        DateTimeOffset CapturedAtUtc);
 
     public static int Execute(string[] args)
     {
@@ -113,45 +131,12 @@ public static class OperationsHookCommands
             var root = ExactGitRoot(Environment.CurrentDirectory);
             RequirePostmortemAgentEntry(root);
             var collectionRelative = GovernedPath(CliOption(args, "--collection"), ".engloop/out/postmortem-context/");
-            var collectionPath = Path.Combine(root, collectionRelative.Replace('/', Path.DirectorySeparatorChar));
-            Ensure(File.Exists(collectionPath), "postmortem-route-collection-missing");
-            var collection = ReadCollection(collectionPath);
-            ValidateCollection(root, collection);
-            Ensure(collectionRelative == CollectionRelativePath(collection.SessionHash), "postmortem-route-collection-path-mismatch");
-            Ensure(string.Equals(CliOption(args, "--token"), collection.Token, StringComparison.Ordinal), "postmortem-route-token-mismatch");
-
             var incidents = IdList(CliOption(args, "--incidents"), @"^IN\d{3}$", "incident");
-            foreach (var incident in incidents)
-            {
-                var matches = Directory.GetFiles(Path.Combine(root, ".engloop", "incidents"), incident + "*.md")
-                    .Where(path => Regex.IsMatch(Path.GetFileName(path), "^" + Regex.Escape(incident) + @"(?:[_-].+)?\.md$", RegexOptions.CultureInvariant))
-                    .ToArray();
-                Ensure(matches.Length == 1, "postmortem-route-incident-not-unique:" + incident);
-                var relative = Path.GetRelativePath(root, matches[0]).Replace('\\', '/');
-                var validation = OperationsLearningPolicy.ValidateIncidentContext(root, relative, requireConsulted: true);
-                Ensure(validation.Passed, "postmortem-route-incident-not-ready:" + incident + ":" + string.Join(',', validation.Failures));
-            }
-
             var postmortem = GovernedPath(CliOption(args, "--postmortem"), ".engloop/postmortems/");
             var confirmationRelative = GovernedPath(CliOption(args, "--confirmation-receipt"), ".engloop/out/postmortem-context/");
-            var confirmationPath = Path.Combine(root, confirmationRelative.Replace('/', Path.DirectorySeparatorChar));
-            Ensure(confirmationRelative == ConfirmationRelativePath(collection.SessionHash), "postmortem-route-confirmation-path-mismatch");
-            Ensure(File.Exists(confirmationPath), "postmortem-route-confirmation-missing");
-            var confirmation = ReadConfirmation(confirmationPath);
-            ValidateConfirmation(root, collection, confirmation, incidents, postmortem);
-            var nextPm = NextRegistryId(root, "PM");
-            var proposedId = Regex.Match(Path.GetFileName(postmortem), @"^PM\d{3}", RegexOptions.CultureInvariant).Value;
-            Ensure(proposedId == nextPm, $"postmortem-route-next-id-mismatch:expected={nextPm}:actual={proposedId}");
-            Ensure(Regex.IsMatch(Path.GetFileName(postmortem), @"^PM\d{3}[_-][A-Za-z0-9][A-Za-z0-9._-]*\.md$", RegexOptions.CultureInvariant), "postmortem-route-filename-invalid");
-            RequireCreateNewPostmortem(root, postmortem);
-
-            var gatePath = GatePath(root, collection.SessionHash, "postmortem");
-            Ensure(!File.Exists(gatePath), "postmortem-route-gate-already-exists");
-            var arguments = NewArguments(postmortem: postmortem, incidents: incidents);
-            WriteGate(root, "postmortem", collection.SessionHash, gatePath, arguments);
-            File.Delete(collectionPath);
-            File.Delete(confirmationPath);
-            Console.WriteLine($"POSTMORTEM_ROUTE_BOUND OPERATIONS_LEARNING_SCOPE_ACTIVE mode=postmortem gate={gatePath} incidents={string.Join(',', incidents)} postmortem={postmortem}");
+            var bound = BindPostmortemRoute(root, collectionRelative, CliOption(args, "--token"),
+                incidents, postmortem, confirmationRelative);
+            Console.WriteLine($"POSTMORTEM_ROUTE_BOUND OPERATIONS_LEARNING_SCOPE_ACTIVE mode=postmortem gate={bound.Gate} bindingReceipt={bound.Receipt} incidents={string.Join(',', incidents)} postmortem={postmortem}");
             return 0;
         }
         catch (Exception ex)
@@ -240,12 +225,10 @@ public static class OperationsHookCommands
                 var collection = ReadCollection(collectionPath);
                 ValidateCollection(root, collection);
                 var toolName = ReadString(input, "tool_name", "toolName");
-                var command = ReadToolCommand(input);
-                var allow = IsCollectionReadOrQuestionTool(toolName)
-                    || IsCollectionRouteCommand(toolName, command, collection, CollectionRelativePath(sessionHash));
+                var allow = IsCollectionReadOrQuestionTool(toolName);
                 WritePostmortemCollectionDecision(allow, allow
-                    ? "Stage 21 context collection permits this read, search, question, or exact trusted bind operation."
-                    : "Stage 21 context collection is read-only. Inspect incident/registry evidence, ask one concise confirmation, then use only the exact trusted binder.");
+                    ? "Stage 21 context collection permits only read, search, and the exact confirmation question; PostToolUse owns binding."
+                    : "Stage 21 context collection is read-only. Provide one confirmation; ELK invokes its trusted binder internally.");
             }
             catch (Exception ex)
             {
@@ -327,8 +310,79 @@ public static class OperationsHookCommands
             Sha256(Encoding.UTF8.GetBytes(toolResponse.GetRawText())));
         var confirmationPath = ConfirmationPath(root, sessionHash);
         File.WriteAllText(confirmationPath, JsonSerializer.Serialize(receipt));
-        WriteResult(true, systemMessage: $"POSTMORTEM_ROUTE_CONFIRMED receipt={ConfirmationRelativePath(sessionHash)} incidents={string.Join(',', proposal.Incidents)} postmortem={proposal.Postmortem}");
+        try
+        {
+            var bound = BindPostmortemRoute(root, CollectionRelativePath(sessionHash), collection.Token,
+                proposal.Incidents, proposal.Postmortem, ConfirmationRelativePath(sessionHash));
+            WriteResult(true, systemMessage: $"POSTMORTEM_ROUTE_BOUND OPERATIONS_LEARNING_SCOPE_ACTIVE mode=postmortem gate={bound.Gate} bindingReceipt={bound.Receipt} incidents={string.Join(',', proposal.Incidents)} postmortem={proposal.Postmortem}");
+        }
+        catch (Exception ex)
+        {
+            var correlationId = Guid.NewGuid().ToString("N");
+            WriteBindingFailure(root, sessionHash, proposal.Incidents, proposal.Postmortem, ex, correlationId);
+            WriteResult(true, systemMessage: $"POSTMORTEM_ROUTE_BIND_FAILED completionAccepted=false correlation={correlationId} diagnostic={IncidentDiagnosticCode(ex)} recovery=retry-confirmation-or-handoff:speckit.engloop.50-handoff-create");
+        }
         return 0;
+    }
+
+    private static (string Gate, string Receipt) BindPostmortemRoute(string root,
+        string collectionRelative, string token, string[] incidents, string postmortem,
+        string confirmationRelative)
+    {
+        var collectionPath = Path.Combine(root, collectionRelative.Replace('/', Path.DirectorySeparatorChar));
+        Ensure(File.Exists(collectionPath), "postmortem-route-collection-missing");
+        var collection = ReadCollection(collectionPath);
+        ValidateCollection(root, collection);
+        Ensure(collectionRelative == CollectionRelativePath(collection.SessionHash), "postmortem-route-collection-path-mismatch");
+        Ensure(string.Equals(token, collection.Token, StringComparison.Ordinal), "postmortem-route-token-mismatch");
+        foreach (var incident in incidents)
+        {
+            var matches = Directory.GetFiles(Path.Combine(root, ".engloop", "incidents"), incident + "*.md")
+                .Where(path => Regex.IsMatch(Path.GetFileName(path), "^" + Regex.Escape(incident) + @"(?:[_-].+)?\.md$", RegexOptions.CultureInvariant))
+                .ToArray();
+            Ensure(matches.Length == 1, "postmortem-route-incident-not-unique:" + incident);
+            var relative = Path.GetRelativePath(root, matches[0]).Replace('\\', '/');
+            var validation = OperationsLearningPolicy.ValidateIncidentContext(root, relative, requireConsulted: true);
+            Ensure(validation.Passed, "postmortem-route-incident-not-ready:" + incident + ":" + string.Join(',', validation.Failures));
+        }
+        var confirmationPath = Path.Combine(root, confirmationRelative.Replace('/', Path.DirectorySeparatorChar));
+        Ensure(confirmationRelative == ConfirmationRelativePath(collection.SessionHash), "postmortem-route-confirmation-path-mismatch");
+        Ensure(File.Exists(confirmationPath), "postmortem-route-confirmation-missing");
+        var confirmation = ReadConfirmation(confirmationPath);
+        ValidateConfirmation(root, collection, confirmation, incidents, postmortem);
+        var nextPm = NextRegistryId(root, "PM");
+        var proposedId = Regex.Match(Path.GetFileName(postmortem), @"^PM\d{3}", RegexOptions.CultureInvariant).Value;
+        Ensure(proposedId == nextPm, $"postmortem-route-next-id-mismatch:expected={nextPm}:actual={proposedId}");
+        Ensure(Regex.IsMatch(Path.GetFileName(postmortem), @"^PM\d{3}[_-][A-Za-z0-9][A-Za-z0-9._-]*\.md$", RegexOptions.CultureInvariant), "postmortem-route-filename-invalid");
+        RequireCreateNewPostmortem(root, postmortem);
+        var gatePath = GatePath(root, collection.SessionHash, "postmortem");
+        Ensure(!File.Exists(gatePath), "postmortem-route-gate-already-exists");
+        var bindingRelative = BindingRelativePath(collection.SessionHash);
+        var bindingPath = Path.Combine(root, bindingRelative.Replace('/', Path.DirectorySeparatorChar));
+        Ensure(!File.Exists(bindingPath), "postmortem-route-binding-receipt-exists");
+        var gateRelative = Path.GetRelativePath(root, gatePath).Replace('\\', '/');
+        try
+        {
+            WriteGate(root, "postmortem", collection.SessionHash, gatePath,
+                NewArguments(postmortem: postmortem, incidents: incidents));
+            var correlationId = Guid.NewGuid().ToString("N");
+            using var stream = new FileStream(bindingPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            JsonSerializer.Serialize(stream, new PostmortemBindingRecord(
+                "1.0", collection.SessionHash, collection.Head, incidents, postmortem,
+                gateRelative, FileSha256(gatePath), FileSha256(confirmationPath),
+                confirmation.ToolUseId, correlationId));
+            stream.Flush(flushToDisk: true);
+        }
+        catch
+        {
+            if (File.Exists(bindingPath)) File.Delete(bindingPath);
+            if (File.Exists(gatePath)) File.Delete(gatePath);
+            throw;
+        }
+        File.Delete(collectionPath);
+        File.Delete(confirmationPath);
+        ClearBindingFailure(root, collection.SessionHash);
+        return (gateRelative, bindingRelative);
     }
 
     private static int Stop(string root, string mode, string sessionHash, string gatePath, bool subagent)
@@ -486,6 +540,12 @@ public static class OperationsHookCommands
     private static string ConfirmationPath(string root, string sessionHash)
         => Path.Combine(root, ConfirmationRelativePath(sessionHash).Replace('/', Path.DirectorySeparatorChar));
 
+    private static string BindingRelativePath(string sessionHash)
+        => $".engloop/out/postmortem-context/{sessionHash}.binding.json";
+
+    private static string BindingFailureRelativePath(string sessionHash)
+        => $".engloop/out/postmortem-context/{sessionHash}.binding-failure.json";
+
     private static string CancelledCollectionPath(string root, string sessionHash)
         => CollectionPath(root, sessionHash) + ".cancelled";
 
@@ -554,11 +614,31 @@ public static class OperationsHookCommands
         var cancelled = CancelledCollectionPath(root, sessionHash);
         if (File.Exists(cancelled)) File.Delete(cancelled);
         ClearConfirmation(root, sessionHash);
+        ClearBindingFailure(root, sessionHash);
     }
 
     private static void ClearConfirmation(string root, string sessionHash)
     {
         var path = ConfirmationPath(root, sessionHash);
+        if (File.Exists(path)) File.Delete(path);
+    }
+
+    private static void WriteBindingFailure(string root, string sessionHash, string[] incidents,
+        string postmortem, Exception exception, string correlationId)
+    {
+        var relative = BindingFailureRelativePath(sessionHash);
+        var path = Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var record = new PostmortemBindingFailureRecord("1.0", sessionHash,
+            OperationsLearningPolicy.GitHead(root) ?? string.Empty, incidents, postmortem,
+            IncidentDiagnosticCode(exception), Bound(exception.Message), correlationId,
+            DateTimeOffset.UtcNow);
+        File.WriteAllText(path, JsonSerializer.Serialize(record));
+    }
+
+    private static void ClearBindingFailure(string root, string sessionHash)
+    {
+        var path = Path.Combine(root, BindingFailureRelativePath(sessionHash).Replace('/', Path.DirectorySeparatorChar));
         if (File.Exists(path)) File.Delete(path);
     }
 
@@ -584,12 +664,10 @@ public static class OperationsHookCommands
             phase,
             command = $"operations-hook {phase} postmortem",
             diagnosticCode = diagnostic,
-            collectionPath = CollectionRelativePath(sessionHash),
-            token = collection.Token,
-            allowedTools = new[] { "read", "search", "vscode_askQuestions", "exact-postmortem-route-bind-or-cancel" },
+            allowedTools = new[] { "read", "search", "vscode_askQuestions", "speckit.engloop.50-handoff-create" },
             expectedSource = "A plain-language incident/postmortem request plus repository incident and numbering evidence",
             elkVersion = typeof(OperationsHookCommands).Assembly.GetName().Version?.ToString(3) ?? "unknown",
-            remediation = "Collect candidate incident and next registry-backed PM path in chat, ask one concise confirmation, and invoke the trusted binder internally. Never ask the operator to reconstruct command-line options.",
+            remediation = "Collect candidate incident and next registry-backed PM path in chat and ask one concise confirmation. PostToolUse invokes the trusted binder itself. On correlated failure, retry confirmation or use Stage 50; never expose or request binder transport data.",
             completionAccepted = false,
         });
         WriteResult(true, systemMessage: "OPERATIONS_POSTMORTEM_CONTEXT_COLLECTION_ACTIVE OPERATIONS_LEARNING_CONTEXT_REQUIRED " + details);
@@ -611,25 +689,6 @@ public static class OperationsHookCommands
 
     private static bool IsCollectionReadOrQuestionTool(string toolName)
         => CollectionReadOrQuestionTools.Contains(toolName);
-
-    private static bool IsCollectionRouteCommand(string toolName, string command, PostmortemCollectionRecord collection, string collectionRelative)
-    {
-        if (!CollectionCommandTools.Contains(toolName)) return false;
-        if (command.IndexOfAny([';', '&', '|', '>', '<', '\r', '\n']) >= 0) return false;
-        var bindPattern = "^dotnet tool run engloopkit -- postmortem-route bind --collection " + Regex.Escape(collectionRelative)
-            + " --token " + Regex.Escape(collection.Token)
-            + @" --incidents IN\d{3}(?:,IN\d{3})* --postmortem \.engloop/postmortems/PM\d{3}[_-][A-Za-z0-9][A-Za-z0-9._-]*\.md --confirmation-receipt "
-            + Regex.Escape(ConfirmationRelativePath(collection.SessionHash)) + "$";
-        return Regex.IsMatch(command, bindPattern, RegexOptions.CultureInvariant);
-    }
-
-    private static string ReadToolCommand(JsonElement input)
-    {
-        foreach (var name in new[] { "tool_input", "toolInput" })
-            if (input.TryGetProperty(name, out var toolInput) && toolInput.ValueKind == JsonValueKind.Object)
-                return ReadString(toolInput, "command", "commandLine");
-        return string.Empty;
-    }
 
     private static bool TryReadToolElement(JsonElement input, string snakeName, string camelName, out JsonElement value)
     {
