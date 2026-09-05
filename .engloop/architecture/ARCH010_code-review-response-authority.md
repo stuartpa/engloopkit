@@ -1,7 +1,7 @@
 # ARCH010: Author-side code-review response authority is split across Stages 11 and 12
 
 - **Created:** 2026-09-03
-- **Status:** ACCEPTED
+- **Status:** SUPERSEDED by [ARCH011](ARCH011_complete-code-review-campaign-authority.md)
 - **Governs:** Stages 11–12, CodeReview Bundle interoperability, private response packets,
   provider adapters, reply/resolution approval, mutation attempts, reconciliation, and receipts
 - **Consulted learnings:** [Readiness is a gate](../learnings/cards/readiness-is-a-gate.md)

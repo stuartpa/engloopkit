@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "1.0",
+  "status": "success",
+  "provider": "<provider-id>",
+  "repository": "<repository-id>",
+  "pullRequest": "<pull-request-id>",
+  "actingPrincipal": "<authenticated-provider-principal>",
+  "sourceRevision": "<authoritative-source-revision>",
+  "targetRevision": "<authoritative-target-revision>",
+  "iteration": "<provider-iteration-id>",
+  "providerHead": "<authoritative-provider-head>",
+  "pageCount": 1,
+  "paginationComplete": true,
+  "continuationToken": "",
+  "threadCount": 1,
+  "threads": [
+    {
+      "thread": "<thread-id>",
+      "rootComment": "<root-comment-id>",
+      "status": "active",
+      "anchorPath": "<repository-relative-path-or-empty>",
+      "line": null,
+      "summary": "<short-current-summary>",
+      "updatedAt": "<provider-timestamp>",
+      "comments": [
+        {
+          "comment": "<comment-id>",
+          "parentComment": "",
+          "author": "<provider-author-id>",
+          "content": "<complete-current-comment-text>",
+          "createdAt": "<provider-timestamp>",
+          "updatedAt": "<provider-timestamp>",
+          "isDeleted": false
+        }
+      ],
+      "providerState": {}
+    }
+  ],
+  "discoveryReceiptId": "<provider-discovery-receipt-id>",
+  "mutationPerformed": false
+}

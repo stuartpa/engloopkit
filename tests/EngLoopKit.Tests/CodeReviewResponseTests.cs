@@ -21,12 +21,12 @@ public sealed class CodeReviewResponseTests : IDisposable
         var repo = CreateRepository();
         var packet = ".engloop/out/code-review-response/address/thread-1.json";
         var initialStatus = StatusDigest(repo);
-        var initialized = RunHook(repo, "initialize", "address", AddressPrompt(repo, packet), "address-session");
+        var initialized = RunHook(repo, "initialize", "address", AddressPrompt(repo, packet, "accepted-actionable"), "address-session");
         Assert.True(Continues(initialized), initialized.Output + initialized.Error);
         Assert.Contains("CODE_REVIEW_RESPONSE_SCOPE_ACTIVE mode=address", initialized.Output);
 
         AssertDecision(RunGuard(repo, "address", "address-session", "read_file", new { filePath = Path.Combine(repo, "src", "fixture.cs") }), "allow");
-        AssertDecision(RunGuard(repo, "address", "address-session", "fetch_webpage", new { url = "https://example.invalid" }), "allow");
+        AssertDecision(RunGuard(repo, "address", "address-session", "fetch_webpage", new { url = "https://example.invalid" }), "deny");
         AssertDecision(RunGuard(repo, "address", "address-session", "apply_patch", new { input = "patch" }), "allow");
         AssertDecision(RunGuard(repo, "address", "address-session", "apply_patch", new { input = "*** Update File: .git/config" }), "deny");
         AssertDecision(RunGuard(repo, "address", "address-session", "apply_patch", new { input = "*** Update File: .config/dotnet-tools.json" }), "deny");
@@ -88,6 +88,13 @@ public sealed class CodeReviewResponseTests : IDisposable
             schemaVersion = "1.0",
             packet,
             packetSha256 = packetHash,
+            campaignTracker = value.GetProperty("campaignTracker").GetString(),
+            campaignTrackerSha256 = value.GetProperty("campaignTrackerSha256").GetString(),
+            campaignItemId = value.GetProperty("campaignItemId").GetString(),
+            campaignItemContentSha256 = value.GetProperty("campaignItemContentSha256").GetString(),
+            campaignDecisionReceiptId = value.GetProperty("campaignDecisionReceiptId").GetString(),
+            campaignReceipt = value.GetProperty("campaignReceipt").GetString(),
+            campaignReceiptSha256 = value.GetProperty("campaignReceiptSha256").GetString(),
             gateSha256 = FileHash(gateFull),
             gateJson = File.ReadAllText(gateFull),
             head = value.GetProperty("head").GetString(),
@@ -114,7 +121,7 @@ public sealed class CodeReviewResponseTests : IDisposable
         const string session = "indexed-rename";
         var packet = ".engloop/out/code-review-response/address/indexed-rename.json";
         var initialStatus = StatusDigest(repo);
-        var initialized = RunHook(repo, "initialize", "address", AddressPrompt(repo, packet), session);
+        var initialized = RunHook(repo, "initialize", "address", AddressPrompt(repo, packet, "accepted-actionable"), session);
         Assert.True(Continues(initialized));
 
         Git(repo, "mv", "src/fixture.cs", "src/renamed.cs");
@@ -134,29 +141,29 @@ public sealed class CodeReviewResponseTests : IDisposable
         var protectedRepo = CreateRepository();
         var protectedPacket = ".engloop/out/code-review-response/address/protected.json";
         var protectedInitial = StatusDigest(protectedRepo);
-        Assert.True(Continues(RunHook(protectedRepo, "initialize", "address", AddressPrompt(protectedRepo, protectedPacket), "protected")));
+        Assert.True(Continues(RunHook(protectedRepo, "initialize", "address", AddressPrompt(protectedRepo, protectedPacket, "accepted-actionable"), "protected")));
         File.AppendAllText(Path.Combine(protectedRepo, ".engloop", "config.json"), " ");
         WritePacket(protectedRepo, protectedPacket, protectedInitial, StatusDigest(protectedRepo), "accepted-actionable", "success", false, false,
             changedFiles: [".engloop/config.json"], validation: ["dotnet --version:PASS"]);
         var protectedStop = RunHook(protectedRepo, "stop", "address", string.Empty, "protected");
         Assert.False(Continues(protectedStop));
-        Assert.Contains("control-path-changed", protectedStop.Output);
+        Assert.True(protectedStop.Output.Contains("control-path-changed", StringComparison.OrdinalIgnoreCase), protectedStop.Output);
 
         var renamedRepo = CreateRepository();
         var renamedPacket = ".engloop/out/code-review-response/address/renamed-control.json";
         var renamedInitial = StatusDigest(renamedRepo);
-        Assert.True(Continues(RunHook(renamedRepo, "initialize", "address", AddressPrompt(renamedRepo, renamedPacket), "renamed-control")));
+        Assert.True(Continues(RunHook(renamedRepo, "initialize", "address", AddressPrompt(renamedRepo, renamedPacket, "accepted-actionable"), "renamed-control")));
         File.Move(Path.Combine(renamedRepo, ".engloop", "provider-adapters", "fake.ps1"), Path.Combine(renamedRepo, ".engloop", "provider-adapters", "moved.ps1"));
         WritePacket(renamedRepo, renamedPacket, renamedInitial, StatusDigest(renamedRepo), "accepted-actionable", "success", false, false,
             changedFiles: [".engloop/provider-adapters/fake.ps1", ".engloop/provider-adapters/moved.ps1"], validation: ["dotnet --version:PASS"]);
         var renamedStop = RunHook(renamedRepo, "stop", "address", string.Empty, "renamed-control");
         Assert.False(Continues(renamedStop));
-        Assert.Contains("control-path-changed", renamedStop.Output);
+        Assert.Contains("review-campaign-adapter", renamedStop.Output, StringComparison.OrdinalIgnoreCase);
 
         var dirtyRepo = CreateRepository();
         var dirtyPacket = ".engloop/out/code-review-response/address/dirty-fix.json";
         var initial = StatusDigest(dirtyRepo);
-        Assert.True(Continues(RunHook(dirtyRepo, "initialize", "address", AddressPrompt(dirtyRepo, dirtyPacket), "dirty-fix")));
+        Assert.True(Continues(RunHook(dirtyRepo, "initialize", "address", AddressPrompt(dirtyRepo, dirtyPacket, "accepted-actionable"), "dirty-fix")));
         File.AppendAllText(Path.Combine(dirtyRepo, "src", "fixture.cs"), "// fixed\n");
         WritePacket(dirtyRepo, dirtyPacket, initial, StatusDigest(dirtyRepo), "accepted-actionable", "success", false, false,
             changedFiles: ["src/fixture.cs"], validation: ["dotnet --version:PASS"], allowedOperations: ["reply-and-resolve"]);
@@ -164,7 +171,7 @@ public sealed class CodeReviewResponseTests : IDisposable
 
         var stage12 = RunHook(dirtyRepo, "initialize", "reply-resolve", ReplyPrompt(dirtyPacket, "reply-and-resolve"), "dirty-stage12");
         Assert.False(Continues(stage12));
-        Assert.Contains("stage12-checkout-not-clean", stage12.Output);
+        Assert.Contains("stage13-checkout-not-clean", stage12.Output);
 
         Git(dirtyRepo, "add", "src/fixture.cs");
         Git(dirtyRepo, "commit", "-m", "address review");
@@ -202,8 +209,9 @@ public sealed class CodeReviewResponseTests : IDisposable
         const string session = "packet-matrix";
         var packet = ".engloop/out/code-review-response/address/packet-matrix.json";
         var status = StatusDigest(repo);
-        Assert.True(Continues(RunHook(repo, "initialize", "address", AddressPrompt(repo, packet), session)));
-        WritePacket(repo, packet, status, status, "already-addressed", "success", false, false);
+        Assert.True(Continues(RunHook(repo, "initialize", "address", AddressPrompt(repo, packet, "accepted-actionable"), session)));
+        WritePacket(repo, packet, status, status, "accepted-actionable", "success", false, false,
+            changedFiles: ["src/fixture.cs"], validation: ["dotnet --version:PASS"]);
         var packetFull = Path.Combine(repo, packet.Replace('/', Path.DirectorySeparatorChar));
         var original = JsonNode.Parse(File.ReadAllText(packetFull))!.AsObject();
 
@@ -253,7 +261,7 @@ public sealed class CodeReviewResponseTests : IDisposable
         Reject(value => value["providerHead"] = "bad", "provider-head-invalid");
         Reject(value => value["requiredFixRevision"] = "bad", "fix-revision-invalid");
         Reject(value => value["adapterRequest"] = "bad", "adapter-request-invalid");
-        Reject(value => { value["classification"] = "accepted-actionable"; value["changedFiles"] = new JsonArray(); }, "changed-files-missing");
+        Reject(value => { value["classification"] = "accepted-actionable"; value["changedFiles"] = new JsonArray(); }, "clean-fix-revision-required");
         Reject(value => { value["classification"] = "accepted-actionable"; value["changedFiles"] = new JsonArray("src/fixture.cs"); value["validationResults"] = new JsonArray(); }, "validation-missing");
 
         File.WriteAllText(packetFull, "null");
@@ -263,7 +271,7 @@ public sealed class CodeReviewResponseTests : IDisposable
     }
 
     [Fact]
-    public void ReviewResponseEntry_rejectsMalformedDispatchDirtyCheckoutExistingPacketAndWrongSource()
+    public void ReviewResponseEntry_rejectsMalformedDispatchDirtyCheckoutExistingPacketAndStaleCampaign()
     {
         var repo = CreateRepository();
         Assert.False(Continues(RunHookRaw(repo, [], "{}")));
@@ -291,11 +299,13 @@ public sealed class CodeReviewResponseTests : IDisposable
         Assert.False(Continues(existing));
         Assert.Contains("packet-already-exists", existing.Output);
 
-        var wrongSource = AddressPrompt(repo, ".engloop/out/code-review-response/address/wrong-source.json")
-            .Replace(GitOutput(repo, "rev-parse", "HEAD"), new string('c', 40), StringComparison.Ordinal);
-        var wrong = RunHook(repo, "initialize", "address", wrongSource, "wrong-source");
+        var staleCampaign = AddressPrompt(repo, ".engloop/out/code-review-response/address/stale-campaign.json");
+        File.WriteAllText(Path.Combine(repo, "new-head.txt"), "new head\n");
+        Git(repo, "add", "new-head.txt");
+        Git(repo, "commit", "-m", "advance fixture head");
+        var wrong = RunHook(repo, "initialize", "address", staleCampaign, "stale-campaign");
         Assert.False(Continues(wrong));
-        Assert.Contains("source-not-local-head", wrong.Output);
+        Assert.Contains("campaign-head-not-local-head", wrong.Output);
 
         var wrongPacketPath = RunHook(repo, "initialize", "address", AddressPrompt(repo, ".engloop/out/code-review-response/gates/not-a-packet.json"), "wrong-packet-path");
         Assert.False(Continues(wrongPacketPath));
@@ -309,16 +319,6 @@ public sealed class CodeReviewResponseTests : IDisposable
         var textPacket = RunHook(repo, "initialize", "address", AddressPrompt(repo, ".engloop/out/code-review-response/address/not-a-packet.txt"), "text-packet");
         Assert.False(Continues(textPacket));
         Assert.Contains("packet-path-invalid", textPacket.Output);
-        var badProvider = RunHook(repo, "initialize", "address", AddressPrompt(repo, ".engloop/out/code-review-response/address/bad-provider.json").Replace("--provider fixture-provider", "--provider \"bad provider\""), "bad-provider");
-        Assert.False(Continues(badProvider));
-        Assert.Contains("provider-invalid", badProvider.Output);
-        var longRepository = RunHook(repo, "initialize", "address", AddressPrompt(repo, ".engloop/out/code-review-response/address/long-repository.json").Replace("--repository fixture-repo", "--repository \"" + new string('r', 513) + "\""), "long-repository");
-        Assert.False(Continues(longRepository));
-        Assert.Contains("repository-invalid", longRepository.Output);
-        var badTarget = RunHook(repo, "initialize", "address", AddressPrompt(repo, ".engloop/out/code-review-response/address/bad-target.json").Replace(new string('b', 40), "bad", StringComparison.Ordinal), "bad-target");
-        Assert.False(Continues(badTarget));
-        Assert.Contains("target-revision-invalid", badTarget.Output);
-
         var hiddenManifestRepo = CreateRepository();
         File.AppendAllText(Path.Combine(hiddenManifestRepo, ".config", "dotnet-tools.json"), " ");
         Git(hiddenManifestRepo, "update-index", "--assume-unchanged", ".config/dotnet-tools.json");
@@ -513,23 +513,31 @@ public sealed class CodeReviewResponseTests : IDisposable
         var stopped = RunHook(repo, "stop", "reply-resolve", string.Empty, "reply-session");
         Assert.True(Continues(stopped), stopped.Output + stopped.Error);
         Assert.Contains("CODE_REVIEW_REPLY_RESOLVE_OK", stopped.Output);
+        using var tracker = JsonDocument.Parse(File.ReadAllText(Path.Combine(repo, CampaignTrackerPath().Replace('/', Path.DirectorySeparatorChar))));
+        var completedItem = tracker.RootElement.GetProperty("items").EnumerateArray().Single();
+        Assert.Equal("replied", completedItem.GetProperty("responseState").GetString());
+        Assert.Equal(packet, completedItem.GetProperty("responsePacket").GetString());
+        Assert.Equal(FileHash(Path.Combine(repo, packet.Replace('/', Path.DirectorySeparatorChar))), completedItem.GetProperty("responsePacketSha256").GetString());
+        Assert.StartsWith("fixture-receipt-", completedItem.GetProperty("providerReceiptId").GetString(), StringComparison.Ordinal);
     }
 
     [Fact]
     public void Stage12_resolutionRequiresFixOnProviderHeadAndCancelMutatesNothing()
     {
         var staleRepo = CreateRepository();
-        var stalePacket = CompleteStage11(staleRepo, "stale", "success", ["resolve"], providerHead: new string('d', 40));
-        var stale = RunHook(staleRepo, "initialize", "reply-resolve", ReplyPrompt(stalePacket, "resolve"), "stale-session");
+        var stale = RunHook(staleRepo, "initialize", "address",
+            AddressPrompt(staleRepo, ".engloop/out/code-review-response/address/stale.json",
+                providerHead: new string('d', 40)), "stale-session");
         Assert.False(Continues(stale));
-        Assert.Contains("provider-head-not-local-head", stale.Output);
+        Assert.Contains("campaign-head-not-local-head", stale.Output);
         Assert.False(File.Exists(AdapterCallsPath(staleRepo)));
 
         var resolvedThreadRepo = CreateRepository();
-        var resolvedThreadPacket = CompleteStage11(resolvedThreadRepo, "resolved-thread", "success", ["resolve"], threadStatus: "resolved");
-        var resolvedThread = RunHook(resolvedThreadRepo, "initialize", "reply-resolve", ReplyPrompt(resolvedThreadPacket, "resolve"), "resolved-thread");
+        var resolvedThread = RunHook(resolvedThreadRepo, "initialize", "address",
+            AddressPrompt(resolvedThreadRepo, ".engloop/out/code-review-response/address/resolved-thread.json",
+                threadStatus: "resolved"), "resolved-thread");
         Assert.False(Continues(resolvedThread));
-        Assert.Contains("thread-not-active", resolvedThread.Output);
+        Assert.True(resolvedThread.Output.Contains("item-not-active", StringComparison.OrdinalIgnoreCase), resolvedThread.Output);
 
         var cancelRepo = CreateRepository();
         var cancelPacket = CompleteStage11(cancelRepo, "cancel", "success", ["reply"]);
@@ -570,7 +578,7 @@ public sealed class CodeReviewResponseTests : IDisposable
         var repo = CreateRepository();
         var packet = ".engloop/out/code-review-response/address/non-clean-refresh.json";
         var initialStatus = StatusDigest(repo);
-        Assert.True(Continues(RunHook(repo, "initialize", "address", AddressPrompt(repo, packet), "non-clean-refresh")));
+        Assert.True(Continues(RunHook(repo, "initialize", "address", AddressPrompt(repo, packet, "accepted-actionable"), "non-clean-refresh")));
         File.AppendAllText(Path.Combine(repo, "src", "fixture.cs"), "// addressed but not committed\n");
         WritePacket(repo, packet, initialStatus, StatusDigest(repo), "accepted-actionable", "success", false, false,
             changedFiles: ["src/fixture.cs"], validation: ["dotnet --version:PASS"]);
@@ -588,6 +596,7 @@ public sealed class CodeReviewResponseTests : IDisposable
         var fabricatedRepo = CreateRepository();
         var fabricatedPacket = ".engloop/out/code-review-response/address/fabricated.json";
         var status = StatusDigest(fabricatedRepo);
+        EnsureCampaignBinding(fabricatedRepo, "already-addressed");
         WritePacket(fabricatedRepo, fabricatedPacket, status, status, "already-addressed", "success", false, false);
         var fabricated = RunHook(fabricatedRepo, "initialize", "reply-resolve", ReplyPrompt(fabricatedPacket, "reply"), "fabricated");
         Assert.False(Continues(fabricated));
@@ -726,9 +735,17 @@ public sealed class CodeReviewResponseTests : IDisposable
         var first = RunApply(repo, gate, approval);
         Assert.Equal(2, first.ExitCode);
         Assert.Contains("OUTCOME_UNKNOWN", first.Error);
+        var providerClaim = Path.Combine(repo, ".engloop", "out", "code-review-response",
+            "provider-claims", CampaignId(), CampaignItemId() + ".json");
+        Assert.True(File.Exists(providerClaim));
+        var blockedCampaign = RunCampaignHook(repo, "initialize", "blocked-by-provider-claim");
+        Assert.False(Continues(blockedCampaign));
+        Assert.Contains("review-campaign-provider-operation-in-progress", blockedCampaign.Output);
+        Assert.Single(ReadMutationCalls(repo));
         var second = RunApply(repo, gate, approval);
         Assert.Equal(0, second.ExitCode);
         Assert.Contains("APPLIED", second.Output);
+        Assert.False(File.Exists(providerClaim));
 
         var calls = ReadMutationCalls(repo);
         Assert.Equal(2, calls.Length);
@@ -755,6 +772,204 @@ public sealed class CodeReviewResponseTests : IDisposable
 
         Assert.Contains(results, result => result.ExitCode == 0);
         Assert.All(results, result => Assert.Contains(result.ExitCode, new[] { 0, 1 }));
+        Assert.Single(ReadMutationCalls(repo));
+    }
+
+    [Fact]
+    public async Task Stage13_stopCannotDeleteGateWhileApplyOwnsTheSession()
+    {
+        var repo = CreateRepository();
+        var packet = CompleteStage11(repo, "apply-stop-race", "slow-success", ["reply"]);
+        const string session = "apply-stop-race";
+        var initialized = RunHook(repo, "initialize", "reply-resolve",
+            ReplyPrompt(packet, "reply"), session);
+        Assert.True(Continues(initialized), initialized.Output + initialized.Error);
+        var gate = MarkerValue(initialized.Output, "gate=");
+        var approval = ApprovalPath(session);
+        Assert.True(Continues(Approve(repo, session, gate, packet, "reply", "thread-1", "Confirm")));
+
+        var applying = RunApplyProcessAsync(repo, gate, approval);
+        var deadline = Stopwatch.StartNew();
+        while (ReadMutationCalls(repo).Length == 0 && deadline.Elapsed < TimeSpan.FromSeconds(10))
+            await Task.Delay(20);
+        Assert.Single(ReadMutationCalls(repo));
+
+        var overlappingStop = RunHook(repo, "stop", "reply-resolve", string.Empty, session);
+        Assert.False(Continues(overlappingStop));
+        Assert.Contains("review-response-session-operation-in-progress", overlappingStop.Output);
+        Assert.True(File.Exists(Path.Combine(repo, gate.Replace('/', Path.DirectorySeparatorChar))));
+
+        var applied = await applying;
+        Assert.Equal(0, applied.ExitCode);
+        Assert.Contains("CODE_REVIEW_RESPONSE_APPLIED", applied.Output);
+        Assert.Single(ReadMutationCalls(repo));
+        var stopped = RunHook(repo, "stop", "reply-resolve", string.Empty, session);
+        Assert.True(Continues(stopped), stopped.Output + stopped.Error);
+        Assert.Contains("CODE_REVIEW_REPLY_RESOLVE_OK", stopped.Output);
+    }
+
+    [Fact]
+    public void Stage13_serializesCampaignCompletionAndRejectsAStaleSecondTransition()
+    {
+        var repo = CreateRepository();
+        var packet = CompleteStage11(repo, "campaign-serialization", "success", ["reply", "resolve"]);
+        const string replySession = "campaign-reply";
+        const string resolveSession = "campaign-resolve";
+        var replyInitialized = RunHook(repo, "initialize", "reply-resolve",
+            ReplyPrompt(packet, "reply"), replySession);
+        var resolveInitialized = RunHook(repo, "initialize", "reply-resolve",
+            ReplyPrompt(packet, "resolve"), resolveSession);
+        Assert.True(Continues(replyInitialized), replyInitialized.Output + replyInitialized.Error);
+        Assert.True(Continues(resolveInitialized), resolveInitialized.Output + resolveInitialized.Error);
+        var replyGate = MarkerValue(replyInitialized.Output, "gate=");
+        var resolveGate = MarkerValue(resolveInitialized.Output, "gate=");
+        var replyApproval = ApprovalPath(replySession);
+        var resolveApproval = ApprovalPath(resolveSession);
+        Assert.True(Continues(Approve(repo, replySession, replyGate, packet, "reply", "thread-1", "Confirm")));
+        Assert.True(Continues(Approve(repo, resolveSession, resolveGate, packet, "resolve", "thread-1", "Confirm")));
+        Assert.Equal(0, RunApply(repo, replyGate, replyApproval).ExitCode);
+        var competing = RunApply(repo, resolveGate, resolveApproval);
+        Assert.Equal(1, competing.ExitCode);
+        Assert.Contains("review-campaign-item-not-selected", competing.Error);
+        Assert.Single(ReadMutationCalls(repo));
+
+        var trackerPath = Path.Combine(repo, CampaignTrackerPath().Replace('/', Path.DirectorySeparatorChar));
+        var trackerBefore = File.ReadAllText(trackerPath);
+        var campaignLockPath = Path.Combine(repo, ".engloop", "out", "code-review-response",
+            "campaign-locks", CampaignId() + ".lock");
+        Directory.CreateDirectory(Path.GetDirectoryName(campaignLockPath)!);
+        using (var heldLock = new FileStream(campaignLockPath, FileMode.OpenOrCreate,
+            FileAccess.ReadWrite, FileShare.None))
+        {
+            var blocked = RunHook(repo, "stop", "reply-resolve", string.Empty, replySession);
+            Assert.False(Continues(blocked));
+            Assert.Contains("review-campaign-operation-in-progress", blocked.Output);
+            Assert.Equal(trackerBefore, File.ReadAllText(trackerPath));
+        }
+
+        var accepted = RunHook(repo, "stop", "reply-resolve", string.Empty, replySession);
+        Assert.True(Continues(accepted), accepted.Output + accepted.Error);
+        Assert.Contains("CODE_REVIEW_REPLY_RESOLVE_OK", accepted.Output);
+        var acceptedTracker = File.ReadAllText(trackerPath);
+        using (var tracker = JsonDocument.Parse(acceptedTracker))
+        {
+            Assert.Equal(string.Empty, tracker.RootElement.GetProperty("selectedItemId").GetString());
+            var item = tracker.RootElement.GetProperty("items").EnumerateArray().Single();
+            Assert.Equal("replied", item.GetProperty("responseState").GetString());
+            Assert.Equal(packet, item.GetProperty("responsePacket").GetString());
+            Assert.False(string.IsNullOrWhiteSpace(item.GetProperty("providerReceiptId").GetString()));
+        }
+
+        var stale = RunHook(repo, "stop", "reply-resolve", string.Empty, resolveSession);
+        Assert.False(Continues(stale));
+        Assert.Contains("review-campaign-item-not-selected", stale.Output);
+        Assert.Equal(acceptedTracker, File.ReadAllText(trackerPath));
+    }
+
+    [Fact]
+    public void Stage13_recoversSuccessAfterCampaignAdvanceAndAfterGateCleanup()
+    {
+        var repo = CreateRepository();
+        var packet = CompleteStage11(repo, "completion-recovery", "success", ["reply-and-resolve"]);
+        const string session = "completion-recovery";
+        var initialized = RunHook(repo, "initialize", "reply-resolve",
+            ReplyPrompt(packet, "reply-and-resolve"), session);
+        Assert.True(Continues(initialized), initialized.Output + initialized.Error);
+        var gate = MarkerValue(initialized.Output, "gate=");
+        var gatePath = Path.Combine(repo, gate.Replace('/', Path.DirectorySeparatorChar));
+        var gateJson = File.ReadAllText(gatePath);
+        var approval = ApprovalPath(session);
+        Assert.True(Continues(Approve(repo, session, gate, packet, "reply-and-resolve", "thread-1", "Confirm")));
+        Assert.Equal(0, RunApply(repo, gate, approval).ExitCode);
+
+        var completed = RunHook(repo, "stop", "reply-resolve", string.Empty, session);
+        Assert.True(Continues(completed), completed.Output + completed.Error);
+        Assert.Contains("CODE_REVIEW_REPLY_RESOLVE_OK", completed.Output);
+        var completionPath = Path.Combine(repo, ".engloop", "out", "code-review-response",
+            "completion-receipts", Sha256Text(session) + ".json");
+        Assert.True(File.Exists(completionPath));
+        Assert.False(File.Exists(gatePath));
+        var trackerPath = Path.Combine(repo, CampaignTrackerPath().Replace('/', Path.DirectorySeparatorChar));
+        var completedTracker = File.ReadAllText(trackerPath);
+
+        File.Delete(completionPath);
+        File.WriteAllText(gatePath, gateJson);
+        WriteProviderClaimFixture(repo, gatePath, packet, "reply-and-resolve");
+        var recovered = RunHook(repo, "stop", "reply-resolve", string.Empty, session);
+        Assert.True(Continues(recovered), recovered.Output + recovered.Error);
+        Assert.Contains("CODE_REVIEW_REPLY_RESOLVE_OK", recovered.Output);
+        Assert.Contains("alreadyCompleted=true", recovered.Output);
+        Assert.True(File.Exists(completionPath));
+        Assert.False(File.Exists(gatePath));
+        Assert.Equal(completedTracker, File.ReadAllText(trackerPath));
+
+        var replayed = RunHook(repo, "stop", "reply-resolve", string.Empty, session);
+        Assert.True(Continues(replayed), replayed.Output + replayed.Error);
+        Assert.Contains("CODE_REVIEW_REPLY_RESOLVE_OK", replayed.Output);
+        Assert.Contains("alreadyCompleted=true", replayed.Output);
+        Assert.Equal(completedTracker, File.ReadAllText(trackerPath));
+        Assert.Single(ReadMutationCalls(repo));
+    }
+
+    [Fact]
+    public void Stage13_completionReceiptTamperingFailsClosedWithoutProviderMutation()
+    {
+        var repo = CreateRepository();
+        var packet = CompleteStage11(repo, "completion-tamper", "success", ["reply"]);
+        const string session = "completion-tamper";
+        var initialized = RunHook(repo, "initialize", "reply-resolve",
+            ReplyPrompt(packet, "reply"), session);
+        var gate = MarkerValue(initialized.Output, "gate=");
+        var approval = ApprovalPath(session);
+        Assert.True(Continues(Approve(repo, session, gate, packet, "reply", "thread-1", "Confirm")));
+        Assert.Equal(0, RunApply(repo, gate, approval).ExitCode);
+        Assert.True(Continues(RunHook(repo, "stop", "reply-resolve", string.Empty, session)));
+        var completionPath = Path.Combine(repo, ".engloop", "out", "code-review-response",
+            "completion-receipts", Sha256Text(session) + ".json");
+        var originalText = File.ReadAllText(completionPath);
+        var original = JsonNode.Parse(originalText)!.AsObject();
+        var trackerPath = Path.Combine(repo, CampaignTrackerPath().Replace('/', Path.DirectorySeparatorChar));
+        var trackerText = File.ReadAllText(trackerPath);
+
+        void Reject(Action<JsonObject> mutate, string expected)
+        {
+            var candidate = original.DeepClone().AsObject();
+            mutate(candidate);
+            File.WriteAllText(completionPath, candidate.ToJsonString());
+            var replay = RunHook(repo, "stop", "reply-resolve", string.Empty, session);
+            Assert.False(Continues(replay));
+            Assert.True(replay.Output.Contains(expected, StringComparison.OrdinalIgnoreCase), replay.Output);
+            Assert.Equal(trackerText, File.ReadAllText(trackerPath));
+            Assert.Single(ReadMutationCalls(repo));
+        }
+
+        Reject(value => value["unexpected"] = true, "completion-receipt-invalid");
+        Reject(value => value["schemaVersion"] = "2.0", "completion-receipt-invalid");
+        Reject(value => value["sessionHash"] = new string('0', 64), "completion-receipt-invalid");
+        Reject(value => value["gateSha256"] = new string('0', 64), "completion-gate-changed");
+        Reject(value => value["gateJson"] = "{}", "completion-gate-changed");
+        Reject(value => value["attempt"] = ".engloop/out/code-review-response/attempts/forged.json", "completion-attempt-changed");
+        Reject(value => value["attemptSha256"] = new string('0', 64), "completion-attempt-changed");
+        Reject(value => value["previousCampaignTrackerSha256"] = new string('0', 64), "completion-gate-invalid");
+        Reject(value => value["campaignTrackerSha256"] = new string('0', 64), "receipt-path-mismatch");
+        Reject(value => value["campaignReceiptSha256"] = new string('0', 64), "receipt-changed");
+        Reject(value => value["campaignItemId"] = new string('0', 64), "completion-gate-invalid");
+        Reject(value => value["packetSha256"] = new string('0', 64), "completion-gate-invalid");
+        Reject(value => value["operation"] = "resolve", "completion-gate-invalid");
+        Reject(value => value["providerReceiptId"] = "forged", "completion-attempt-invalid");
+
+        File.WriteAllText(completionPath, "{");
+        var malformed = RunHook(repo, "stop", "reply-resolve", string.Empty, session);
+        Assert.False(Continues(malformed));
+        Assert.Contains("completion-receipt-invalid", malformed.Output);
+        Assert.Equal(trackerText, File.ReadAllText(trackerPath));
+        Assert.Single(ReadMutationCalls(repo));
+
+        File.WriteAllText(completionPath, originalText);
+        var validReplay = RunHook(repo, "stop", "reply-resolve", string.Empty, session);
+        Assert.True(Continues(validReplay), validReplay.Output + validReplay.Error);
+        Assert.Contains("alreadyCompleted=true", validReplay.Output);
+        Assert.Equal(trackerText, File.ReadAllText(trackerPath));
         Assert.Single(ReadMutationCalls(repo));
     }
 
@@ -887,9 +1102,11 @@ public sealed class CodeReviewResponseTests : IDisposable
     {
         var missingRepo = CreateRepository();
         var missingPacket = CompleteStage11(missingRepo, "missing", "success", ["reply"]);
-        var missing = RunHook(missingRepo, "initialize", "reply-resolve", $"--packet {missingPacket} --operation reply --adapter .engloop/provider-adapters/missing.json", "missing-adapter");
+        var missing = RunHook(missingRepo, "initialize", "reply-resolve",
+            ReplyPrompt(missingPacket, "reply").Replace(".engloop/provider-adapters/fake.json", ".engloop/provider-adapters/missing.json", StringComparison.Ordinal),
+            "missing-adapter");
         Assert.False(Continues(missing));
-        Assert.Contains("adapter-must-be-tracked", missing.Output);
+        Assert.Contains("campaign-adapter-mismatch", missing.Output);
 
         var changedRepo = CreateRepository();
         var changedPacket = CompleteStage11(changedRepo, "changed", "success", ["reply"]);
@@ -899,7 +1116,7 @@ public sealed class CodeReviewResponseTests : IDisposable
         Git(changedRepo, "update-index", "--assume-unchanged", ".engloop/provider-adapters/fake.ps1");
         var guard = RunGuard(changedRepo, "reply-resolve", "changed-session", "read_file", new { filePath = changedPacket });
         Assert.False(Continues(guard));
-        Assert.Contains("adapter-artifact-changed", guard.Output);
+        Assert.Contains("review-campaign-adapter-artifact-must-match-head", guard.Output);
 
         var packetRepo = CreateRepository();
         var packet = CompleteStage11(packetRepo, "packet", "success", ["reply"]);
@@ -1035,9 +1252,13 @@ public sealed class CodeReviewResponseTests : IDisposable
         Assert.Contains("REJECTED", rejected.Error);
         var rejectedAttempt = JsonNode.Parse(File.ReadAllText(AttemptPathFor(rejectedRepo, rejectedPacket, "reply")))!.AsObject();
         Assert.Equal("rejected", rejectedAttempt["state"]!.GetValue<string>());
+        WriteProviderClaimFixture(rejectedRepo,
+            Path.Combine(rejectedRepo, rejectedGate.Replace('/', Path.DirectorySeparatorChar)),
+            rejectedPacket, "reply");
         var rejectedReplay = RunApply(rejectedRepo, rejectedGate, rejectedApproval);
         Assert.Equal(1, rejectedReplay.ExitCode);
-        Assert.Contains("attempt-retry-forbidden", rejectedReplay.Error);
+        Assert.Contains("REJECTED", rejectedReplay.Error);
+        Assert.False(File.Exists(Path.Combine(rejectedRepo, rejectedApproval.Replace('/', Path.DirectorySeparatorChar))));
         Assert.Single(ReadMutationCalls(rejectedRepo));
     }
 
@@ -1106,7 +1327,7 @@ public sealed class CodeReviewResponseTests : IDisposable
     }
 
     [Fact]
-    public void Stage12_rejectsEveryInvalidProviderAdapterContractBeforeApprovalOrMutation()
+    public void Stage11_rejectsEveryInvalidProviderAdapterContractBeforeDiscovery()
     {
         var cases = new (string Name, Action<string, JsonObject> Mutate, string Expected)[]
         {
@@ -1134,8 +1355,9 @@ public sealed class CodeReviewResponseTests : IDisposable
             ("capabilities-empty", (_, value) => value["capabilities"] = new JsonArray(), "capabilities-empty"),
             ("capabilities-duplicate", (_, value) => value["capabilities"] = new JsonArray("inspect", "reply", "reply"), "capabilities-duplicate"),
             ("capabilities-invalid", (_, value) => value["capabilities"] = new JsonArray("inspect", "reply", "merge"), "capabilities-invalid"),
-            ("inspection-capability", (_, value) => value["capabilities"] = new JsonArray("reply"), "inspection-capability-missing"),
-            ("capability", (_, value) => value["capabilities"] = new JsonArray("inspect", "resolve"), "capability-missing"),
+            ("discovery-capability", (_, value) => value["capabilities"] = new JsonArray("inspect", "reply"), "discovery-capability-missing"),
+            ("inspection-capability", (_, value) => value["capabilities"] = new JsonArray("discover", "reply"), "inspection-capability-missing"),
+            ("discovery-request", (_, value) => value["discoveryRequest"] = "invalid", "discovery-request-invalid"),
         };
 
         foreach (var (name, mutate, expected) in cases)
@@ -1147,8 +1369,7 @@ public sealed class CodeReviewResponseTests : IDisposable
             File.WriteAllText(adapterPath, adapter.ToJsonString());
             Git(repo, "add", ".engloop/provider-adapters/fake.json");
             Git(repo, "commit", "-m", "adapter " + name);
-            var packet = CompleteStage11(repo, "adapter-" + name, "success", ["reply"]);
-            var initialized = RunHook(repo, "initialize", "reply-resolve", ReplyPrompt(packet, "reply"), "adapter-" + name);
+            var initialized = RunCampaignHook(repo, "initialize", "adapter-" + name);
             Assert.False(Continues(initialized));
             Assert.Contains(expected, initialized.Output, StringComparison.OrdinalIgnoreCase);
             Assert.False(File.Exists(AdapterCallsPath(repo)));
@@ -1158,8 +1379,7 @@ public sealed class CodeReviewResponseTests : IDisposable
         File.WriteAllText(Path.Combine(malformedRepo, ".engloop", "provider-adapters", "fake.json"), "{");
         Git(malformedRepo, "add", ".engloop/provider-adapters/fake.json");
         Git(malformedRepo, "commit", "-m", "malformed adapter");
-        var malformedPacket = CompleteStage11(malformedRepo, "adapter-malformed", "success", ["reply"]);
-        var malformed = RunHook(malformedRepo, "initialize", "reply-resolve", ReplyPrompt(malformedPacket, "reply"), "adapter-malformed");
+        var malformed = RunCampaignHook(malformedRepo, "initialize", "adapter-malformed");
         Assert.False(Continues(malformed));
         Assert.Contains("adapter-invalid", malformed.Output);
 
@@ -1167,8 +1387,7 @@ public sealed class CodeReviewResponseTests : IDisposable
         File.AppendAllText(Path.Combine(artifactRepo, ".engloop", "provider-adapters", "fake.ps1"), "# changed\n");
         Git(artifactRepo, "add", ".engloop/provider-adapters/fake.ps1");
         Git(artifactRepo, "commit", "-m", "stale artifact hash");
-        var artifactPacket = CompleteStage11(artifactRepo, "adapter-artifact", "success", ["reply"]);
-        var artifact = RunHook(artifactRepo, "initialize", "reply-resolve", ReplyPrompt(artifactPacket, "reply"), "adapter-artifact");
+        var artifact = RunCampaignHook(artifactRepo, "initialize", "adapter-artifact");
         Assert.False(Continues(artifact));
         Assert.Contains("artifact-hash-mismatch", artifact.Output);
 
@@ -1176,8 +1395,7 @@ public sealed class CodeReviewResponseTests : IDisposable
         Git(untrackedRepo, "rm", "--cached", ".engloop/provider-adapters/fake.ps1");
         Git(untrackedRepo, "commit", "-m", "untrack adapter artifact");
         File.AppendAllText(Path.Combine(untrackedRepo, ".git", "info", "exclude"), ".engloop/provider-adapters/fake.ps1\n");
-        var untrackedPacket = CompleteStage11(untrackedRepo, "adapter-untracked", "success", ["reply"]);
-        var untracked = RunHook(untrackedRepo, "initialize", "reply-resolve", ReplyPrompt(untrackedPacket, "reply"), "adapter-untracked");
+        var untracked = RunCampaignHook(untrackedRepo, "initialize", "adapter-untracked");
         Assert.False(Continues(untracked));
         Assert.Contains("artifact-must-be-tracked", untracked.Output);
 
@@ -1189,10 +1407,29 @@ public sealed class CodeReviewResponseTests : IDisposable
         hiddenValue["commandArtifactSha256"] = FileHash(hiddenScript);
         File.WriteAllText(hiddenManifest, hiddenValue.ToJsonString());
         Git(hiddenRepo, "update-index", "--assume-unchanged", ".engloop/provider-adapters/fake.ps1", ".engloop/provider-adapters/fake.json");
-        var hiddenPacket = CompleteStage11(hiddenRepo, "adapter-hidden", "success", ["reply"]);
-        var hidden = RunHook(hiddenRepo, "initialize", "reply-resolve", ReplyPrompt(hiddenPacket, "reply"), "adapter-hidden");
+        var hidden = RunCampaignHook(hiddenRepo, "initialize", "adapter-hidden");
         Assert.False(Continues(hidden));
         Assert.Contains("adapter-must-match-head", hidden.Output);
+    }
+
+    [Fact]
+    public void Stage13_rejectsAdapterWithoutTheSelectedMutationCapability()
+    {
+        var repo = CreateRepository();
+        var adapterPath = Path.Combine(repo, ".engloop", "provider-adapters", "fake.json");
+        var adapter = JsonNode.Parse(File.ReadAllText(adapterPath))!.AsObject();
+        adapter["capabilities"] = new JsonArray("discover", "inspect", "resolve");
+        File.WriteAllText(adapterPath, adapter.ToJsonString());
+        Git(repo, "add", ".engloop/provider-adapters/fake.json");
+        Git(repo, "commit", "-m", "remove reply capability");
+        var packet = CompleteStage11(repo, "adapter-missing-reply", "success", ["reply"]);
+
+        var initialized = RunHook(repo, "initialize", "reply-resolve",
+            ReplyPrompt(packet, "reply"), "adapter-missing-reply");
+
+        Assert.False(Continues(initialized));
+        Assert.Contains("adapter-capability-missing", initialized.Output);
+        Assert.False(File.Exists(AdapterCallsPath(repo)));
     }
 
     [Fact]
@@ -1351,7 +1588,7 @@ public sealed class CodeReviewResponseTests : IDisposable
         File.WriteAllText(Path.Combine(repo, "src", "fixture.cs"), "// fixture\n");
         File.WriteAllText(Path.Combine(repo, "src", "fixture.csproj"), "<Project Sdk=\"Microsoft.NET.Sdk\" />\n");
         File.WriteAllText(Path.Combine(repo, ".engloop", "config.json"), "{\"schemaVersion\":\"2.0\",\"productId\":\"fixture\",\"artifactRoot\":\".engloop\",\"transientOutputRoot\":\".engloop/out\",\"northstarPath\":\"NORTHSTAR.md\",\"validatorCommand\":[\"dotnet\",\"--version\"],\"moduleDiscoveryCommand\":[\"dotnet\",\"--version\"],\"architectureCommand\":[\"dotnet\",\"--version\"],\"regressionCommand\":[\"dotnet\",\"--version\"],\"coverageInputs\":{\"wholeProduct\":\"src/fixture.csproj\"},\"testRunway\":{\"status\":\"proven\",\"framework\":\"xunit\",\"terseCommand\":[\"dotnet\",\"--version\"],\"boundaryTest\":\"Fixture.Boundary\",\"generatedDestination\":\"tests/generated\",\"evidenceDigest\":\"fixture\",\"provenAtRevision\":\"content:fixture\"},\"moduleInventory\":[{\"id\":\"core\",\"path\":\"src/fixture.csproj\"}]}\n");
-        File.WriteAllText(Path.Combine(repo, ".config", "dotnet-tools.json"), "{\"version\":1,\"isRoot\":true,\"tools\":{\"engloopkit\":{\"version\":\"1.16.0\",\"commands\":[\"engloopkit\"]}}}\n");
+        File.WriteAllText(Path.Combine(repo, ".config", "dotnet-tools.json"), "{\"version\":1,\"isRoot\":true,\"tools\":{\"engloopkit\":{\"version\":\"1.17.0\",\"commands\":[\"engloopkit\"]}}}\n");
 
         var adapterScript = Path.Combine(repo, ".engloop", "provider-adapters", "fake.ps1");
         File.WriteAllText(adapterScript, FakeAdapterScript);
@@ -1361,12 +1598,13 @@ public sealed class CodeReviewResponseTests : IDisposable
             schemaVersion = "1.0",
             adapterId = "fixture-adapter",
             provider = "fixture-provider",
-            protocol = "engloop-review-response-v1",
+            protocol = "engloop-review-response-v2",
             command = new[] { "pwsh", "-NoProfile", "-File", ".engloop/provider-adapters/fake.ps1" },
             commandArtifact = ".engloop/provider-adapters/fake.ps1",
             commandArtifactSha256 = scriptHash,
             timeoutSeconds = 30,
-            capabilities = new[] { "inspect", "reply", "resolve", "reply-and-resolve" },
+            capabilities = new[] { "discover", "inspect", "reply", "resolve", "reply-and-resolve" },
+            discoveryRequest = new { fixture = true },
         }));
         Git(repo, "init");
         Git(repo, "config", "user.email", "review-response@example.invalid");
@@ -1380,7 +1618,8 @@ public sealed class CodeReviewResponseTests : IDisposable
     {
         var packet = $".engloop/out/code-review-response/address/{suffix}.json";
         var status = StatusDigest(repo);
-        var initialized = RunHook(repo, "initialize", "address", AddressPrompt(repo, packet), "address-" + suffix);
+        var initialized = RunHook(repo, "initialize", "address", AddressPrompt(repo, packet,
+            providerHead: providerHead, threadStatus: threadStatus), "address-" + suffix);
         Assert.True(Continues(initialized), initialized.Output + initialized.Error);
         WritePacket(repo, packet, status, status, "already-addressed", behavior, false, false, allowedOperations: operations, providerHead: providerHead, replyText: replyText, threadStatus: threadStatus);
         var stopped = RunHook(repo, "stop", "address", string.Empty, "address-" + suffix);
@@ -1389,20 +1628,25 @@ public sealed class CodeReviewResponseTests : IDisposable
         return packet;
     }
 
-    private static string AddressPrompt(string repo, string packet)
+    private static string AddressPrompt(string repo, string packet, string classification = "already-addressed",
+        string? providerHead = null, string threadStatus = "active")
     {
-        var head = GitOutput(repo, "rev-parse", "HEAD");
-        return $"--provider fixture-provider --repository fixture-repo --pr pr-1 --thread thread-1 --source {head} --target {new string('b', 40)} --iteration iteration-1 --packet {packet}";
+        EnsureCampaignBinding(repo, classification, providerHead, threadStatus);
+        return $"--tracker {CampaignTrackerPath()} --item {CampaignItemId()} --packet {packet}";
     }
 
     private static string ReplyPrompt(string packet, string operation)
-        => $"--packet {packet} --operation {operation} --adapter .engloop/provider-adapters/fake.json";
+        => $"--tracker {CampaignTrackerPath()} --item {CampaignItemId()} --packet {packet} --operation {operation} --adapter .engloop/provider-adapters/fake.json";
 
     private static void WritePacket(string repo, string relative, string initialStatus, string finalStatus, string classification, string behavior,
         bool providerMutation, bool commitPush, string[]? changedFiles = null, string[]? validation = null, string[]? allowedOperations = null, string? providerHead = null, string? replyText = null, string threadStatus = "active")
     {
         var head = GitOutput(repo, "rev-parse", "HEAD");
         var full = Path.Combine(repo, relative.Replace('/', Path.DirectorySeparatorChar));
+        using var campaign = JsonDocument.Parse(File.ReadAllText(Path.Combine(repo, CampaignTrackerPath().Replace('/', Path.DirectorySeparatorChar))));
+        var campaignRoot = campaign.RootElement;
+        var campaignItem = campaignRoot.GetProperty("items").EnumerateArray().Single();
+        var campaignReceipt = CampaignReceiptPath(campaignRoot.GetProperty("trackerSha256").GetString()!);
         Directory.CreateDirectory(Path.GetDirectoryName(full)!);
         File.WriteAllText(full, JsonSerializer.Serialize(new
         {
@@ -1415,6 +1659,13 @@ public sealed class CodeReviewResponseTests : IDisposable
             sourceRevision = head,
             targetRevision = new string('b', 40),
             iteration = "iteration-1",
+            campaignTracker = CampaignTrackerPath(),
+            campaignTrackerSha256 = campaignRoot.GetProperty("trackerSha256").GetString(),
+            campaignItemId = campaignItem.GetProperty("itemId").GetString(),
+            campaignItemContentSha256 = campaignItem.GetProperty("contentSha256").GetString(),
+            campaignDecisionReceiptId = campaignItem.GetProperty("decisionReceiptId").GetString(),
+            campaignReceipt,
+            campaignReceiptSha256 = FileHash(Path.Combine(repo, campaignReceipt.Replace('/', Path.DirectorySeparatorChar))),
             actingPrincipal = "fixture-principal",
             threadStatus,
             classification,
@@ -1498,6 +1749,11 @@ public sealed class CodeReviewResponseTests : IDisposable
             evidence = value.GetProperty("evidence").EnumerateArray().Select(item => item.GetString()).ToArray(),
             unresolvedRisks = value.GetProperty("unresolvedRisks").EnumerateArray().Select(item => item.GetString()).ToArray(),
             packetSha256 = gateValue.GetProperty("packetSha256").GetString(),
+            campaignTracker = gateValue.GetProperty("campaignTracker").GetString(),
+            campaignTrackerSha256 = gateValue.GetProperty("campaignTrackerSha256").GetString(),
+            campaignItemId = gateValue.GetProperty("campaignItemId").GetString(),
+            campaignItemContentSha256 = gateValue.GetProperty("campaignItemContentSha256").GetString(),
+            campaignDecisionReceiptId = gateValue.GetProperty("campaignDecisionReceiptId").GetString(),
             addressReceiptSha256 = gateValue.GetProperty("addressReceiptSha256").GetString(),
             providerInspectionSha256 = gateValue.GetProperty("inspectionSha256").GetString(),
         }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, WriteIndented = true });
@@ -1509,6 +1765,35 @@ public sealed class CodeReviewResponseTests : IDisposable
 
     private static (int ExitCode, string Output, string Error) RunHook(string repo, string action, string mode, string prompt, string session)
         => RunHookRaw(repo, [action, mode], HookJson(repo, session, prompt));
+
+    private static (int ExitCode, string Output, string Error) RunCampaignHook(string repo, string action, string session)
+    {
+        var originalIn = Console.In;
+        var originalOut = Console.Out;
+        var originalError = Console.Error;
+        using var reader = new StringReader(JsonSerializer.Serialize(new
+        {
+            cwd = repo,
+            session_id = session,
+            prompt = "--provider fixture-provider --repository fixture-repo --pr pr-1 --adapter .engloop/provider-adapters/fake.json",
+        }));
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+        try
+        {
+            Console.SetIn(reader);
+            Console.SetOut(output);
+            Console.SetError(error);
+            var exit = CodeReviewCampaignCommands.ExecuteHook([action]);
+            return (exit, output.ToString().Trim(), error.ToString().Trim());
+        }
+        finally
+        {
+            Console.SetIn(originalIn);
+            Console.SetOut(originalOut);
+            Console.SetError(originalError);
+        }
+    }
 
     private static string HookJson(string repo, string session, string prompt)
         => JsonSerializer.Serialize(new { cwd = repo, session_id = session, prompt });
@@ -1600,10 +1885,194 @@ public sealed class CodeReviewResponseTests : IDisposable
     }
 
     private static string ApprovalPath(string session) => $".engloop/out/code-review-response/approvals/{Sha256Text(session)}.json";
+    private static string CampaignId() => Sha256Text("fixture-provider\nfixture-repo\npr-1");
+    private static string CampaignItemId() => Sha256Text("fixture-provider\nfixture-repo\npr-1\nthread-1\ncomment-1");
+    private static string CampaignTrackerPath() => $".engloop/out/code-review-response/campaigns/{CampaignId()}/tracker.json";
+    private static string CampaignReceiptPath(string trackerSha256)
+        => $".engloop/out/code-review-response/campaign-receipts/{Sha256Text(CampaignTrackerPath() + "\n" + trackerSha256)}.json";
+
+    private static void EnsureCampaignBinding(string repo, string classification,
+        string? providerHead = null, string threadStatus = "active")
+    {
+        var head = GitOutput(repo, "rev-parse", "HEAD");
+        providerHead ??= head;
+        var adapter = ".engloop/provider-adapters/fake.json";
+        var artifact = ".engloop/provider-adapters/fake.ps1";
+        var comments = new[]
+        {
+            new
+            {
+                comment = "comment-1",
+                parentComment = string.Empty,
+                author = "reviewer",
+                content = "Review fixture feedback.",
+                createdAt = "2026-09-04T00:00:00Z",
+                updatedAt = "2026-09-04T00:00:00Z",
+                isDeleted = false,
+            },
+        };
+        var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+        var providerState = new { rawStatus = threadStatus };
+        var contentSha256 = Sha256Text(JsonSerializer.Serialize(new
+        {
+            thread = "thread-1",
+            rootComment = "comment-1",
+            anchorPath = "src/fixture.cs",
+            line = (int?)1,
+            summary = "Review fixture feedback",
+            updatedAt = "2026-09-04T00:00:00Z",
+            comments,
+            providerState,
+        }, jsonOptions));
+        var item = new
+        {
+            itemId = CampaignItemId(),
+            thread = "thread-1",
+            rootComment = "comment-1",
+            status = threadStatus,
+            observationState = "current",
+            anchorPath = "src/fixture.cs",
+            line = (int?)1,
+            summary = "Review fixture feedback",
+            updatedAt = "2026-09-04T00:00:00Z",
+            contentSha256,
+            comments,
+            providerState,
+            proposedClassification = classification,
+            humanDecision = classification,
+            priority = "normal",
+            decisionStale = false,
+            decisionReceiptId = Sha256Text("decision\n" + classification)[..32],
+            decisionToolUseId = "fixture-decision",
+            decisionQuestionSha256 = Sha256Text("question\n" + classification),
+            decisionResponseSha256 = Sha256Text("response\n" + classification),
+            sourceState = classification == "accepted-actionable" ? "pending" : "not-applicable",
+            responseState = "pending",
+            requiredFixRevision = string.Empty,
+            responsePacket = string.Empty,
+            responsePacketSha256 = string.Empty,
+            providerReceiptId = string.Empty,
+        };
+        var snapshotRelative = $".engloop/out/code-review-response/campaign-snapshots/{CampaignId()}/000001.json";
+        var snapshotPath = Path.Combine(repo, snapshotRelative.Replace('/', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(snapshotPath)!);
+        File.WriteAllText(snapshotPath, JsonSerializer.Serialize(new
+        {
+            schemaVersion = "1.0",
+            status = "success",
+            provider = "fixture-provider",
+            repository = "fixture-repo",
+            pullRequest = "pr-1",
+            actingPrincipal = "fixture-principal",
+            sourceRevision = head,
+            targetRevision = new string('b', 40),
+            iteration = "iteration-1",
+            providerHead,
+            pageCount = 1,
+            paginationComplete = true,
+            continuationToken = string.Empty,
+            threadCount = 1,
+            threads = new[] { new { thread = "thread-1", rootComment = "comment-1", status = threadStatus, anchorPath = "src/fixture.cs", line = (int?)1, summary = "Review fixture feedback", updatedAt = "2026-09-04T00:00:00Z", comments, providerState } },
+            discoveryReceiptId = "fixture-discovery",
+            mutationPerformed = false,
+        }, jsonOptions));
+        object Tracker(string trackerSha256) => new
+        {
+            schemaVersion = "1.0",
+            artifactType = "code-review-campaign",
+            campaignId = CampaignId(),
+            provider = "fixture-provider",
+            repository = "fixture-repo",
+            pullRequest = "pr-1",
+            adapter,
+            adapterSha256 = FileHash(Path.Combine(repo, adapter.Replace('/', Path.DirectorySeparatorChar))),
+            adapterArtifactSha256 = FileHash(Path.Combine(repo, artifact.Replace('/', Path.DirectorySeparatorChar))),
+            actingPrincipal = "fixture-principal",
+            sourceRevision = head,
+            targetRevision = new string('b', 40),
+            iteration = "iteration-1",
+            providerHead,
+            refreshNumber = 1,
+            snapshot = snapshotRelative,
+            snapshotSha256 = FileHash(snapshotPath),
+            discoveryReceiptId = "fixture-discovery",
+            pageCount = 1,
+            paginationComplete = true,
+            providerMutationPerformed = false,
+            selectedItemId = threadStatus == "active" ? CampaignItemId() : string.Empty,
+            items = new[] { item },
+            trackerSha256,
+        };
+        var trackerWithoutHash = JsonSerializer.Serialize(Tracker(string.Empty), jsonOptions);
+        var trackerSha = Sha256Text(trackerWithoutHash);
+        var trackerPath = Path.Combine(repo, CampaignTrackerPath().Replace('/', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(trackerPath)!);
+        File.WriteAllText(trackerPath, JsonSerializer.Serialize(Tracker(trackerSha), jsonOptions));
+        var gateJson = JsonSerializer.Serialize(new
+        {
+            schemaVersion = "1.0",
+            sessionHash = Sha256Text("fixture-campaign-session"),
+            head,
+            statusDigest = StatusDigest(repo),
+            toolVersion = "1.17.0",
+            manifestSha256 = FileHash(Path.Combine(repo, ".config", "dotnet-tools.json")),
+            provider = "fixture-provider",
+            repository = "fixture-repo",
+            pullRequest = "pr-1",
+            adapter,
+            adapterSha256 = FileHash(Path.Combine(repo, adapter.Replace('/', Path.DirectorySeparatorChar))),
+            adapterArtifactSha256 = FileHash(Path.Combine(repo, artifact.Replace('/', Path.DirectorySeparatorChar))),
+            tracker = CampaignTrackerPath(),
+            trackerSha256 = trackerSha,
+            campaignId = CampaignId(),
+            refreshNumber = 1,
+        }, jsonOptions);
+        var receipt = new
+        {
+            schemaVersion = "1.0",
+            tracker = CampaignTrackerPath(),
+            trackerSha256 = trackerSha,
+            campaignId = CampaignId(),
+            provider = "fixture-provider",
+            repository = "fixture-repo",
+            pullRequest = "pr-1",
+            refreshNumber = 1,
+            gateSha256 = Sha256Text(gateJson),
+            gateJson,
+        };
+        var receiptPath = Path.Combine(repo, CampaignReceiptPath(trackerSha).Replace('/', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(receiptPath)!);
+        File.WriteAllText(receiptPath, JsonSerializer.Serialize(receipt, jsonOptions));
+    }
+
     private static string ApplyCommand(string gate, string approval) => $"dotnet tool run engloopkit -- code-review-response apply --gate {gate} --approval {approval}";
     private static string AdapterCallsPath(string repo) => Path.Combine(repo, ".engloop", "out", "code-review-response", "adapter-calls.jsonl");
     private static string AttemptPathFor(string repo, string packet, string operation)
         => Path.Combine(repo, ".engloop", "out", "code-review-response", "attempts", FileHash(Path.Combine(repo, packet.Replace('/', Path.DirectorySeparatorChar))) + "." + operation + ".json");
+
+    private static void WriteProviderClaimFixture(string repo, string gatePath,
+        string packet, string operation)
+    {
+        using var gate = JsonDocument.Parse(File.ReadAllText(gatePath));
+        using var attempt = JsonDocument.Parse(File.ReadAllText(AttemptPathFor(repo, packet, operation)));
+        var gateRoot = gate.RootElement;
+        var itemId = gateRoot.GetProperty("campaignItemId").GetString()!;
+        var path = Path.Combine(repo, ".engloop", "out", "code-review-response",
+            "provider-claims", CampaignId(), itemId + ".json");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, JsonSerializer.Serialize(new
+        {
+            schemaVersion = "1.0",
+            sessionHash = gateRoot.GetProperty("sessionHash").GetString(),
+            gateSha256 = FileHash(gatePath),
+            packetSha256 = gateRoot.GetProperty("packetSha256").GetString(),
+            campaignTrackerSha256 = gateRoot.GetProperty("campaignTrackerSha256").GetString(),
+            campaignItemId = itemId,
+            adapterSha256 = gateRoot.GetProperty("adapterSha256").GetString(),
+            operation,
+            approvalSha256 = attempt.RootElement.GetProperty("approvalSha256").GetString(),
+        }));
+    }
 
     private static JsonElement[] ReadAdapterCalls(string repo)
         => File.ReadAllLines(AdapterCallsPath(repo)).Where(line => line.Length > 0).Select(line => JsonDocument.Parse(line).RootElement.Clone()).ToArray();
@@ -1670,6 +2139,8 @@ if ([string]$payload.phase -eq 'inspect') {
         providerHead = [string]$payload.expectedProviderHead
         operation = [string]$payload.operation
         packetSha256 = [string]$payload.packetSha256
+        campaignTrackerSha256 = [string]$payload.campaignTrackerSha256
+        campaignItemId = [string]$payload.campaignItemId
         addressReceiptSha256 = [string]$payload.addressReceiptSha256
         matchCount = 1
         mutationPerformed = $false
@@ -1692,6 +2163,8 @@ if ([string]$payload.phase -eq 'inspect') {
         'inspect-wrong-head' { $inspection.providerHead = ('c' * 40) }
         'inspect-wrong-operation' { $inspection.operation = 'resolve' }
         'inspect-wrong-packet' { $inspection.packetSha256 = ('0' * 64) }
+        'inspect-wrong-campaign-tracker' { $inspection.campaignTrackerSha256 = ('0' * 64) }
+        'inspect-wrong-campaign-item' { $inspection.campaignItemId = ('0' * 64) }
         'inspect-wrong-address-receipt' { $inspection.addressReceiptSha256 = ('0' * 64) }
         'inspect-multiple' { $inspection.matchCount = 2 }
         'inspect-negative-match-count' { $inspection.matchCount = -1 }
@@ -1728,6 +2201,8 @@ $result = [ordered]@{
     providerHead = [string]$payload.expectedProviderHead
     operation = [string]$payload.operation
     packetSha256 = [string]$payload.packetSha256
+    campaignTrackerSha256 = [string]$payload.campaignTrackerSha256
+    campaignItemId = [string]$payload.campaignItemId
     addressReceiptSha256 = [string]$payload.addressReceiptSha256
     inspectionSha256 = [string]$payload.inspectionSha256
     inspectionReceiptId = [string]$payload.inspectionReceiptId
@@ -1751,6 +2226,8 @@ switch ($behavior) {
     'wrong-iteration' { $result.iteration = 'other-iteration' }
     'wrong-operation' { $result.operation = 'resolve' }
     'wrong-packet' { $result.packetSha256 = ('0' * 64) }
+    'wrong-campaign-tracker' { $result.campaignTrackerSha256 = ('0' * 64) }
+    'wrong-campaign-item' { $result.campaignItemId = ('0' * 64) }
     'wrong-address-receipt' { $result.addressReceiptSha256 = ('0' * 64) }
     'wrong-inspection' { $result.inspectionSha256 = ('0' * 64) }
     'wrong-inspection-receipt' { $result.inspectionReceiptId = 'other-inspection' }

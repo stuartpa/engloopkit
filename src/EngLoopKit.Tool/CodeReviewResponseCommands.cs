@@ -32,6 +32,13 @@ public static class CodeReviewResponseCommands
         string ManifestSha256,
         string Packet,
         string PacketSha256,
+        string CampaignTracker,
+        string CampaignTrackerSha256,
+        string CampaignItemId,
+        string CampaignItemContentSha256,
+        string CampaignDecisionReceiptId,
+        string CampaignReceipt,
+        string CampaignReceiptSha256,
         string? AddressReceipt,
         string? AddressReceiptSha256,
         string? Adapter,
@@ -53,6 +60,13 @@ public static class CodeReviewResponseCommands
         string SchemaVersion,
         string Packet,
         string PacketSha256,
+        string CampaignTracker,
+        string CampaignTrackerSha256,
+        string CampaignItemId,
+        string CampaignItemContentSha256,
+        string CampaignDecisionReceiptId,
+        string CampaignReceipt,
+        string CampaignReceiptSha256,
         string GateSha256,
         string GateJson,
         string Head,
@@ -75,6 +89,13 @@ public static class CodeReviewResponseCommands
         string SourceRevision,
         string TargetRevision,
         string Iteration,
+        string CampaignTracker,
+        string CampaignTrackerSha256,
+        string CampaignItemId,
+        string CampaignItemContentSha256,
+        string CampaignDecisionReceiptId,
+        string CampaignReceipt,
+        string CampaignReceiptSha256,
         string ActingPrincipal,
         string ThreadStatus,
         string Classification,
@@ -103,7 +124,8 @@ public static class CodeReviewResponseCommands
         string CommandArtifact,
         string CommandArtifactSha256,
         int TimeoutSeconds,
-        string[] Capabilities);
+        string[] Capabilities,
+        JsonElement DiscoveryRequest);
 
     private sealed record Approval(
         string SchemaVersion,
@@ -137,6 +159,35 @@ public static class CodeReviewResponseCommands
         string? Diagnostic,
         string? ProviderReceiptId);
 
+    private sealed record CompletionReceipt(
+        string SchemaVersion,
+        string SessionHash,
+        string GateSha256,
+        string GateJson,
+        string Attempt,
+        string AttemptSha256,
+        string CampaignTracker,
+        string PreviousCampaignTrackerSha256,
+        string CampaignTrackerSha256,
+        string CampaignReceipt,
+        string CampaignReceiptSha256,
+        string CampaignItemId,
+        string Packet,
+        string PacketSha256,
+        string Operation,
+        string ProviderReceiptId);
+
+    private sealed record ProviderClaim(
+        string SchemaVersion,
+        string SessionHash,
+        string GateSha256,
+        string PacketSha256,
+        string CampaignTrackerSha256,
+        string CampaignItemId,
+        string AdapterSha256,
+        string Operation,
+        string ApprovalSha256);
+
     private sealed record AdapterResult(
         string SchemaVersion,
         string Status,
@@ -152,6 +203,8 @@ public static class CodeReviewResponseCommands
         string ProviderHead,
         string Operation,
         string PacketSha256,
+        string CampaignTrackerSha256,
+        string CampaignItemId,
         string AddressReceiptSha256,
         string InspectionSha256,
         string InspectionReceiptId,
@@ -177,6 +230,8 @@ public static class CodeReviewResponseCommands
         string ProviderHead,
         string Operation,
         string PacketSha256,
+        string CampaignTrackerSha256,
+        string CampaignItemId,
         string AddressReceiptSha256,
         int? MatchCount,
         bool? MutationPerformed,
@@ -190,6 +245,11 @@ public static class CodeReviewResponseCommands
     private static readonly HashSet<string> AddressReadTools = new(LocalReadTools, StringComparer.OrdinalIgnoreCase)
     {
         "search", "fetch_webpage", "web",
+    };
+
+    private static readonly HashSet<string> AddressLocalReadTools = new(LocalReadTools, StringComparer.OrdinalIgnoreCase)
+    {
+        "search",
     };
 
     private static readonly HashSet<string> EditTools = new(StringComparer.OrdinalIgnoreCase)
@@ -206,7 +266,7 @@ public static class CodeReviewResponseCommands
     private static readonly HashSet<string> ThreadStatuses = new(StringComparer.Ordinal) { "active", "resolved" };
     private static readonly HashSet<string> AdapterStatuses = new(StringComparer.Ordinal) { "success", "rejected", "outcome-unknown" };
     private static readonly HashSet<string> InspectionStatuses = new(StringComparer.Ordinal) { "ready", "rejected" };
-    private static readonly HashSet<string> AdapterCapabilities = new(Operations, StringComparer.Ordinal) { "inspect" };
+    private static readonly HashSet<string> AdapterCapabilities = new(Operations, StringComparer.Ordinal) { "discover", "inspect" };
     private static readonly HashSet<string> AttemptStates = new(StringComparer.Ordinal) { "started", "outcome-unknown", "rejected", "success" };
     private static readonly HashSet<string> InlineEvaluationFlags = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -233,7 +293,7 @@ public static class CodeReviewResponseCommands
                 "initialize" => Initialize(root, mode, sessionHash, gatePath, ReadString(input.RootElement, "prompt")),
                 "guard" => Guard(root, mode, gatePath, input.RootElement),
                 "post-tool" => PostTool(root, mode, gatePath, input.RootElement),
-                "stop" => Stop(root, mode, gatePath),
+                "stop" => Stop(root, mode, sessionHash, gatePath),
                 _ => throw new InvalidOperationException("review-response-action-invalid"),
             };
         }
@@ -258,104 +318,169 @@ public static class CodeReviewResponseCommands
             var approvalRelative = GovernedPath(root, Option(args, "--approval"), ".engloop/out/code-review-response/approvals/");
             var gatePath = Full(root, gateRelative);
             var approvalPath = Full(root, approvalRelative);
+            using var sessionLock = AcquireExclusiveLock(root, gatePath + ".lock",
+                "review-response-session-operation-in-progress");
             var gate = Read<Gate>(gatePath, "review-response-gate-invalid");
             Ensure(gate.Mode == "reply-resolve", "review-response-gate-mode-invalid");
-            ValidateGate(root, gate);
             Ensure(approvalRelative == ApprovalRelative(gate.SessionHash), "review-response-approval-path-mismatch");
+            var completionRelative = CompletionRelative(gate.SessionHash);
+            var completionPath = Full(root, completionRelative);
+            if (File.Exists(completionPath))
+            {
+                var completion = Read<CompletionReceipt>(completionPath,
+                    "review-response-completion-receipt-invalid");
+                ValidateCompletionReceipt(root, gate.SessionHash, gatePath, completion);
+                DeleteProviderClaimForCompletion(root, completion);
+                if (File.Exists(approvalPath)) File.Delete(approvalPath);
+                Console.WriteLine($"CODE_REVIEW_RESPONSE_ALREADY_APPLIED receipt={completion.Attempt} completionReceipt={completionRelative}");
+                return 0;
+            }
+            if (TryRecoverCompletedCampaign(root, gate.SessionHash, gatePath, gate,
+                out var recoveredPacket, out var recoveredAttemptPath,
+                out var recoveredAttempt, out var recoveredCampaign))
+            {
+                var completion = WriteCompletionReceipt(root, gate.SessionHash, gatePath,
+                    gate, recoveredPacket!, recoveredAttemptPath!, recoveredAttempt!,
+                    recoveredCampaign!);
+                DeleteProviderClaimIfPresent(root, gate, completion.GateSha256,
+                    recoveredAttempt!.ApprovalSha256);
+                if (File.Exists(approvalPath)) File.Delete(approvalPath);
+                Console.WriteLine($"CODE_REVIEW_RESPONSE_ALREADY_APPLIED receipt={completion.Attempt} completionReceipt={completionRelative}");
+                return 0;
+            }
+            ValidateGate(root, gate);
             var packet = ReadPacket(root, gate.Packet);
-            ValidatePacket(packet, gate, requireReadyForProvider: true);
+            ValidatePacket(root, packet, gate, requireReadyForProvider: true);
             var adapter = ReadAdapter(root, gate.Adapter!);
             ValidateAdapter(root, adapter, gate, packet);
             var inspection = Read<AdapterInspection>(Full(root, gate.Inspection!), "review-response-provider-inspection-invalid");
 
             var attemptPath = AttemptPath(root, gate.PacketSha256, gate.Operation!);
-            using var attemptLock = AcquireExclusiveLock(root, attemptPath + ".lock", "review-response-attempt-in-progress");
-            var existing = File.Exists(attemptPath) ? Read<Attempt>(attemptPath, "review-response-attempt-invalid") : null;
-            if (existing is not null) ValidateAttempt(existing, gate, gatePath);
-            if (existing is { State: "success" })
+            ReviewCampaignBinding updatedCampaign;
+            Attempt successfulAttempt;
+            using (var campaignLease = CodeReviewCampaignCommands.AcquireItemMutationLease(
+                root, gate.CampaignTracker, gate.CampaignItemId,
+                gate.CampaignTrackerSha256))
             {
-                if (File.Exists(approvalPath)) File.Delete(approvalPath);
-                Console.WriteLine($"CODE_REVIEW_RESPONSE_ALREADY_APPLIED receipt={Path.GetRelativePath(root, attemptPath).Replace('\\', '/')}");
-                return 0;
-            }
-            var approval = Read<Approval>(approvalPath, "review-response-approval-invalid");
-            ValidateApproval(gatePath, gate, packet, approval);
-            Ensure(approval.ReplySha256 == Sha256Text(packet.ReplyText), "review-response-approved-reply-changed");
-            var approvalJson = File.ReadAllText(approvalPath);
-            var approvalSha256 = Sha256Text(approvalJson);
-            if (existing is not null) Ensure(existing.ApprovalSha256 == approvalSha256, "review-response-attempt-approval-mismatch");
-            var phase = existing is null ? "apply" : "reconcile";
-            if (existing is not null) Ensure(existing.State is "started" or "outcome-unknown", "review-response-attempt-retry-forbidden");
-            var attemptId = existing?.AttemptId ?? Guid.NewGuid().ToString("N");
-            var marker = existing?.Marker ?? $"elk-review-response:{gate.PacketSha256[..16]}:{attemptId}";
-            var started = new Attempt("1.0", "started", attemptId, FileSha256(gatePath), gate.PacketSha256, gate.AdapterSha256!, gate.Operation!, marker,
-                approvalSha256, approvalJson, approval.ToolUseId, approval.QuestionSha256, approval.ResponseSha256, approval.QuestionJson, approval.ResponseJson, null, null);
-            Directory.CreateDirectory(Path.GetDirectoryName(attemptPath)!);
-            if (existing is null) WriteJsonCreateNew(attemptPath, started, "review-response-attempt-already-exists"); else WriteJson(attemptPath, started);
+                using var attemptLock = AcquireExclusiveLock(root, attemptPath + ".lock", "review-response-attempt-in-progress");
+                var existing = File.Exists(attemptPath) ? Read<Attempt>(attemptPath, "review-response-attempt-invalid") : null;
+                if (existing is not null) ValidateAttempt(existing, gate, gatePath);
+                string approvalSha256;
+                string approvalJson;
+                Approval approval;
+                if (existing is { State: "rejected" })
+                {
+                    DeleteProviderClaimIfPresent(root, gate, FileSha256(gatePath),
+                        existing.ApprovalSha256);
+                    if (File.Exists(approvalPath)) File.Delete(approvalPath);
+                    Console.Error.WriteLine("CODE_REVIEW_RESPONSE_REJECTED");
+                    return 1;
+                }
+                if (existing is { State: "success" })
+                {
+                    approvalSha256 = existing.ApprovalSha256;
+                    approvalJson = existing.ApprovalJson;
+                    approval = JsonSerializer.Deserialize<Approval>(approvalJson, JsonOptions)
+                        ?? throw new InvalidOperationException("review-response-attempt-approval-invalid");
+                    ValidateProviderClaim(root, gate, approvalSha256);
+                    successfulAttempt = existing;
+                }
+                else
+                {
+                    approval = Read<Approval>(approvalPath, "review-response-approval-invalid");
+                    ValidateApproval(gatePath, gate, packet, approval);
+                    Ensure(approval.ReplySha256 == Sha256Text(packet.ReplyText), "review-response-approved-reply-changed");
+                    approvalJson = File.ReadAllText(approvalPath);
+                    approvalSha256 = Sha256Text(approvalJson);
+                    if (existing is not null) Ensure(existing.ApprovalSha256 == approvalSha256, "review-response-attempt-approval-mismatch");
+                    var phase = existing is null ? "apply" : "reconcile";
+                    if (existing is not null) Ensure(existing.State is "started" or "outcome-unknown", "review-response-attempt-retry-forbidden");
+                    AcquireOrValidateProviderClaim(root, gate, approvalSha256);
+                    var attemptId = existing?.AttemptId ?? Guid.NewGuid().ToString("N");
+                    var marker = existing?.Marker ?? $"elk-review-response:{gate.PacketSha256[..16]}:{attemptId}";
+                    var started = new Attempt("1.0", "started", attemptId, FileSha256(gatePath), gate.PacketSha256, gate.AdapterSha256!, gate.Operation!, marker,
+                        approvalSha256, approvalJson, approval.ToolUseId, approval.QuestionSha256, approval.ResponseSha256, approval.QuestionJson, approval.ResponseJson, null, null);
+                    Directory.CreateDirectory(Path.GetDirectoryName(attemptPath)!);
+                    if (existing is null) WriteJsonCreateNew(attemptPath, started, "review-response-attempt-already-exists"); else WriteJson(attemptPath, started);
 
-            var request = JsonSerializer.Serialize(new
-            {
-                schemaVersion = "1.0",
-                phase,
-                adapterId = adapter.AdapterId,
-                packet.Provider,
-                packet.Repository,
-                packet.PullRequest,
-                packet.Thread,
-                packet.SourceRevision,
-                packet.TargetRevision,
-                packet.Iteration,
-                packet.ActingPrincipal,
-                operation = gate.Operation,
-                replyText = packet.ReplyText,
-                replySha256 = Sha256Text(packet.ReplyText),
-                packetSha256 = gate.PacketSha256,
-                addressReceiptSha256 = gate.AddressReceiptSha256,
-                inspectionSha256 = gate.InspectionSha256,
-                inspectionReceiptId = inspection.InspectionReceiptId,
-                requiredFixRevision = packet.RequiredFixRevision,
-                expectedProviderHead = packet.ProviderHead,
-                expectedThreadStatus = packet.ThreadStatus,
-                marker,
-                adapterRequest = packet.AdapterRequest,
-            }, JsonOptions);
-            (int ExitCode, string Output, string Error) invoked;
-            try
-            {
-                invoked = InvokeAdapter(root, adapter, gate, request);
+                    var request = JsonSerializer.Serialize(new
+                    {
+                        schemaVersion = "1.0",
+                        phase,
+                        adapterId = adapter.AdapterId,
+                        packet.Provider,
+                        packet.Repository,
+                        packet.PullRequest,
+                        packet.Thread,
+                        packet.SourceRevision,
+                        packet.TargetRevision,
+                        packet.Iteration,
+                        packet.ActingPrincipal,
+                        operation = gate.Operation,
+                        replyText = packet.ReplyText,
+                        replySha256 = Sha256Text(packet.ReplyText),
+                        packetSha256 = gate.PacketSha256,
+                        campaignTrackerSha256 = gate.CampaignTrackerSha256,
+                        campaignItemId = gate.CampaignItemId,
+                        addressReceiptSha256 = gate.AddressReceiptSha256,
+                        inspectionSha256 = gate.InspectionSha256,
+                        inspectionReceiptId = inspection.InspectionReceiptId,
+                        requiredFixRevision = packet.RequiredFixRevision,
+                        expectedProviderHead = packet.ProviderHead,
+                        expectedThreadStatus = packet.ThreadStatus,
+                        marker,
+                        adapterRequest = packet.AdapterRequest,
+                    }, JsonOptions);
+                    (int ExitCode, string Output, string Error) invoked;
+                    try
+                    {
+                        invoked = InvokeAdapter(root, adapter, gate, request);
+                    }
+                    catch (Exception ex)
+                    {
+                        WriteJson(attemptPath, started with { State = "outcome-unknown", Diagnostic = "adapter-invocation=" + ex.GetType().Name });
+                        Console.Error.WriteLine("CODE_REVIEW_RESPONSE_OUTCOME_UNKNOWN reconcile-before-retry");
+                        return 2;
+                    }
+                    if (invoked.ExitCode != 0 || !TryParseAdapterResult(invoked.Output, out var result))
+                    {
+                        WriteJson(attemptPath, started with { State = "outcome-unknown", Diagnostic = $"adapter-exit={invoked.ExitCode};stdout={Sha256Text(invoked.Output)};stderr={Sha256Text(invoked.Error)}" });
+                        Console.Error.WriteLine("CODE_REVIEW_RESPONSE_OUTCOME_UNKNOWN reconcile-before-retry");
+                        return 2;
+                    }
+                    try
+                    {
+                        ValidateAdapterResult(result!, gate, packet, inspection, marker);
+                    }
+                    catch (Exception ex)
+                    {
+                        WriteJson(attemptPath, started with { State = "outcome-unknown", Diagnostic = ex.Message });
+                        Console.Error.WriteLine("CODE_REVIEW_RESPONSE_OUTCOME_UNKNOWN reconcile-before-retry");
+                        return 2;
+                    }
+                    if (result!.Status != "success")
+                    {
+                        var state = result.Status == "outcome-unknown" ? "outcome-unknown" : "rejected";
+                        WriteJson(attemptPath, started with { State = state, Diagnostic = result.Status, ProviderReceiptId = result.ProviderReceiptId });
+                        if (state == "rejected") DeleteProviderClaimIfPresent(root, gate, FileSha256(gatePath), approvalSha256);
+                        Console.Error.WriteLine(state == "outcome-unknown" ? "CODE_REVIEW_RESPONSE_OUTCOME_UNKNOWN reconcile-before-retry" : "CODE_REVIEW_RESPONSE_REJECTED");
+                        return state == "outcome-unknown" ? 2 : 1;
+                    }
+                    successfulAttempt = started with { State = "success", ProviderReceiptId = result.ProviderReceiptId };
+                    WriteJson(attemptPath, successfulAttempt);
+                }
+
+                updatedCampaign = CodeReviewCampaignCommands.CompleteItemForStageUnderLease(
+                    root, campaignLease, gate.CampaignTrackerSha256, gate.Packet,
+                    gate.PacketSha256, packet.RequiredFixRevision, gate.Operation!,
+                    successfulAttempt.ProviderReceiptId!);
             }
-            catch (Exception ex)
-            {
-                WriteJson(attemptPath, started with { State = "outcome-unknown", Diagnostic = "adapter-invocation=" + ex.GetType().Name });
-                Console.Error.WriteLine("CODE_REVIEW_RESPONSE_OUTCOME_UNKNOWN reconcile-before-retry");
-                return 2;
-            }
-            if (invoked.ExitCode != 0 || !TryParseAdapterResult(invoked.Output, out var result))
-            {
-                WriteJson(attemptPath, started with { State = "outcome-unknown", Diagnostic = $"adapter-exit={invoked.ExitCode};stdout={Sha256Text(invoked.Output)};stderr={Sha256Text(invoked.Error)}" });
-                Console.Error.WriteLine("CODE_REVIEW_RESPONSE_OUTCOME_UNKNOWN reconcile-before-retry");
-                return 2;
-            }
-            try
-            {
-                ValidateAdapterResult(result!, gate, packet, inspection, marker);
-            }
-            catch (Exception ex)
-            {
-                WriteJson(attemptPath, started with { State = "outcome-unknown", Diagnostic = ex.Message });
-                Console.Error.WriteLine("CODE_REVIEW_RESPONSE_OUTCOME_UNKNOWN reconcile-before-retry");
-                return 2;
-            }
-            if (result!.Status != "success")
-            {
-                var state = result.Status == "outcome-unknown" ? "outcome-unknown" : "rejected";
-                WriteJson(attemptPath, started with { State = state, Diagnostic = result.Status, ProviderReceiptId = result.ProviderReceiptId });
-                Console.Error.WriteLine(state == "outcome-unknown" ? "CODE_REVIEW_RESPONSE_OUTCOME_UNKNOWN reconcile-before-retry" : "CODE_REVIEW_RESPONSE_REJECTED");
-                return state == "outcome-unknown" ? 2 : 1;
-            }
-            WriteJson(attemptPath, started with { State = "success", ProviderReceiptId = result.ProviderReceiptId });
-            File.Delete(approvalPath);
-            Console.WriteLine($"CODE_REVIEW_RESPONSE_APPLIED receipt={Path.GetRelativePath(root, attemptPath).Replace('\\', '/')} providerReceipt={result.ProviderReceiptId}");
+            var completionReceipt = WriteCompletionReceipt(root, gate.SessionHash, gatePath,
+                gate, packet, attemptPath, successfulAttempt, updatedCampaign);
+            DeleteProviderClaimIfPresent(root, gate, completionReceipt.GateSha256,
+                successfulAttempt.ApprovalSha256);
+            if (File.Exists(approvalPath)) File.Delete(approvalPath);
+            Console.WriteLine($"CODE_REVIEW_RESPONSE_APPLIED receipt={Path.GetRelativePath(root, attemptPath).Replace('\\', '/')} providerReceipt={successfulAttempt.ProviderReceiptId} campaignItem={gate.CampaignItemId} completionReceipt={completionRelative}");
             return 0;
         }
         catch (Exception ex)
@@ -368,32 +493,32 @@ public static class CodeReviewResponseCommands
     private static int Initialize(string root, string mode, string sessionHash, string gatePath, string prompt)
     {
         Ensure(!File.Exists(gatePath), "review-response-gate-already-exists");
+        if (mode == "reply-resolve")
+            Ensure(!File.Exists(Full(root, CompletionRelative(sessionHash))),
+                "review-response-session-already-completed");
+        var tracker = CodeReviewCampaignCommands.NormalizeTrackerPath(root, Argument(prompt, "--tracker"));
+        var itemId = Argument(prompt, "--item");
+        var binding = CodeReviewCampaignCommands.BindItemForStage(root, tracker, itemId);
         var packet = PacketPath(root, Argument(prompt, "--packet"));
         Gate gate;
         if (mode == "address")
         {
             Ensure(!File.Exists(Full(root, packet)), "review-response-packet-already-exists");
             Ensure(StatusText(root).Length == 0, "review-response-checkout-not-clean-use-isolated-worktree");
-            var provider = Identity(Argument(prompt, "--provider"), "provider");
-            var repository = Identity(Argument(prompt, "--repository"), "repository");
-            var pr = Identity(Argument(prompt, "--pr"), "pr");
-            var thread = Identity(Argument(prompt, "--thread"), "thread");
-            var source = Revision(Argument(prompt, "--source"), "source");
-            Ensure(source == GitHead(root), "review-response-source-not-local-head");
-            var target = Revision(Argument(prompt, "--target"), "target");
-            var iteration = Identity(Argument(prompt, "--iteration"), "iteration");
-            gate = NewGate(root, mode, sessionHash, packet, null, null, provider, repository, pr, thread, source, target, iteration);
+            Ensure(binding.Tracker.ProviderHead == GitHead(root), "review-response-campaign-head-not-local-head");
+            gate = NewGate(root, mode, sessionHash, packet, null, null, binding);
         }
         else
         {
-            Ensure(StatusText(root).Length == 0, "review-response-stage12-checkout-not-clean");
+            Ensure(StatusText(root).Length == 0, "review-response-stage13-checkout-not-clean");
             Ensure(File.Exists(Full(root, packet)), "review-response-packet-missing");
             var loaded = ReadPacket(root, packet);
             var operation = Operation(Argument(prompt, "--operation"));
             var adapterPath = GovernedPath(root, Argument(prompt, "--adapter"), ".engloop/provider-adapters/");
+            Ensure(adapterPath == binding.Tracker.Adapter, "review-response-campaign-adapter-mismatch");
             var adapter = ReadAdapter(root, adapterPath);
-            gate = NewGate(root, mode, sessionHash, packet, adapterPath, operation, loaded.Provider, loaded.Repository, loaded.PullRequest, loaded.Thread, loaded.SourceRevision, loaded.TargetRevision, loaded.Iteration);
-            ValidatePacket(loaded, gate, requireReadyForProvider: true);
+            gate = NewGate(root, mode, sessionHash, packet, adapterPath, operation, binding);
+            ValidatePacket(root, loaded, gate, requireReadyForProvider: true);
             ValidateAddressReceipt(root, gate);
             ValidateAdapter(root, adapter, gate, loaded);
             var inspection = InspectAdapter(root, adapter, gate, loaded);
@@ -413,6 +538,22 @@ public static class CodeReviewResponseCommands
     private static int Guard(string root, string mode, string gatePath, JsonElement input)
     {
         var gate = Read<Gate>(gatePath, "review-response-gate-missing-or-invalid");
+        if (mode == "reply-resolve")
+        {
+            var completionPath = Full(root, CompletionRelative(gate.SessionHash));
+            if (File.Exists(completionPath))
+            {
+                var completion = Read<CompletionReceipt>(completionPath,
+                    "review-response-completion-receipt-invalid");
+                ValidateCompletionReceipt(root, gate.SessionHash, gatePath, completion);
+                var completedTool = ReadString(input, "tool_name", "toolName");
+                var completedAllow = LocalReadTools.Contains(completedTool);
+                WriteDecision(completedAllow, completedAllow
+                    ? "Allowed to inspect the exact completed review-response evidence."
+                    : "Denied because the provider operation is already complete.");
+                return 0;
+            }
+        }
         ValidateGate(root, gate);
         Ensure(gate.Mode == mode, "review-response-gate-mode-mismatch");
         var tool = ReadString(input, "tool_name", "toolName");
@@ -420,7 +561,14 @@ public static class CodeReviewResponseCommands
         bool allow;
         if (mode == "address")
         {
-            allow = AddressReadTools.Contains(tool) || EditTools.Contains(tool) && IsAllowedAuthorEdit(input, gate) || IsDeclaredValidation(root, tool, command);
+            var campaign = CodeReviewCampaignCommands.BindItemForStage(root,
+                gate.CampaignTracker, gate.CampaignItemId);
+            allow = AddressLocalReadTools.Contains(tool)
+                || campaign.Item.HumanDecision == "accepted-actionable"
+                    && (EditTools.Contains(tool) && IsAllowedAuthorEdit(input, gate)
+                        || IsDeclaredValidation(root, tool, command))
+                || campaign.Item.HumanDecision != "accepted-actionable"
+                    && EditTools.Contains(tool) && IsPacketOnlyEdit(tool, input, gate);
         }
         else
         {
@@ -447,7 +595,7 @@ public static class CodeReviewResponseCommands
         Ensure(gate.Mode == mode, "review-response-gate-mode-mismatch");
         Ensure(!HasSuccessfulAttempt(root, gate, gatePath), "review-response-already-applied");
         var packet = ReadPacket(root, gate.Packet);
-        ValidatePacket(packet, gate, requireReadyForProvider: true);
+        ValidatePacket(root, packet, gate, requireReadyForProvider: true);
         var toolUseId = ReadString(input, "tool_use_id", "toolUseId");
         Ensure(toolUseId.Length > 0, "review-response-approval-tool-use-id-missing");
         var questionText = $"Apply {gate.Operation} to thread {gate.Thread} with packet {gate.PacketSha256[..12]}?";
@@ -473,18 +621,52 @@ public static class CodeReviewResponseCommands
         return 0;
     }
 
-    private static int Stop(string root, string mode, string gatePath)
+    private static int Stop(string root, string mode, string sessionHash, string gatePath)
     {
+        var completionRelative = CompletionRelative(sessionHash);
+        var completionPath = Full(root, completionRelative);
         if (!File.Exists(gatePath))
         {
+            if (mode == "reply-resolve" && File.Exists(completionPath))
+            {
+                var completion = Read<CompletionReceipt>(completionPath,
+                    "review-response-completion-receipt-invalid");
+                ValidateCompletionReceipt(root, sessionHash, null, completion);
+                DeleteProviderClaimForCompletion(root, completion);
+                WriteHook(true, systemMessage: CompletionMessage(completionRelative, completion, alreadyCompleted: true));
+                return 0;
+            }
             WriteHook(true, systemMessage: "CODE_REVIEW_RESPONSE_CANCELLED completionAccepted=false");
             return 0;
         }
         var gate = Read<Gate>(gatePath, "review-response-gate-missing-or-invalid");
+        if (mode == "reply-resolve" && File.Exists(completionPath))
+        {
+            var completion = Read<CompletionReceipt>(completionPath,
+                "review-response-completion-receipt-invalid");
+            ValidateCompletionReceipt(root, sessionHash, gatePath, completion);
+            DeleteProviderClaimForCompletion(root, completion);
+            File.Delete(gatePath);
+            WriteHook(true, systemMessage: CompletionMessage(completionRelative, completion, alreadyCompleted: true));
+            return 0;
+        }
+        if (mode == "reply-resolve"
+            && TryRecoverCompletedCampaign(root, sessionHash, gatePath, gate,
+                out var recoveredPacket, out var recoveredAttemptPath,
+                out var recoveredAttempt, out var recoveredCampaign))
+        {
+            var completion = WriteCompletionReceipt(root, sessionHash, gatePath, gate,
+                recoveredPacket!, recoveredAttemptPath!, recoveredAttempt!, recoveredCampaign!);
+            DeleteProviderClaimIfPresent(root, gate, completion.GateSha256,
+                recoveredAttempt!.ApprovalSha256);
+            File.Delete(gatePath);
+            WriteHook(true, systemMessage: CompletionMessage(completionRelative, completion, alreadyCompleted: true));
+            return 0;
+        }
         ValidateGate(root, gate);
         Ensure(gate.Mode == mode, "review-response-gate-mode-mismatch");
         var packet = ReadPacket(root, gate.Packet);
-        ValidatePacket(packet, gate, requireReadyForProvider: mode == "reply-resolve");
+        ValidatePacket(root, packet, gate, requireReadyForProvider: mode == "reply-resolve");
         if (mode == "address")
         {
             Ensure(packet.FinalStatusDigest == StatusDigest(root), "review-response-final-status-mismatch");
@@ -496,7 +678,10 @@ public static class CodeReviewResponseCommands
             var receiptPath = Full(root, receiptRelative);
             Directory.CreateDirectory(Path.GetDirectoryName(receiptPath)!);
             var gateJson = File.ReadAllText(gatePath);
-            var receipt = new AddressReceipt("1.0", gate.Packet, packetHash, FileSha256(gatePath), gateJson, gate.Head,
+            var receipt = new AddressReceipt("1.0", gate.Packet, packetHash, gate.CampaignTracker,
+                gate.CampaignTrackerSha256, gate.CampaignItemId, gate.CampaignItemContentSha256,
+                gate.CampaignDecisionReceiptId, gate.CampaignReceipt, gate.CampaignReceiptSha256,
+                FileSha256(gatePath), gateJson, gate.Head,
                 gate.Provider, gate.Repository, gate.PullRequest, gate.Thread, gate.SourceRevision,
                 gate.TargetRevision, gate.Iteration, packet.FinalStatusDigest);
             if (File.Exists(receiptPath))
@@ -522,12 +707,157 @@ public static class CodeReviewResponseCommands
         var attempt = Read<Attempt>(attemptPath, "review-response-attempt-invalid");
         ValidateAttempt(attempt, gate, gatePath);
         Ensure(attempt.State == "success", "review-response-provider-outcome-not-success:" + attempt.State);
+        ValidateProviderClaim(root, gate, attempt.ApprovalSha256);
+        var updatedCampaign = CodeReviewCampaignCommands.CompleteItemForStage(root,
+            gate.CampaignTracker, gate.CampaignItemId, gate.CampaignTrackerSha256,
+            gate.Packet, gate.PacketSha256, packet.RequiredFixRevision, gate.Operation!,
+            attempt.ProviderReceiptId!);
+        var completionReceipt = WriteCompletionReceipt(root, sessionHash, gatePath, gate,
+            packet, attemptPath, attempt, updatedCampaign);
+        DeleteProviderClaimIfPresent(root, gate, completionReceipt.GateSha256,
+            attempt.ApprovalSha256);
         File.Delete(gatePath);
-        WriteHook(true, systemMessage: $"CODE_REVIEW_REPLY_RESOLVE_OK receipt={Path.GetRelativePath(root, attemptPath).Replace('\\', '/')}");
+        WriteHook(true, systemMessage: CompletionMessage(completionRelative, completionReceipt, alreadyCompleted: false));
         return 0;
     }
 
-    private static Gate NewGate(string root, string mode, string sessionHash, string packet, string? adapter, string? operation, string provider, string repository, string pr, string thread, string source, string target, string iteration)
+    private static bool TryRecoverCompletedCampaign(string root, string sessionHash,
+        string gatePath, Gate gate, out AddressPacket? packet, out string? attemptPath,
+        out Attempt? attempt, out ReviewCampaignBinding? campaign)
+    {
+        packet = null;
+        attemptPath = null;
+        attempt = null;
+        campaign = null;
+        Ensure(gate.SchemaVersion == "1.0" && gate.Mode == "reply-resolve"
+            && gate.SessionHash == sessionHash && IsHash(gate.SessionHash)
+            && IsHash(gate.PacketSha256) && IsHash(gate.CampaignTrackerSha256)
+            && IsHash(gate.CampaignItemId) && IsHash(gate.CampaignItemContentSha256)
+            && IsHash(gate.CampaignReceiptSha256) && gate.Operation is not null
+            && Operations.Contains(gate.Operation), "review-response-completion-gate-invalid");
+        _ = PacketPath(root, gate.Packet);
+        _ = CodeReviewCampaignCommands.NormalizeTrackerPath(root, gate.CampaignTracker);
+        _ = GovernedPath(root, gate.CampaignReceipt,
+            ".engloop/out/code-review-response/campaign-receipts/");
+        Ensure(gate.AddressReceipt is not null && IsHash(gate.AddressReceiptSha256 ?? string.Empty)
+            && gate.Adapter is not null && IsHash(gate.AdapterSha256 ?? string.Empty)
+            && IsHash(gate.AdapterArtifactSha256 ?? string.Empty)
+            && gate.Inspection is not null && IsHash(gate.InspectionSha256 ?? string.Empty),
+            "review-response-completion-gate-invalid");
+        var operation = gate.Operation!;
+        var adapterRelative = gate.Adapter!;
+        var inspectionRelativeFromGate = gate.Inspection!;
+        Ensure(FileSha256(Full(root, gate.Packet)) == gate.PacketSha256,
+            "review-response-packet-changed");
+        attemptPath = AttemptPath(root, gate.PacketSha256, operation);
+        if (!File.Exists(attemptPath)) return false;
+        attempt = Read<Attempt>(attemptPath, "review-response-attempt-invalid");
+        ValidateAttempt(attempt, gate, gatePath);
+        if (attempt.State != "success") return false;
+        packet = ReadPacket(root, gate.Packet);
+        ValidateAddressReceipt(root, gate);
+        var adapter = ReadAdapter(root, adapterRelative);
+        Ensure(FileSha256(Full(root, adapterRelative)) == gate.AdapterSha256,
+            "review-response-adapter-changed");
+        ValidateAdapter(root, adapter, gate, packet);
+        var inspectionRelative = GovernedPath(root, inspectionRelativeFromGate,
+            ".engloop/out/code-review-response/inspections/");
+        var inspectionPath = Full(root, inspectionRelative);
+        Ensure(FileSha256(inspectionPath) == gate.InspectionSha256,
+            "review-response-provider-inspection-changed");
+        var inspection = Read<AdapterInspection>(inspectionPath,
+            "review-response-provider-inspection-invalid");
+        ValidateAdapterInspection(inspection, gate, packet);
+        Ensure(inspection.Status == "ready", "review-response-provider-inspection-rejected");
+        ValidateProviderClaim(root, gate, attempt.ApprovalSha256);
+        return CodeReviewCampaignCommands.TryGetCompletedItemForStage(root,
+            gate.CampaignTracker, gate.CampaignItemId, gate.Packet, gate.PacketSha256,
+            packet.RequiredFixRevision, operation, attempt.ProviderReceiptId!, out campaign);
+    }
+
+    private static CompletionReceipt WriteCompletionReceipt(string root, string sessionHash,
+        string gatePath, Gate gate, AddressPacket packet, string attemptPath, Attempt attempt,
+        ReviewCampaignBinding campaign)
+    {
+        var gateJson = File.ReadAllText(gatePath);
+        var attemptRelative = Path.GetRelativePath(root, attemptPath).Replace('\\', '/');
+        var completion = new CompletionReceipt("1.0", sessionHash, FileSha256(gatePath),
+            gateJson, attemptRelative, FileSha256(attemptPath), campaign.TrackerPath,
+            gate.CampaignTrackerSha256, campaign.TrackerSha256,
+            campaign.CampaignReceiptPath, campaign.CampaignReceiptSha256,
+            gate.CampaignItemId, gate.Packet, gate.PacketSha256, gate.Operation!,
+            attempt.ProviderReceiptId!);
+        var path = Full(root, CompletionRelative(sessionHash));
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        WriteJsonCreateNewOrExact(path, completion, "review-response-completion-receipt-conflict");
+        ValidateCompletionReceipt(root, sessionHash, gatePath, completion);
+        return completion;
+    }
+
+    private static void ValidateCompletionReceipt(string root, string sessionHash,
+        string? gatePath, CompletionReceipt completion)
+    {
+        Ensure(AllPresent(completion.SchemaVersion, completion.SessionHash,
+            completion.GateSha256, completion.GateJson, completion.Attempt,
+            completion.AttemptSha256, completion.CampaignTracker,
+            completion.PreviousCampaignTrackerSha256, completion.CampaignTrackerSha256,
+            completion.CampaignReceipt, completion.CampaignReceiptSha256,
+            completion.CampaignItemId, completion.Packet, completion.PacketSha256,
+            completion.Operation, completion.ProviderReceiptId),
+            "review-response-completion-receipt-fields-missing");
+        Ensure(completion.SchemaVersion == "1.0" && completion.SessionHash == sessionHash
+            && IsHash(completion.SessionHash) && IsHash(completion.GateSha256)
+            && IsHash(completion.AttemptSha256)
+            && IsHash(completion.PreviousCampaignTrackerSha256)
+            && IsHash(completion.CampaignTrackerSha256)
+            && completion.PreviousCampaignTrackerSha256 != completion.CampaignTrackerSha256
+            && IsHash(completion.CampaignReceiptSha256)
+            && IsHash(completion.CampaignItemId) && IsHash(completion.PacketSha256)
+            && Operations.Contains(completion.Operation)
+            && !string.IsNullOrWhiteSpace(completion.ProviderReceiptId),
+            "review-response-completion-receipt-invalid");
+        Ensure(Sha256Text(completion.GateJson) == completion.GateSha256,
+            "review-response-completion-gate-changed");
+        Gate gate;
+        try { gate = JsonSerializer.Deserialize<Gate>(completion.GateJson, JsonOptions)
+            ?? throw new InvalidOperationException("review-response-completion-gate-invalid"); }
+        catch (JsonException) { throw new InvalidOperationException("review-response-completion-gate-invalid"); }
+        Ensure(gate.SchemaVersion == "1.0" && gate.Mode == "reply-resolve"
+            && gate.SessionHash == sessionHash && gate.Packet == completion.Packet
+            && gate.PacketSha256 == completion.PacketSha256
+            && gate.CampaignTracker == completion.CampaignTracker
+            && gate.CampaignTrackerSha256 == completion.PreviousCampaignTrackerSha256
+            && gate.CampaignItemId == completion.CampaignItemId
+            && gate.Operation == completion.Operation,
+            "review-response-completion-gate-invalid");
+        if (gatePath is not null)
+            Ensure(FileSha256(gatePath) == completion.GateSha256,
+                "review-response-completion-gate-changed");
+        Ensure(FileSha256(Full(root, completion.Packet)) == completion.PacketSha256,
+            "review-response-completion-packet-changed");
+        var attemptRelative = GovernedPath(root, completion.Attempt,
+            ".engloop/out/code-review-response/attempts/");
+        var attemptPath = Full(root, attemptRelative);
+        Ensure(attemptPath == AttemptPath(root, completion.PacketSha256, completion.Operation),
+            "review-response-completion-attempt-changed");
+        var attempt = Read<Attempt>(attemptPath, "review-response-attempt-invalid");
+        ValidateAttemptAgainstHash(attempt, gate, completion.GateSha256);
+        Ensure(attempt.State == "success"
+            && attempt.ProviderReceiptId == completion.ProviderReceiptId,
+            "review-response-completion-attempt-invalid");
+        Ensure(FileSha256(attemptPath) == completion.AttemptSha256,
+            "review-response-completion-attempt-changed");
+        CodeReviewCampaignCommands.ValidateHistoricalCampaignReceipt(root,
+            completion.CampaignTracker, completion.CampaignTrackerSha256,
+            completion.CampaignReceipt, completion.CampaignReceiptSha256);
+    }
+
+    private static string CompletionMessage(string completionRelative,
+        CompletionReceipt completion, bool alreadyCompleted)
+        => $"CODE_REVIEW_REPLY_RESOLVE_OK receipt={completion.Attempt} completionReceipt={completionRelative} tracker={completion.CampaignTracker} trackerSha256={completion.CampaignTrackerSha256} campaignReceipt={completion.CampaignReceipt} alreadyCompleted={alreadyCompleted.ToString().ToLowerInvariant()}";
+
+    private static Gate NewGate(string root, string mode, string sessionHash, string packet, string? adapter,
+        string? operation, ReviewCampaignBinding binding)
     {
         var manifest = Path.Combine(root, ".config", "dotnet-tools.json");
         Ensure(File.Exists(manifest), "review-response-tool-manifest-missing");
@@ -556,9 +886,13 @@ public static class CodeReviewResponseCommands
             addressReceiptSha256 = FileSha256(addressReceiptPath);
         }
         return new Gate("1.0", mode, sessionHash, GitHead(root), version!, FileSha256(manifest), packet,
-            packetSha256, addressReceipt, addressReceiptSha256, adapter,
+            packetSha256, binding.TrackerPath, binding.TrackerSha256, binding.Item.ItemId,
+            binding.Item.ContentSha256, binding.Item.DecisionReceiptId, binding.CampaignReceiptPath,
+            binding.CampaignReceiptSha256, addressReceipt, addressReceiptSha256, adapter,
             adapter is null ? null : FileSha256(Full(root, adapter)), adapterArtifactSha, null, null, operation,
-            provider, repository, pr, thread, source, target, iteration, StatusDigest(root));
+            binding.Tracker.Provider, binding.Tracker.Repository, binding.Tracker.PullRequest,
+            binding.Item.Thread, binding.Tracker.SourceRevision, binding.Tracker.TargetRevision,
+            binding.Tracker.Iteration, StatusDigest(root));
     }
 
     private static void ValidateGate(string root, Gate gate)
@@ -566,7 +900,9 @@ public static class CodeReviewResponseCommands
         Ensure(AllPresent(gate.SchemaVersion, gate.Mode, gate.SessionHash, gate.Head, gate.ToolVersion,
             gate.ManifestSha256, gate.Packet, gate.PacketSha256, gate.Provider, gate.Repository,
             gate.PullRequest, gate.Thread, gate.SourceRevision, gate.TargetRevision, gate.Iteration,
-            gate.InitialStatusDigest), "review-response-gate-fields-missing");
+            gate.InitialStatusDigest, gate.CampaignTracker, gate.CampaignTrackerSha256,
+            gate.CampaignItemId, gate.CampaignItemContentSha256, gate.CampaignDecisionReceiptId,
+            gate.CampaignReceipt, gate.CampaignReceiptSha256), "review-response-gate-fields-missing");
         Ensure(gate.SchemaVersion == "1.0", "review-response-gate-schema-invalid");
         Ensure(Modes.Contains(gate.Mode), "review-response-gate-mode-invalid");
         Ensure(IsHash(gate.SessionHash), "review-response-gate-session-invalid");
@@ -580,6 +916,18 @@ public static class CodeReviewResponseCommands
         Ensure(IsRevision(gate.TargetRevision), "review-response-gate-target-invalid");
         Ensure(IsIdentity(gate.Iteration), "review-response-gate-iteration-invalid");
         Ensure(IsHash(gate.InitialStatusDigest), "review-response-gate-status-invalid");
+        Ensure(IsHash(gate.CampaignTrackerSha256) && IsHash(gate.CampaignItemId)
+            && IsHash(gate.CampaignItemContentSha256) && IsHash(gate.CampaignReceiptSha256)
+            && !string.IsNullOrWhiteSpace(gate.CampaignDecisionReceiptId),
+            "review-response-gate-campaign-invalid");
+        Ensure(gate.Head == GitHead(root), "review-response-head-changed");
+        var binding = CodeReviewCampaignCommands.BindItemForStage(root, gate.CampaignTracker, gate.CampaignItemId);
+        Ensure(binding.TrackerSha256 == gate.CampaignTrackerSha256
+            && binding.Item.ContentSha256 == gate.CampaignItemContentSha256
+            && binding.Item.DecisionReceiptId == gate.CampaignDecisionReceiptId
+            && binding.CampaignReceiptPath == gate.CampaignReceipt
+            && binding.CampaignReceiptSha256 == gate.CampaignReceiptSha256,
+            "review-response-gate-campaign-changed");
         if (gate.Mode == "address")
         {
             Ensure(gate.PacketSha256.Length == 0, "review-response-address-gate-packet-hash-invalid");
@@ -605,8 +953,7 @@ public static class CodeReviewResponseCommands
             Ensure(Operations.Contains(gate.Operation!), "review-response-gate-operation-invalid");
             Ensure(IsHash(gate.PacketSha256), "review-response-gate-packet-hash-invalid");
         }
-        Ensure(gate.Head == GitHead(root), "review-response-head-changed");
-        if (gate.Mode == "reply-resolve") Ensure(StatusText(root).Length == 0, "review-response-stage12-checkout-not-clean");
+        if (gate.Mode == "reply-resolve") Ensure(StatusText(root).Length == 0, "review-response-stage13-checkout-not-clean");
         var manifest = Path.Combine(root, ".config", "dotnet-tools.json");
         EnsureNoReparsePoints(root, manifest);
         Ensure(gate.ManifestSha256 == FileSha256(manifest), "review-response-tool-manifest-changed");
@@ -650,7 +997,9 @@ public static class CodeReviewResponseCommands
         Ensure(AllPresent(actual.SchemaVersion, actual.Packet, actual.PacketSha256, actual.GateSha256,
             actual.GateJson, actual.Head, actual.Provider, actual.Repository, actual.PullRequest,
             actual.Thread, actual.SourceRevision, actual.TargetRevision, actual.Iteration,
-            actual.FinalStatusDigest), "review-response-address-receipt-fields-missing");
+            actual.FinalStatusDigest, actual.CampaignTracker, actual.CampaignTrackerSha256,
+            actual.CampaignItemId, actual.CampaignItemContentSha256, actual.CampaignDecisionReceiptId,
+            actual.CampaignReceipt, actual.CampaignReceiptSha256), "review-response-address-receipt-fields-missing");
         Ensure(actual.SchemaVersion == "1.0", "review-response-address-receipt-invalid");
         Ensure(IsHash(actual.GateSha256) && Sha256Text(actual.GateJson) == actual.GateSha256, "review-response-address-receipt-gate-invalid");
         Gate acceptedGate;
@@ -667,6 +1016,13 @@ public static class CodeReviewResponseCommands
             && acceptedGate.PullRequest == actual.PullRequest && acceptedGate.Thread == actual.Thread && acceptedGate.SourceRevision == actual.SourceRevision
             && acceptedGate.TargetRevision == actual.TargetRevision && acceptedGate.Iteration == actual.Iteration, "review-response-address-receipt-gate-invalid");
         Ensure(actual.Packet == currentGate.Packet && actual.PacketSha256 == packetSha256 && actual.Head == currentGate.Head
+            && actual.CampaignTracker == currentGate.CampaignTracker
+            && actual.CampaignTrackerSha256 == currentGate.CampaignTrackerSha256
+            && actual.CampaignItemId == currentGate.CampaignItemId
+            && actual.CampaignItemContentSha256 == currentGate.CampaignItemContentSha256
+            && actual.CampaignDecisionReceiptId == currentGate.CampaignDecisionReceiptId
+            && actual.CampaignReceipt == currentGate.CampaignReceipt
+            && actual.CampaignReceiptSha256 == currentGate.CampaignReceiptSha256
             && actual.Provider == currentGate.Provider && actual.Repository == currentGate.Repository && actual.PullRequest == currentGate.PullRequest
             && actual.Thread == currentGate.Thread && actual.SourceRevision == currentGate.SourceRevision && actual.TargetRevision == currentGate.TargetRevision
             && actual.Iteration == currentGate.Iteration && actual.FinalStatusDigest == packet.FinalStatusDigest
@@ -674,14 +1030,17 @@ public static class CodeReviewResponseCommands
             && acceptedGate.ManifestSha256 == currentGate.ManifestSha256, error);
     }
 
-    private static void ValidatePacket(AddressPacket packet, Gate gate, bool requireReadyForProvider)
+    private static void ValidatePacket(string root, AddressPacket packet, Gate gate, bool requireReadyForProvider)
     {
         Ensure(AllPresent(packet.SchemaVersion, packet.ArtifactType, packet.Provider, packet.Repository,
             packet.PullRequest, packet.Thread, packet.SourceRevision, packet.TargetRevision,
             packet.Iteration, packet.ActingPrincipal, packet.ThreadStatus, packet.Classification,
             packet.InitialHead, packet.FinalHead, packet.InitialStatusDigest, packet.FinalStatusDigest,
             packet.ChangedFiles, packet.ValidationResults, packet.Evidence, packet.UnresolvedRisks,
-            packet.ReplyText, packet.AllowedOperations, packet.RequiredFixRevision, packet.ProviderHead),
+            packet.ReplyText, packet.AllowedOperations, packet.RequiredFixRevision, packet.ProviderHead,
+            packet.CampaignTracker, packet.CampaignTrackerSha256, packet.CampaignItemId,
+            packet.CampaignItemContentSha256, packet.CampaignDecisionReceiptId,
+            packet.CampaignReceipt, packet.CampaignReceiptSha256),
             "review-response-packet-fields-missing");
         Ensure(packet.SchemaVersion == "1.0", "review-response-packet-schema-invalid");
         Ensure(packet.ArtifactType == "code-review-address", "review-response-packet-type-invalid");
@@ -692,6 +1051,14 @@ public static class CodeReviewResponseCommands
         Ensure(packet.SourceRevision == gate.SourceRevision, "review-response-revision-identity-mismatch");
         Ensure(packet.TargetRevision == gate.TargetRevision, "review-response-revision-identity-mismatch");
         Ensure(packet.Iteration == gate.Iteration, "review-response-revision-identity-mismatch");
+        Ensure(packet.CampaignTracker == gate.CampaignTracker
+            && packet.CampaignTrackerSha256 == gate.CampaignTrackerSha256
+            && packet.CampaignItemId == gate.CampaignItemId
+            && packet.CampaignItemContentSha256 == gate.CampaignItemContentSha256
+            && packet.CampaignDecisionReceiptId == gate.CampaignDecisionReceiptId
+            && packet.CampaignReceipt == gate.CampaignReceipt
+            && packet.CampaignReceiptSha256 == gate.CampaignReceiptSha256,
+            "review-response-campaign-identity-mismatch");
         Ensure(packet.InitialHead == gate.Head, "review-response-local-head-mismatch");
         Ensure(packet.FinalHead == gate.Head, "review-response-local-head-mismatch");
         Ensure(packet.InitialStatusDigest == gate.InitialStatusDigest, "review-response-initial-status-mismatch");
@@ -701,11 +1068,12 @@ public static class CodeReviewResponseCommands
         Ensure(packet.CommitPushPerformed is false, "review-response-stage11-commit-push-forbidden");
         Ensure(ThreadStatuses.Contains(packet.ThreadStatus), "review-response-thread-status-invalid");
         Ensure(Classifications.Contains(packet.Classification), "review-response-classification-invalid");
+        Ensure(!string.IsNullOrWhiteSpace(packet.ActingPrincipal) && packet.ActingPrincipal.Length <= 512,
+            "review-response-principal-missing");
         Ensure(packet.AllowedOperations.Length > 0, "review-response-operations-empty");
         Ensure(packet.AllowedOperations.Distinct(StringComparer.Ordinal).Count() == packet.AllowedOperations.Length, "review-response-operations-duplicate");
         Ensure(packet.AllowedOperations.All(Operations.Contains), "review-response-operations-invalid");
         Ensure(!string.IsNullOrWhiteSpace(packet.ReplyText), "review-response-reply-empty");
-        Ensure(!string.IsNullOrWhiteSpace(packet.ActingPrincipal) && packet.ActingPrincipal.Length <= 512, "review-response-principal-missing");
         Ensure(packet.ChangedFiles.Distinct(StringComparer.Ordinal).Count() == packet.ChangedFiles.Length && packet.ChangedFiles.All(value => !string.IsNullOrWhiteSpace(value)), "review-response-changed-files-invalid");
         Ensure(packet.ValidationResults.All(value => !string.IsNullOrWhiteSpace(value)), "review-response-validation-invalid");
         Ensure(packet.Evidence.Length > 0, "review-response-evidence-missing");
@@ -714,10 +1082,41 @@ public static class CodeReviewResponseCommands
         Ensure(IsRevision(packet.ProviderHead), "review-response-provider-head-invalid");
         if (packet.RequiredFixRevision.Length > 0) Ensure(IsRevision(packet.RequiredFixRevision), "review-response-fix-revision-invalid");
         Ensure(packet.AdapterRequest.ValueKind == JsonValueKind.Object, "review-response-adapter-request-invalid");
+        var campaignBinding = CodeReviewCampaignCommands.BindItemForStage(root,
+            gate.CampaignTracker, gate.CampaignItemId);
+        Ensure(packet.Classification == campaignBinding.Item.HumanDecision,
+            "review-response-campaign-decision-mismatch");
+        Ensure(packet.ActingPrincipal == campaignBinding.Tracker.ActingPrincipal,
+            "review-response-campaign-principal-mismatch");
+        Ensure(packet.ThreadStatus == campaignBinding.Item.Status,
+            "review-response-campaign-thread-status-mismatch");
+        Ensure(packet.ProviderHead == campaignBinding.Tracker.ProviderHead,
+            "review-response-campaign-provider-head-mismatch");
         if (packet.Classification == "accepted-actionable")
         {
-            Ensure(packet.ChangedFiles.Length > 0, "review-response-changed-files-missing");
             Ensure(packet.ValidationResults.Length > 0, "review-response-validation-missing");
+            if (packet.ChangedFiles.Length == 0)
+            {
+                Ensure(IsRevision(packet.RequiredFixRevision), "review-response-clean-fix-revision-required");
+                Ensure(packet.RequiredFixRevision == packet.ProviderHead
+                    && packet.RequiredFixRevision == gate.Head,
+                    "review-response-clean-fix-not-on-head");
+            }
+        }
+        else
+        {
+            Ensure(packet.ChangedFiles.Length == 0, "review-response-no-code-changes-forbidden");
+            if (packet.AllowedOperations.Any(operation => operation.Contains("resolve", StringComparison.Ordinal)))
+            {
+                Ensure(IsRevision(packet.RequiredFixRevision), "review-response-fix-revision-required");
+                Ensure(packet.RequiredFixRevision == packet.ProviderHead
+                    && packet.RequiredFixRevision == gate.Head,
+                    "review-response-fix-not-on-provider-head");
+            }
+            else
+            {
+                Ensure(packet.RequiredFixRevision.Length == 0, "review-response-no-code-fix-revision-forbidden");
+            }
         }
         if (!requireReadyForProvider) return;
         Ensure(packet.FinalStatusDigest == Sha256Text(string.Empty), "review-response-packet-not-refreshed-after-commit");
@@ -725,6 +1124,13 @@ public static class CodeReviewResponseCommands
         var operation = gate.Operation!;
         Ensure(packet.AllowedOperations.Contains(operation, StringComparer.Ordinal), "review-response-operation-not-allowed");
         Ensure(packet.ProviderHead == gate.Head, "review-response-provider-head-not-local-head");
+        if (packet.Classification == "accepted-actionable")
+        {
+            Ensure(IsRevision(packet.RequiredFixRevision), "review-response-fix-revision-required");
+            Ensure(packet.RequiredFixRevision == packet.ProviderHead
+                && packet.RequiredFixRevision == gate.Head,
+                "review-response-fix-not-on-provider-head");
+        }
         if (operation.Contains("resolve", StringComparison.Ordinal))
         {
             Ensure(packet.ThreadStatus == "active", "review-response-thread-not-active");
@@ -750,7 +1156,7 @@ public static class CodeReviewResponseCommands
         Ensure(adapter.SchemaVersion == "1.0", "review-response-adapter-schema-invalid");
         Ensure(Regex.IsMatch(adapter.AdapterId, "^[a-z0-9][a-z0-9._-]{0,127}$", RegexOptions.CultureInvariant), "review-response-adapter-id-invalid");
         Ensure(adapter.Provider.Length is > 0 and <= 128 && !adapter.Provider.Any(char.IsWhiteSpace), "review-response-adapter-provider-invalid");
-        Ensure(adapter.Protocol == "engloop-review-response-v1", "review-response-adapter-protocol-invalid");
+        Ensure(adapter.Protocol == "engloop-review-response-v2", "review-response-adapter-protocol-invalid");
         Ensure(adapter.Provider == packet.Provider, "review-response-adapter-provider-mismatch");
         Ensure(adapter.Command.Length > 0, "review-response-adapter-command-invalid");
         Ensure(adapter.Command.All(value => !string.IsNullOrWhiteSpace(value)), "review-response-adapter-command-invalid");
@@ -765,8 +1171,10 @@ public static class CodeReviewResponseCommands
         Ensure(adapter.Capabilities.Length > 0, "review-response-adapter-capabilities-empty");
         Ensure(adapter.Capabilities.Distinct(StringComparer.Ordinal).Count() == adapter.Capabilities.Length, "review-response-adapter-capabilities-duplicate");
         Ensure(adapter.Capabilities.All(AdapterCapabilities.Contains), "review-response-adapter-capabilities-invalid");
+        Ensure(adapter.Capabilities.Contains("discover", StringComparer.Ordinal), "review-response-adapter-discovery-capability-missing");
         Ensure(adapter.Capabilities.Contains("inspect", StringComparer.Ordinal), "review-response-adapter-inspection-capability-missing");
         Ensure(adapter.Capabilities.Contains(gate.Operation!, StringComparer.Ordinal), "review-response-adapter-capability-missing");
+        Ensure(adapter.DiscoveryRequest.ValueKind == JsonValueKind.Object, "review-response-adapter-discovery-request-invalid");
     }
 
     private static void ValidateApproval(string gatePath, Gate gate, AddressPacket packet, Approval approval)
@@ -811,6 +1219,8 @@ public static class CodeReviewResponseCommands
             operation = gate.Operation,
             replySha256 = Sha256Text(packet.ReplyText),
             packetSha256 = gate.PacketSha256,
+            campaignTrackerSha256 = gate.CampaignTrackerSha256,
+            campaignItemId = gate.CampaignItemId,
             addressReceiptSha256 = gate.AddressReceiptSha256,
             requiredFixRevision = packet.RequiredFixRevision,
             expectedProviderHead = packet.ProviderHead,
@@ -830,7 +1240,8 @@ public static class CodeReviewResponseCommands
             inspection.Repository, inspection.PullRequest, inspection.Thread, inspection.SourceRevision,
             inspection.TargetRevision, inspection.Iteration, inspection.ActingPrincipal,
             inspection.ThreadStatus, inspection.ProviderHead, inspection.Operation,
-            inspection.PacketSha256, inspection.AddressReceiptSha256, inspection.InspectionReceiptId),
+            inspection.PacketSha256, inspection.CampaignTrackerSha256, inspection.CampaignItemId,
+            inspection.AddressReceiptSha256, inspection.InspectionReceiptId),
             "review-response-provider-inspection-fields-missing");
         Ensure(inspection.SchemaVersion == "1.0", "review-response-provider-inspection-schema-invalid");
         Ensure(InspectionStatuses.Contains(inspection.Status), "review-response-provider-inspection-status-invalid");
@@ -847,6 +1258,9 @@ public static class CodeReviewResponseCommands
         Ensure(inspection.ProviderHead == packet.ProviderHead, "review-response-provider-inspection-head-changed");
         Ensure(inspection.Operation == gate.Operation, "review-response-provider-inspection-operation-mismatch");
         Ensure(inspection.PacketSha256 == gate.PacketSha256, "review-response-provider-inspection-packet-mismatch");
+        Ensure(inspection.CampaignTrackerSha256 == gate.CampaignTrackerSha256
+            && inspection.CampaignItemId == gate.CampaignItemId,
+            "review-response-provider-inspection-campaign-mismatch");
         Ensure(inspection.AddressReceiptSha256 == gate.AddressReceiptSha256, "review-response-provider-inspection-address-receipt-mismatch");
         Ensure(inspection.MatchCount is not null, "review-response-provider-inspection-match-count-invalid");
         Ensure(inspection.MatchCount >= 0, "review-response-provider-inspection-match-count-invalid");
@@ -860,7 +1274,8 @@ public static class CodeReviewResponseCommands
         Ensure(AllPresent(result.SchemaVersion, result.Status, result.Provider, result.Repository,
             result.PullRequest, result.Thread, result.SourceRevision, result.TargetRevision,
             result.Iteration, result.ActingPrincipal, result.ThreadStatus, result.ProviderHead,
-            result.Operation, result.PacketSha256, result.AddressReceiptSha256, result.InspectionSha256,
+            result.Operation, result.PacketSha256, result.CampaignTrackerSha256, result.CampaignItemId,
+            result.AddressReceiptSha256, result.InspectionSha256,
             result.InspectionReceiptId, result.Marker, result.ReplySha256),
             "review-response-adapter-result-fields-missing");
         Ensure(result.SchemaVersion == "1.0", "review-response-adapter-result-schema-invalid");
@@ -868,6 +1283,9 @@ public static class CodeReviewResponseCommands
         Ensure(result.Provider == packet.Provider && result.Repository == packet.Repository && result.PullRequest == packet.PullRequest && result.Thread == packet.Thread, "review-response-adapter-result-identity-mismatch");
         Ensure(result.SourceRevision == packet.SourceRevision && result.TargetRevision == packet.TargetRevision && result.Iteration == packet.Iteration, "review-response-adapter-result-revision-mismatch");
         Ensure(result.ActingPrincipal == packet.ActingPrincipal && result.Operation == gate.Operation && result.PacketSha256 == gate.PacketSha256 && result.Marker == marker, "review-response-adapter-result-authorization-mismatch");
+        Ensure(result.CampaignTrackerSha256 == gate.CampaignTrackerSha256
+            && result.CampaignItemId == gate.CampaignItemId,
+            "review-response-adapter-result-campaign-mismatch");
         Ensure(result.AddressReceiptSha256 == gate.AddressReceiptSha256, "review-response-adapter-result-address-receipt-mismatch");
         Ensure(result.InspectionSha256 == gate.InspectionSha256 && result.InspectionReceiptId == inspection.InspectionReceiptId, "review-response-adapter-result-inspection-mismatch");
         Ensure(result.ReplyObserved is not null && result.ResolveObserved is not null && result.MatchCount is not null && result.ProviderReceiptId is not null, "review-response-adapter-result-fields-missing");
@@ -888,6 +1306,9 @@ public static class CodeReviewResponseCommands
     }
 
     private static void ValidateAttempt(Attempt attempt, Gate gate, string gatePath)
+        => ValidateAttemptAgainstHash(attempt, gate, FileSha256(gatePath));
+
+    private static void ValidateAttemptAgainstHash(Attempt attempt, Gate gate, string gateSha256)
     {
         Ensure(AllPresent(attempt.SchemaVersion, attempt.State, attempt.AttemptId, attempt.GateSha256,
             attempt.PacketSha256, attempt.AdapterSha256, attempt.Operation, attempt.Marker,
@@ -897,7 +1318,7 @@ public static class CodeReviewResponseCommands
         Ensure(attempt.SchemaVersion == "1.0", "review-response-attempt-schema-invalid");
         Ensure(AttemptStates.Contains(attempt.State), "review-response-attempt-state-invalid");
         Ensure(Regex.IsMatch(attempt.AttemptId, "^[a-f0-9]{32}$", RegexOptions.CultureInvariant), "review-response-attempt-id-invalid");
-        Ensure(attempt.GateSha256 == FileSha256(gatePath), "review-response-attempt-gate-hash-invalid");
+        Ensure(attempt.GateSha256 == gateSha256, "review-response-attempt-gate-hash-invalid");
         Ensure(attempt.PacketSha256 == gate.PacketSha256 && attempt.AdapterSha256 == gate.AdapterSha256 && attempt.Operation == gate.Operation, "review-response-attempt-identity-mismatch");
         Ensure(attempt.Marker == $"elk-review-response:{gate.PacketSha256[..16]}:{attempt.AttemptId}", "review-response-attempt-marker-invalid");
         Ensure(IsHash(attempt.ApprovalSha256), "review-response-attempt-approval-invalid");
@@ -917,6 +1338,77 @@ public static class CodeReviewResponseCommands
             && approval.QuestionJson == attempt.ApprovalQuestionJson && approval.ResponseJson == attempt.ApprovalResponseJson,
             "review-response-attempt-approval-invalid");
         if (attempt.State == "success") Ensure(!string.IsNullOrWhiteSpace(attempt.ProviderReceiptId), "review-response-attempt-success-receipt-missing");
+    }
+
+    private static void AcquireOrValidateProviderClaim(string root, Gate gate,
+        string approvalSha256)
+    {
+        var path = ProviderClaimPath(root, gate);
+        var claim = new ProviderClaim("1.0", gate.SessionHash,
+            FileSha256(Full(root, GateRelative(gate.SessionHash, gate.Mode))),
+            gate.PacketSha256, gate.CampaignTrackerSha256, gate.CampaignItemId,
+            gate.AdapterSha256!, gate.Operation!, approvalSha256);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        if (!File.Exists(path))
+            WriteJsonCreateNew(path, claim,
+                "review-response-campaign-item-operation-in-progress");
+        ValidateProviderClaimValue(Read<ProviderClaim>(path,
+            "review-response-provider-claim-invalid"), gate, claim.GateSha256,
+            approvalSha256);
+    }
+
+    private static void ValidateProviderClaim(string root, Gate gate,
+        string approvalSha256)
+    {
+        var path = ProviderClaimPath(root, gate);
+        Ensure(File.Exists(path), "review-response-provider-claim-missing");
+        ValidateProviderClaimValue(Read<ProviderClaim>(path,
+            "review-response-provider-claim-invalid"), gate,
+            FileSha256(Full(root, GateRelative(gate.SessionHash, gate.Mode))),
+            approvalSha256);
+    }
+
+    private static void ValidateProviderClaimValue(ProviderClaim claim, Gate gate,
+        string gateSha256, string approvalSha256)
+    {
+        Ensure(AllPresent(claim.SchemaVersion, claim.SessionHash, claim.GateSha256,
+            claim.PacketSha256, claim.CampaignTrackerSha256, claim.CampaignItemId,
+            claim.AdapterSha256, claim.Operation, claim.ApprovalSha256),
+            "review-response-provider-claim-fields-missing");
+        Ensure(claim.SchemaVersion == "1.0" && claim.SessionHash == gate.SessionHash
+            && claim.GateSha256 == gateSha256
+            && claim.PacketSha256 == gate.PacketSha256
+            && claim.CampaignTrackerSha256 == gate.CampaignTrackerSha256
+            && claim.CampaignItemId == gate.CampaignItemId
+            && claim.AdapterSha256 == gate.AdapterSha256
+            && claim.Operation == gate.Operation
+            && claim.ApprovalSha256 == approvalSha256,
+            "review-response-campaign-item-operation-in-progress");
+    }
+
+    private static void DeleteProviderClaimIfPresent(string root, Gate gate,
+        string gateSha256, string approvalSha256)
+    {
+        var path = ProviderClaimPath(root, gate);
+        if (!File.Exists(path)) return;
+        ValidateProviderClaimValue(Read<ProviderClaim>(path,
+            "review-response-provider-claim-invalid"), gate, gateSha256,
+            approvalSha256);
+        File.Delete(path);
+    }
+
+    private static void DeleteProviderClaimForCompletion(string root,
+        CompletionReceipt completion)
+    {
+        Gate gate;
+        try { gate = JsonSerializer.Deserialize<Gate>(completion.GateJson, JsonOptions)
+            ?? throw new InvalidOperationException("review-response-completion-gate-invalid"); }
+        catch (JsonException) { throw new InvalidOperationException(
+            "review-response-completion-gate-invalid"); }
+        var attempt = Read<Attempt>(Full(root, completion.Attempt),
+            "review-response-attempt-invalid");
+        DeleteProviderClaimIfPresent(root, gate, completion.GateSha256,
+            attempt.ApprovalSha256);
     }
 
     private static bool HasSuccessfulAttempt(string root, Gate gate, string gatePath)
@@ -1012,6 +1504,18 @@ public static class CodeReviewResponseCommands
             && withoutSelectedPacket.Contains("dotnet-tools.json", PathComparison));
     }
 
+    private static bool IsPacketOnlyEdit(string tool, JsonElement input, Gate gate)
+    {
+        if (tool.Equals("create_file", StringComparison.OrdinalIgnoreCase))
+            return ReadString(input, "filePath", "path") == gate.Packet;
+        if (!tool.Equals("apply_patch", StringComparison.OrdinalIgnoreCase)
+            && !tool.Equals("edit", StringComparison.OrdinalIgnoreCase)) return false;
+        var raw = string.Join('\n', StringValues(input)).Replace('\\', '/');
+        var paths = Regex.Matches(raw, @"(?m)^\*\*\*\s+(?:Add|Update|Delete)\s+File:\s+(?<path>.+?)\s*$")
+            .Select(match => match.Groups["path"].Value.Trim()).ToArray();
+        return paths.Length == 1 && paths[0] == gate.Packet;
+    }
+
     private static IEnumerable<string> StringValues(JsonElement value)
     {
         if (value.ValueKind == JsonValueKind.String)
@@ -1102,6 +1606,11 @@ public static class CodeReviewResponseCommands
             packet.Evidence,
             packet.UnresolvedRisks,
             packetSha256 = gate.PacketSha256,
+            campaignTracker = gate.CampaignTracker,
+            campaignTrackerSha256 = gate.CampaignTrackerSha256,
+            campaignItemId = gate.CampaignItemId,
+            campaignItemContentSha256 = gate.CampaignItemContentSha256,
+            campaignDecisionReceiptId = gate.CampaignDecisionReceiptId,
             addressReceiptSha256 = gate.AddressReceiptSha256,
             providerInspectionSha256 = gate.InspectionSha256,
         }, new JsonSerializerOptions(JsonOptions) { WriteIndented = true });
@@ -1208,8 +1717,11 @@ public static class CodeReviewResponseCommands
         return canonical;
     }
 
+    private static string GateRelative(string sessionHash, string mode)
+        => $".engloop/out/code-review-response/gates/{sessionHash}.{mode}.json";
+
     private static string GatePath(string root, string sessionHash, string mode)
-        => Full(root, $".engloop/out/code-review-response/gates/{sessionHash}.{mode}.json");
+        => Full(root, GateRelative(sessionHash, mode));
 
     private static string ApprovalRelative(string sessionHash)
         => $".engloop/out/code-review-response/approvals/{sessionHash}.json";
@@ -1222,6 +1734,18 @@ public static class CodeReviewResponseCommands
 
     private static string AddressReceiptRelative(string packet, string packetHash)
         => $".engloop/out/code-review-response/address-receipts/{Sha256Text(packet + "\n" + packetHash)}.json";
+
+    private static string CompletionRelative(string sessionHash)
+        => $".engloop/out/code-review-response/completion-receipts/{sessionHash}.json";
+
+    private static string ProviderClaimPath(string root, Gate gate)
+    {
+        var match = Regex.Match(gate.CampaignTracker,
+            "^\\.engloop/out/code-review-response/campaigns/(?<id>[a-f0-9]{64})/tracker\\.json$",
+            RegexOptions.CultureInvariant);
+        Ensure(match.Success, "review-response-gate-campaign-invalid");
+        return Full(root, $".engloop/out/code-review-response/provider-claims/{match.Groups["id"].Value}/{gate.CampaignItemId}.json");
+    }
 
     private static string Full(string root, string relative) => Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar));
 
@@ -1247,6 +1771,22 @@ public static class CodeReviewResponseCommands
 
     private static void WriteJsonCreateNew<T>(string path, T value, string existsError)
         => WriteJsonAtomic(path, value, overwrite: false, existsError);
+
+    private static void WriteJsonCreateNewOrExact<T>(string path, T value, string existsError)
+    {
+        if (!File.Exists(path))
+        {
+            try
+            {
+                WriteJsonCreateNew(path, value, existsError);
+                return;
+            }
+            catch (InvalidOperationException) when (File.Exists(path)) { }
+        }
+        var existing = Read<T>(path, existsError);
+        Ensure(JsonSerializer.Serialize(existing, JsonOptions)
+            == JsonSerializer.Serialize(value, JsonOptions), existsError);
+    }
 
     private static void WriteJsonAtomic<T>(string path, T value, bool overwrite, string existsError)
     {
@@ -1279,7 +1819,7 @@ public static class CodeReviewResponseCommands
 
     private static void RequireAgentEntry(string root, string mode)
     {
-        var stage = mode == "address" ? "speckit.engloop.11-codereview-address" : "speckit.engloop.12-codereview-reply-resolve";
+        var stage = mode == "address" ? "speckit.engloop.12-codereview-address" : "speckit.engloop.13-codereview-reply-resolve";
         var result = ValidationCommands.EvaluateAgentEntry(["--stage", stage, "--root", root]);
         Ensure(result.Passed, "review-response-agent-entry-rejected:" + result.Reason);
     }

@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://engloopkit.dev/schemas/code-review-campaign.schema.json",
+  "title": "EngLoopKit persistent private PR review campaign",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "artifactType", "campaignId", "provider", "repository",
+    "pullRequest", "adapter", "adapterSha256", "adapterArtifactSha256",
+    "actingPrincipal", "sourceRevision", "targetRevision", "iteration",
+    "providerHead", "refreshNumber", "snapshot", "snapshotSha256",
+    "discoveryReceiptId", "pageCount", "paginationComplete",
+    "providerMutationPerformed", "selectedItemId", "items", "trackerSha256"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "artifactType": { "const": "code-review-campaign" },
+    "campaignId": { "$ref": "#/$defs/sha256" },
+    "provider": { "$ref": "#/$defs/identity" },
+    "repository": { "$ref": "#/$defs/identity" },
+    "pullRequest": { "$ref": "#/$defs/identity" },
+    "adapter": { "type": "string", "pattern": "^\\.engloop/provider-adapters/.+\\.json$" },
+    "adapterSha256": { "$ref": "#/$defs/sha256" },
+    "adapterArtifactSha256": { "$ref": "#/$defs/sha256" },
+    "actingPrincipal": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "sourceRevision": { "$ref": "#/$defs/revision" },
+    "targetRevision": { "$ref": "#/$defs/revision" },
+    "iteration": { "$ref": "#/$defs/identity" },
+    "providerHead": { "$ref": "#/$defs/revision" },
+    "refreshNumber": { "type": "integer", "minimum": 1 },
+    "snapshot": { "type": "string", "pattern": "^\\.engloop/out/code-review-response/campaign-snapshots/[a-f0-9]{64}/[0-9]{6}\\.json$" },
+    "snapshotSha256": { "$ref": "#/$defs/sha256" },
+    "discoveryReceiptId": { "type": "string", "minLength": 1 },
+    "pageCount": { "type": "integer", "minimum": 1 },
+    "paginationComplete": { "const": true },
+    "providerMutationPerformed": { "const": false },
+    "selectedItemId": { "oneOf": [{ "const": "" }, { "$ref": "#/$defs/sha256" }] },
+    "items": { "type": "array", "items": { "$ref": "#/$defs/item" } },
+    "trackerSha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "identity": { "type": "string", "minLength": 1, "maxLength": 512, "pattern": "^\\S+$" },
+    "revision": { "type": "string", "pattern": "^[a-fA-F0-9]{40,64}$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "comment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["comment", "parentComment", "author", "content", "createdAt", "updatedAt", "isDeleted"],
+      "properties": {
+        "comment": { "$ref": "#/$defs/identity" },
+        "parentComment": { "type": "string" },
+        "author": { "type": "string", "minLength": 1 },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "minLength": 1 },
+        "updatedAt": { "type": "string", "minLength": 1 },
+        "isDeleted": { "type": "boolean" }
+      }
+    },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "itemId", "thread", "rootComment", "status", "observationState",
+        "anchorPath", "line", "summary", "updatedAt", "contentSha256",
+        "comments", "providerState", "proposedClassification", "humanDecision",
+        "priority", "decisionStale", "decisionReceiptId", "decisionToolUseId",
+        "decisionQuestionSha256", "decisionResponseSha256", "sourceState",
+        "responseState", "requiredFixRevision", "responsePacket",
+        "responsePacketSha256", "providerReceiptId"
+      ],
+      "properties": {
+        "itemId": { "$ref": "#/$defs/sha256" },
+        "thread": { "$ref": "#/$defs/identity" },
+        "rootComment": { "$ref": "#/$defs/identity" },
+        "status": { "enum": ["active", "resolved", "not-returned"] },
+        "observationState": { "enum": ["current", "not-returned"] },
+        "anchorPath": { "type": "string" },
+        "line": { "type": ["integer", "null"], "minimum": 1 },
+        "summary": { "type": "string", "minLength": 1 },
+        "updatedAt": { "type": "string", "minLength": 1 },
+        "contentSha256": { "$ref": "#/$defs/sha256" },
+        "comments": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/comment" } },
+        "providerState": { "type": "object" },
+        "proposedClassification": { "enum": ["pending-analysis", "accepted-actionable", "already-addressed", "stale", "disputed", "clarification-required", "unsupported-out-of-scope"] },
+        "humanDecision": { "enum": ["pending", "accepted-actionable", "already-addressed", "stale", "disputed", "clarification-required", "unsupported-out-of-scope"] },
+        "priority": { "enum": ["unassigned", "urgent", "high", "normal", "low"] },
+        "decisionStale": { "type": "boolean" },
+        "decisionReceiptId": { "type": "string" },
+        "decisionToolUseId": { "type": "string" },
+        "decisionQuestionSha256": { "oneOf": [{ "const": "" }, { "$ref": "#/$defs/sha256" }] },
+        "decisionResponseSha256": { "oneOf": [{ "const": "" }, { "$ref": "#/$defs/sha256" }] },
+        "sourceState": { "enum": ["pending", "addressing", "validated-local", "branch-update-required", "fix-on-provider-head", "not-applicable"] },
+        "responseState": { "enum": ["pending", "response-ready", "replied", "resolved", "outcome-unknown"] },
+        "requiredFixRevision": { "oneOf": [{ "const": "" }, { "$ref": "#/$defs/revision" }] },
+        "responsePacket": { "type": "string" },
+        "responsePacketSha256": { "oneOf": [{ "const": "" }, { "$ref": "#/$defs/sha256" }] },
+        "providerReceiptId": { "type": "string" }
+      }
+    }
+  }
+}

@@ -1,9 +1,9 @@
 # Implementation Plan: Ordered EngLoop v2
 
-> **Current-surface amendment (v1.16.0):** This plan preserves the original v1.7.0
+> **Current-surface amendment (v1.17.0):** This plan preserves the original v1.7.0
 > 13-command/23-edge cutover wording as implementation provenance. Those historical
 > counts are not current acceptance criteria. Current release acceptance is the exact
-> 28-command, 28-agent, 28-prompt, 31-edge surface in `spec.md` and
+> 29-command, 29-agent, 29-prompt, 32-edge surface in `spec.md` and
 > `contracts/command-surface.md`; later governed evolution supersedes conflicting count,
 > stage-identity, version, and nomenclature statements below.
 
@@ -970,7 +970,7 @@ workflow.
 | FR-AGT-001, FR-AGT-002 | P0/P4/P9 | Canary then all 13 source/installed semantic projections prove explicit names, descriptions, hints, VS Code targets, visibility, and model-invocation protection. |
 | FR-AGT-003, FR-AGT-013 | P0/P4/P9 | Exact per-stage tool/subagent sets, `agent` iff `Explore`, all targets resolved, focused context, and nesting disabled. |
 | FR-AGT-004 | P0/P4/P9 | All 13 prompts select the matching exact agent and structurally omit `tools`; official precedence cannot widen policy. |
-| FR-AGT-005, FR-AGT-006 | P0/P4/P9 | Terminal stages omit handoffs; installed ordered edge set equals all 28 exact target/label/prompt/`send: false` rows with no model. |
+| FR-AGT-005, FR-AGT-006 | P0/P4/P9 | Terminal stages omit handoffs; installed ordered edge set equals all 32 exact target/label/prompt/`send: false` rows with no model. |
 | FR-AGT-007 | P4/P5/P9 | UI and model tests prove no 08→20/30/31 edge, Stage 21 capacity wording, conditional natural ends, and zero handoff state mutation/scheduling. |
 | FR-AGT-008, FR-AGT-009 | P4/P9/P10 | Exact stage-expanded 30-second `SessionStart`, unconditional body check, and trusted durable gate; versioned local tool, validated input, no secret/editable script, cross-platform strict/reduced-assurance evidence. |
 | FR-AGT-010 | P0/P4/P9 | Semantic absence assertions find zero `infer`, agent `model`, or handoff `model`. |
@@ -1048,7 +1048,7 @@ workflow.
 | SC-016 | P1/P4/P10 | Each of four roots reports process-root set `{.engloop}`, source-control-tracked root count 1, config count 1, ignored output, current `engloop/` count 0, `.engloopkit/` count 0, and visible Northstar/Learnings count 1 each. |
 | SC-017 | Checkpoint/P4/P9/P10 | Case-sensitive current-surface scan returns only the exact FR-NOM-001 vocabulary and living docs; no alias, translation, fallback, or active old-prefixed filename. |
 | SC-018 | P0/P4/P9/P10 | Disposable/focused install: 13/13 visible agents preserve every common field; Stage 31 has zero handoffs, all others have at least one, and EngLoop-owned diagnostic errors/warnings are both zero. |
-| SC-019 | P4/P9/P10 | Installed ordered graph equals all 28 ratified edges; 28/28 targets resolve, 28/28 use `send: false`, zero model overrides, and Stage 08 has zero operations/stewardship edges. |
+| SC-019 | P4/P9/P10 | Installed ordered graph equals all 32 ratified edges; 32/32 targets resolve, 32/32 use `send: false`, zero model overrides, and Stage 08 has zero operations/stewardship edges. |
 | SC-020 | P4/P9/P10 | All 13 justified tool/subagent rows and hooks match; 13 prompts have zero tool overrides; strict hook blocking, reduced-assurance body rejection, and trusted durable-gate rejection all pass. |
 
 ## Plan Completion Gate

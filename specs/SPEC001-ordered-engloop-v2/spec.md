@@ -63,7 +63,7 @@ The Learnings Pyramid was consulted as required:
 
 ## Goals
 
-1. Make the complete EngLoop workflow visible in process order through 28 exact command
+1. Make the complete EngLoop workflow visible in process order through 29 exact command
    identities while retaining the EngLoopKit product and package identity.
 2. Replace numbered direction snapshots with one root-level living `NORTHSTAR.md` whose
    revisions are retained by Git.
@@ -81,7 +81,7 @@ The Learnings Pyramid was consulted as required:
 8. Consolidate configuration and process memory under one tracked hidden `.engloop/`
   root while keeping `NORTHSTAR.md` and `LEARNINGS.md` visible.
 9. Preserve the initially shipped 1.7.0 workflow and its governed 1.x evolution through
-  the current EngLoopKit 1.16.0 surface, and keep product versions on 1.x
+  the current EngLoopKit 1.17.0 surface, and keep product versions on 1.x
   until the maintainer explicitly authorizes 2.x; the feature's “v2” label MUST NOT be
   interpreted as a package-version instruction.
 
@@ -92,7 +92,7 @@ The product, repository, bundle, tool, and package remain **EngLoopKit** with id
 Spec Kit binds command namespace to extension ID. The v2 command namespace is
 **`speckit.engloop`**.
 
-The shipped command set MUST contain exactly these 28 IDs. Ordinal lexical sorting of
+The shipped command set MUST contain exactly these 29 IDs. Ordinal lexical sorting of
 full IDs MUST produce this exact order:
 
 | Order | Exact command ID | Responsibility |
@@ -107,8 +107,9 @@ full IDs MUST produce this exact order:
 | 08 | `speckit.engloop.08-unittest` | Classify/delete scaffold residue, revalidate, add unit/property tests, and compute readiness. |
 | 09 | `speckit.engloop.09-debugger-walk-thru` | Record an optional engineer-attested debugger walkthrough without blocking review preparation. |
 | 10 | `speckit.engloop.10-codereview-prepare` | Minimize and validate the current PR from current Stage 08 readiness evidence. |
-| 11 | `speckit.engloop.11-codereview-address` | Address one selected review thread and create trusted private response evidence without provider/commit/push mutation. |
-| 12 | `speckit.engloop.12-codereview-reply-resolve` | Inspect current provider state, collect informed exact approval, and apply/reconcile one response operation. |
+| 11 | `speckit.engloop.11-codereview-campaign` | Retrieve every current PR review conversation, persist refresh history, and bind explicit human selection/classification/priority without mutation. |
+| 12 | `speckit.engloop.12-codereview-address` | Address one exact current campaign item and create trusted campaign-bound response evidence without provider/commit/push mutation. |
+| 13 | `speckit.engloop.13-codereview-reply-resolve` | Inspect current campaign/provider state, collect informed exact approval, apply/reconcile one response operation, and advance the persistent queue. |
 | 20 | `speckit.engloop.20-incident` | Stabilize an operating disruption using mitigations only. |
 | 21 | `speckit.engloop.21-postmortem` | Analyze stabilized incident sets into source learnings and repair items. |
 | 22 | `speckit.engloop.22-repair` | Route permanent repairs through Stages 04 and 05–08. |
@@ -133,7 +134,7 @@ may retain old IDs as historical evidence.
 
 The number bands are distinct invocation lanes, not one mandatory automatic sequence:
 
-- 01–08 is the ordered delivery/readiness lane; 09–12 are advisory review and
+- 01–08 is the ordered delivery/readiness lane; 09–13 are advisory review and
   author-response stages;
 - 20–23 is the on-demand operations/positive-history lane, entered only for an incident, a warranted
   post-mortem over stabilized incidents, and resulting repair items;
@@ -292,7 +293,7 @@ installation.
 **Acceptance scenarios:**
 
 1. **Given** a clean single-root consumer workspace, **when** its picker is opened,
-  **then** exactly 28 EngLoop commands appear once, in the lexical order listed above,
+  **then** exactly 29 EngLoop commands appear once, in the lexical order listed above,
    and no old ID appears.
 2. **Given** `tthp`, `engloop-workshop`, or `VerifyExtremeEdgeWithTpcc` is opened alone,
    **when** any applicable v2 command is invoked, **then** it resolves its local
@@ -315,7 +316,7 @@ headers and handoffs without implementing a consumer application.
 **Acceptance scenarios:**
 
 1. **Given** a clean v2 install, **when** the agent picker and customization
-  diagnostics load, **then** exactly 28 visible EngLoop agents have explicit names,
+  diagnostics load, **then** exactly 29 visible EngLoop agents have explicit names,
   descriptions, argument hints, VS Code targets, least-privilege tools, protected
   model invocation, and zero EngLoop-owned diagnostic errors or warnings.
 2. **Given** any nonterminal or branching stage completes, **when** its response ends,
@@ -341,6 +342,50 @@ headers and handoffs without implementing a consumer application.
   validator before other actions, the session identifies itself as reduced-assurance,
   and trusted EngLoopKit tooling rejects every durable stage transition or evidence
   acceptance whose entry prerequisites do not pass.
+
+  ### User Story 6 — Complete, persistent author-response campaign (Priority: P1)
+
+  As a pull-request author, I want every current review conversation retrieved into one
+  durable private queue before I choose what to address, so that pagination gaps,
+  disappearing comments, model-selected work, and one-thread-at-a-time context loss cannot
+  silently leave feedback behind.
+
+  **Independent value:** A fixture provider with multiple pages, active/resolved threads,
+  changed comments, and disappearing/reappearing items can demonstrate Stages 11–13
+  without any application-specific schema or real provider mutation.
+
+  **Acceptance scenarios:**
+
+  1. **Given** one explicit tracked v2 provider adapter and exact provider/repository/PR
+    identity, **when** Stage 11 starts, **then** it retrieves every page and every complete
+    current thread/comment, proves an empty continuation token and no mutation, stores an
+    immutable snapshot, and creates or refreshes one campaign tracker. A failed page,
+    count mismatch, duplicate identity, malformed result, or `mutationPerformed: true`
+    fails without accepting a tracker refresh.
+  2. **Given** a current tracker with active items, **when** Stage 11 completes, **then**
+    exactly one current item has been selected by a fixed host question and carries a
+    separate fixed human classification and priority receipt. Model proposals are
+    visible but non-authoritative. No first, highest-priority, or apparently actionable
+    item is selected automatically.
+  3. **Given** a later complete refresh, **then** unchanged item decisions persist,
+    changed comment content marks the prior decision stale, new items remain pending,
+    and missing items remain retained as `not-returned`. Refresh requires the trusted
+    receipt for the prior tracker; a locally fabricated or altered tracker cannot become
+    campaign authority.
+  4. **Given** one selected current non-stale item, **when** Stage 12 runs, **then** it
+    consumes the exact campaign tracker/item/receipt, edits source only for
+    `accepted-actionable`, runs only declared validation, and emits a campaign-bound
+    private packet and trusted receipt. It does not fetch another item, post, resolve,
+    vote, commit, push, or mutate adapter/control state.
+  5. **Given** a clean provider-eligible Stage 12 packet, **when** Stage 13 runs, **then**
+    non-mutating inspection, the fixed approval display, mutation request, read-back,
+    and durable provider receipt all bind the exact campaign tracker hash and item ID.
+    Confirmed success advances only that queue item; reply approval does not imply
+    resolution and does not authorize any other item.
+  6. **Given** timeout, malformed output, nonzero exit, or unprovable provider read-back,
+    **then** Stage 13 records `outcome-unknown` against the same campaign item and may
+    only reconcile that exact attempt/marker. It never retries blindly, switches
+    adapters/providers, consumes stale discovery, or claims the campaign complete.
 
 ## Custom-agent UX contract
 
@@ -389,7 +434,7 @@ change. `infer` is forbidden because VS Code deprecates it in favor of
 
 ### Least-privilege tool and subagent matrix
 
-The exact 28-row tool/subagent matrix is owned by
+The exact 29-row tool/subagent matrix is owned by
 [`contracts/command-surface.md`](contracts/command-surface.md#exact-least-privilege-tool-and-subagent-policy).
 Every source, checked-in agent, generated install, and archive MUST equal that matrix.
 If a required named agent is unavailable, installation fails; EngLoopKit never widens to
@@ -397,7 +442,7 @@ If a required named agent is unavailable, installation fails; EngLoopKit never w
 
 ### Exact handoff graph
 
-The exact ordered 31-edge graph—including label, target, prompt, `send: false`, and
+The exact ordered 32-edge graph—including label, target, prompt, `send: false`, and
 absence of handoff-level `model`—is owned by
 [`contracts/command-surface.md`](contracts/command-surface.md#exact-review-first-handoff-graph).
 No numeric sequence implies a handoff. Stage 08 offers only its ratified corrective and
@@ -420,8 +465,9 @@ failing. Numeric order communicates the normal flow; it does not permit gate byp
 | 08 Unit test | Reachability disposition, post-deletion revalidation, unit/property evidence, complete module inventory, final gate | Operational analysis | Intended gap → 05; deletion set → 07; design defect → 04; PASS authorizes operations while review/stewardship remain explicit |
 | 09 Debugger walk-through | Optional engineer-attested exact-HEAD walkthrough ledger | Readiness or review authorization | Advisory terminal; invoke independently when useful |
 | 10 Code-review prepare | Minimized current PR and current readiness-linked review report | Reviewer publication or author response | Return to 08 if preparation changes code; otherwise review externally |
-| 11 Code-review address | Selected-thread source/validation work, packet, and trusted completion receipt | Commit/push or provider mutation | External commit/push then clean Stage 11 refresh; eligible packet → 12 |
-| 12 Reply/resolve | Exact inspection, informed approval, attempt/reconciliation, provider read-back receipt | Source edits or review vote/merge | Terminal success, rejection, cancellation, or outcome-unknown reconciliation |
+| 11 Code-review campaign | Complete non-mutating provider discovery, immutable refresh snapshot, persistent tracker, and exact human selection/classification/priority receipt | Source edits or provider mutation | Selected current triaged item → 12; otherwise refresh/re-triage or stop |
+| 12 Code-review address | One exact campaign item's source/validation work, campaign-bound packet, and trusted completion receipt | Commit/push or provider mutation | External commit/push when needed, then clean eligible packet → 13 |
+| 13 Reply/resolve | Exact campaign-bound inspection, informed approval, attempt/reconciliation, provider read-back receipt, and queue transition | Source edits or review vote/merge | Terminal success, rejection, cancellation, outcome-unknown reconciliation, or next explicit Stage 11 selection |
 | 20 Incident | Verified stabilization and mitigation audit trail | Permanent fix | Another incident or 21 |
 | 21 Post-mortem | Systemic cause analysis, accepted source learnings, actionable repair items | Repair implementation or readiness | 22; new learnings also create an independent 42 refresh obligation |
 | 22 Repair | Traceable routing and closure evidence across 04 and applicable 05–08 plus target verification | A small-change bypass | 04; repair closes only after downstream evidence passes |
@@ -720,10 +766,10 @@ Deterministic checks MUST prove all of the following:
 - **FR-CMD-001:** The product/bundle/tool/package identity MUST remain `engloopkit` /
   EngLoopKit, while the first-party command extension ID MUST be `engloop` so the host
   can register the exact `speckit.engloop.*` namespace.
-- **FR-CMD-002:** The extension MUST expose exactly the 28 command IDs in the command
+- **FR-CMD-002:** The extension MUST expose exactly the 29 command IDs in the command
   table and no other `speckit.engloop.*` command.
 - **FR-CMD-003:** Full-ID lexical ordering MUST equal numeric process ordering
-  01–12, 20–23, 30–31, 40–42, 50, 60–61, 70–72, 80.
+  01–13, 20–23, 30–31, 40–42, 50, 60–61, 70–72, 80.
 - **FR-CMD-004:** Current v2 install and package surfaces MUST contain zero
   `speckit.engloopkit.*` registrations or aliases.
 - **FR-CMD-005:** Every command MUST satisfy ARCH002's frontmatter, Trigger, Goal,
@@ -732,7 +778,7 @@ Deterministic checks MUST prove all of the following:
   command logic MUST remain owned by the single `engloopkit` extension.
 - **FR-CMD-007:** Prose, manifests, catalog/release metadata, executable stages,
   independent model, exploration, generated tests, and direct tests MUST agree on the
-  same 28-command contract.
+  same 29-command contract.
 - **FR-CMD-008:** Missing or ambiguous command identity or stage evidence MUST fail
   explicitly; no fallback identity, stale artifact, alternate path, or guessed default
   may mask it.
@@ -743,7 +789,7 @@ Deterministic checks MUST prove all of the following:
 
 ### Custom-agent requirements
 
-- **FR-AGT-001:** Each of the 28 command sources and generated VS Code agent files
+- **FR-AGT-001:** Each of the 29 command sources and generated VS Code agent files
   MUST contain explicit, semantically equivalent `name`, `description`,
   `argument-hint`, `target`, `user-invocable`, `disable-model-invocation`, `tools`,
   `agents`, `hooks`, and applicable `handoffs` fields.
@@ -757,7 +803,7 @@ Deterministic checks MUST prove all of the following:
   and MUST omit `tools` so prompt precedence cannot widen or replace agent tools.
 - **FR-AGT-005:** Every nonterminal agent MUST
   declare at least one handoff, and the complete edge set MUST equal the exact handoff
-  graph in this specification. Stages 09, 12, 31, 41, 42, 50, 61, 70, 71, 72, and 80
+  graph in this specification. Stages 09, 13, 31, 41, 42, 50, 61, 70, 71, 72, and 80
   are explicit terminals and MUST omit handoffs.
 - **FR-AGT-006:** Every handoff MUST use an exact installed target ID, a meaningful
   branch label and prefilled prompt, `send: false`, and no model override.
@@ -785,7 +831,7 @@ Deterministic checks MUST prove all of the following:
   EngLoopKit MUST NOT post-process a partial install or silently weaken the contract.
 - **FR-AGT-012:** Disposable-install acceptance MUST parse source and generated YAML,
   prove semantic field preservation, resolve every handoff target, run customization
-  diagnostics, and prove the installed surface contains exactly the intended 28 visible agents.
+  diagnostics, and prove the installed surface contains exactly the intended 29 visible agents.
 - **FR-AGT-013:** Stage 42 clean-context retrieval and every other allowed subagent use
   MUST respect the explicit allowlist, pass only focused context, and not require
   nested-subagent enablement.
@@ -798,38 +844,65 @@ Deterministic checks MUST prove all of the following:
   repair routing, or completion is authorized until the binder validates confirmation,
   collection token, incident contract, registry number, create-new path, HEAD, and tool
   identity and creates the original strict gate.
-- **FR-AGT-015:** Stage 11 MUST bind one explicitly selected provider/repository/PR/thread,
-  source/target revisions, iteration, authenticated principal, clean or explicitly
-  isolated author checkout, and ignored create-new packet path. It MAY edit source and run
-  repository-declared validation, but MUST NOT post, reply, resolve, vote, mutate PR state,
-  commit, push, clean, reset, stash, switch, merge, or rebase. Its packet MUST bind actual
-  changed paths/status, evidence, exact reply candidate, allowed operations, fix/provider
-  revisions, and explicit false provider/commit-push mutation claims. Git metadata, ELK
-  configuration/tool identity, provider adapters, and response authority state MUST remain
-  outside its edit authority. If source changes, commit/push remains external and Stage 11
-  MUST create a new clean refresh packet at the resulting head before Stage 12.
-- **FR-AGT-016:** Stage 12 MUST have no source-edit or subagent tool. It MUST consume one
-  immutable clean refreshed Stage 11 packet with no current changed paths and a trusted
-  hash-bound Stage 11 completion receipt, revalidate exact
-  principal/thread/revisions/iteration and current provider state through a mandatory
-  non-mutating adapter inspection, and collect a separate fixed-option approval whose
-  canonical message contains the exact reply, operation, principal, evidence, packet hash,
-  Stage 11 receipt hash, and inspection hash. Arbitrary questions and replacement approvals MUST be denied. Reply
-  approval MUST NOT imply resolution.
-  Resolution MUST require the validated fix revision on both local and authoritative
-  provider head.
-- **FR-AGT-017:** Provider reply/resolution MUST execute only through one explicit tracked,
-  hash-bound, bounded-time adapter implementing `engloop-review-response-v1` with an exact
-  `inspect` capability plus the selected mutation capability. Inspection MUST prove one
-  exact current target, an authenticated principal, current revisions/head/status, a
-  receipt, and no mutation before approval. The trusted engine MUST record pre-attempt identity before mutation and
-  require authoritative read-back of exactly one matching target/result, matching reply
-  content for reply-bearing operations, required resolved state for resolution-bearing
-  operations, and a provider receipt. Existing attempt identity/marker/adapter/state/receipt
-  MUST be revalidated before reconciliation or idempotent completion. Failure, timeout,
-  malformed output, or ambiguous result MUST
-  remain outcome-unknown and MAY only reconcile with the same attempt/marker; blind retry,
-  alternate adapter/provider/path, and inferred success are forbidden.
+- **FR-AGT-015:** Stage 11 MUST bind one explicit provider/repository/PR and one tracked,
+  hash-bound, bounded-time adapter implementing `engloop-review-response-v2`. The adapter
+  MUST expose `discover` and `inspect`, plus only explicit mutation capabilities, and MUST
+  carry generic declarative discovery metadata rather than provider/application heuristics
+  in ELK core. Discovery MUST return exact principal/source/target/iteration/provider-head
+  identity, every page and complete current thread/comment, a count, empty continuation
+  token, stable receipt, and `mutationPerformed: false`. Partial, ambiguous, duplicate,
+  malformed, failed, timed-out, or mutating discovery MUST fail closed without an accepted
+  tracker refresh or alternate adapter/path/provider.
+- **FR-AGT-016:** Stage 11 MUST persist immutable discovery snapshots and atomically
+  maintain one ignored campaign tracker keyed by provider/repository/PR. Stable item IDs
+  derive from exact provider/repository/PR/thread/root-comment identity. Unchanged human
+  decisions persist; changed content marks decisions stale; new items remain pending; and
+  absent items remain `not-returned`. An existing tracker MUST have a matching trusted
+  campaign receipt before refresh. Active campaign completion MUST bind exactly one current
+  item selected by a fixed host question plus separate fixed human classification and
+  priority answers. Snapshot/tracker/gate installation and selection/triage updates MUST
+  use a write-ahead transaction recoverable only from exact previous-or-target state under
+  the campaign lock; recovery MUST NOT repeat discovery or infer a human answer. Before
+  deleting its transient gate, successful Stop MUST write a session-indexed completion
+  receipt binding the tracker/campaign receipt, selected item, and queue counts; re-entry
+  MUST validate and replay it without rediscovery. Model
+  proposals are advisory and MUST NOT select or classify work.
+- **FR-AGT-017:** Stage 12 MUST consume one exact current, active, non-stale campaign
+  item and trusted campaign receipt. It MAY edit source and run repository-declared
+  validation only for `accepted-actionable`, but MUST NOT discover/fetch another item,
+  post, reply, resolve, vote, mutate PR state, commit, push, clean, reset, stash, switch,
+  merge, rebase, or edit Git/ELK/adapter/control authority. Its packet and trusted Stage 12
+  receipt MUST bind campaign ID, tracker path/hash, item ID/content/decision receipt,
+  principal/revisions, actual checkout/status/changed paths, evidence, exact reply,
+  allowed operations, required fix/provider revisions, and explicit false provider and
+  commit/push claims. External commit/push remains required for source changes; provider
+  publication requires a clean packet at the exact local/provider head.
+- **FR-AGT-018:** Stage 13 MUST have no source-edit or subagent tool. It MUST consume the
+  exact campaign-bound Stage 12 packet/receipt, revalidate the current tracker/item/human
+  decision, and perform mandatory non-mutating inspection through the same tracked v2
+  adapter. One fixed-option approval MUST display and bind the exact campaign tracker/item,
+  reply, operation, principal, evidence, packet/Stage 12 receipt/inspection hashes, and
+  host question/answer identity. Arbitrary or replacement approval is denied; reply-only
+  approval never implies resolution; resolution requires the exact validated fix revision
+  on local and authoritative provider head.
+- **FR-AGT-019:** Before Stage 13 mutation, the trusted engine MUST persist campaign,
+  packet/gate/adapter, operation, attempt ID, reconciliation marker, and one durable claim
+  keyed by the exact campaign item. Guarded apply MUST hold the campaign lease from claim
+  validation through provider read-back and queue advancement, so no competing operation
+  can reach the provider. Apply and Stop MUST share the same session-operation lock, with
+  lock order session then campaign then attempt, so Stop cannot remove transient authority
+  while apply is persisting success. Success requires authoritative read-back of exactly one matching campaign item/result, matching reply
+  for reply-bearing operations, required resolved state for resolution-bearing operations,
+  and a provider receipt. Only then may ELK atomically advance that tracker item and issue
+  a new campaign receipt. Before deleting the transient gate it MUST issue a Stage 13
+  completion receipt binding the original gate, successful attempt, prior/new tracker
+  hashes, campaign receipt, item, packet, operation, and provider receipt. Re-entry after
+  tracker advancement or gate cleanup MUST validate and replay that exact success without
+  another provider mutation. Existing attempt identity/marker/adapter/state/receipt MUST
+  be revalidated before reconciliation or idempotent completion. Failure, timeout,
+  malformed output, or ambiguity remains `outcome-unknown` and may only reconcile the
+  same attempt; blind retry, alternate adapter/provider/path, stale discovery, inferred
+  success, or narrated campaign completion is forbidden.
 
 ### Northstar requirements
 
@@ -1023,7 +1096,7 @@ Deterministic checks MUST prove all of the following:
   otherwise refreshed cleanly so stale old command files, generated agents, generated
   prompts, registry entries, and cached install outputs are removed rather than
   accumulated.
-- **FR-MIG-006:** Each migrated current install surface MUST register exactly the 28 current
+- **FR-MIG-006:** Each migrated current install surface MUST register exactly the 29 current
   IDs and zero old IDs; historical Git/doc evidence is exempt from destructive
   rewriting.
 - **FR-MIG-007:** EngLoopKit's manifests, bundle/catalog/release metadata, commands,
@@ -1043,10 +1116,10 @@ Deterministic checks MUST prove all of the following:
 
 | Repository | Required v2 end state |
 |---|---|
-| EngLoopKit | One `.engloop/` root with config and retained artifact ancestry; one visible Northstar evolved from its initial direction content; retained Learnings Pyramid refined to the Stage 42 contract; one 28-command extension/package; no `.engloopkit/`, current `engloop/`, legacy numbered-direction machinery, or old command surface. |
-| tthp | One `.engloop/` root; initial direction content evolved into visible root `NORTHSTAR.md`; no `.engloopkit/`, current `engloop/`, duplicate live direction, or legacy counter/template; clean 28-command local installation; standalone and focused picker proof. |
-| engloop-workshop | One `.engloop/` root and visible Northstar for the workshop's own direction; curriculum/docs use the ordered v2 workflow; no `.engloopkit/`, current `engloop/`, or legacy numbered-direction machinery; clean 28-command local installation; standalone and focused picker proof. |
-| VerifyExtremeEdgeWithTpcc | One `.engloop/` root and visible Northstar for verification-product direction; current model/test entry points remain independently usable; no `.engloopkit/` or current `engloop/`; clean 28-command local installation; standalone and focused picker proof. |
+| EngLoopKit | One `.engloop/` root with config and retained artifact ancestry; one visible Northstar evolved from its initial direction content; retained Learnings Pyramid refined to the Stage 42 contract; one 29-command extension/package; no `.engloopkit/`, current `engloop/`, legacy numbered-direction machinery, or old command surface. |
+| tthp | One `.engloop/` root; initial direction content evolved into visible root `NORTHSTAR.md`; no `.engloopkit/`, current `engloop/`, duplicate live direction, or legacy counter/template; clean 29-command local installation; standalone and focused picker proof. |
+| engloop-workshop | One `.engloop/` root and visible Northstar for the workshop's own direction; curriculum/docs use the ordered v2 workflow; no `.engloopkit/`, current `engloop/`, or legacy numbered-direction machinery; clean 29-command local installation; standalone and focused picker proof. |
+| VerifyExtremeEdgeWithTpcc | One `.engloop/` root and visible Northstar for verification-product direction; current model/test entry points remain independently usable; no `.engloopkit/` or current `engloop/`; clean 29-command local installation; standalone and focused picker proof. |
 
 ## Failure modes and edge cases
 
@@ -1118,12 +1191,12 @@ Deterministic checks MUST prove all of the following:
 
 ## Measurable success criteria
 
-- **SC-001:** A clean extension/package inspection finds exactly 28 current command
+- **SC-001:** A clean extension/package inspection finds exactly 29 current command
   registrations, all matching the table, and 0 old registrations or aliases.
-- **SC-002:** In a clean single-root picker, all 28 commands appear exactly once and
-  their displayed lexical sequence matches 01–12, 20–23, 30–31, 40–42, 50, 60–61,
+- **SC-002:** In a clean single-root picker, all 29 commands appear exactly once and
+  their displayed lexical sequence matches 01–13, 20–23, 30–31, 40–42, 50, 60–61,
   70–72, 80 with 0 inversions.
-- **SC-003:** 100% of the 28 command files pass the ARCH002 command-loop conformance
+- **SC-003:** 100% of the 29 command files pass the ARCH002 command-loop conformance
   checks and reference only existing required artifacts.
 - **SC-004:** Each of the four migrated repositories has exactly 1 root
   `NORTHSTAR.md`, 0 current legacy numbered-direction artifacts/templates/counters, and Git evidence of
@@ -1146,7 +1219,7 @@ Deterministic checks MUST prove all of the following:
   and model-derived tests reject representative illegal order, invalid input, gate
   bypass, stale-evidence, and duplicate-start attempts.
 - **SC-011:** `tthp`, `engloop-workshop`, and `VerifyExtremeEdgeWithTpcc` each pass a
-  standalone invocation check and a focused single-root picker check with exactly 28
+  standalone invocation check and a focused single-root picker check with exactly 29
   v2 rows and 0 stale old rows.
 - **SC-012:** The mega-workspace remains usable for cross-repository integration and
   its documentation explains focused-workspace mitigation without claiming global
@@ -1170,15 +1243,15 @@ Deterministic checks MUST prove all of the following:
   and planning contract finds exactly the `FR-NOM-001` global/local prefix sets and
   living root documents, with zero current allocation, alias, translation, fallback,
   or active filename outside that vocabulary.
-- **SC-018:** A clean disposable install contains 28/28 visible EngLoop agent files
-  with all common required fields preserved, terminal Stages 09, 12, 31, 41, 42, 50,
+- **SC-018:** A clean disposable install contains 29/29 visible EngLoop agent files
+  with all common required fields preserved, terminal Stages 09, 13, 31, 41, 42, 50,
   61, 70, 71, 72, and 80 have 0 handoffs, every other agent has at least 1 handoff, and VS Code customization diagnostics report 0
   EngLoop-owned errors and 0 EngLoop-owned warnings.
 - **SC-019:** The installed handoff edge set equals the ratified graph exactly; 100% of
   targets resolve, 100% use `send: false`, 0 specify a model override, and Stage 08 has
   0 edges to operations or stewardship.
-- **SC-020:** All 28 installed agents match the least-privilege tools/subagent matrix,
-  all 28 entry hooks invoke the exact versioned validator contract, generated prompts
+- **SC-020:** All 29 installed agents match the least-privilege tools/subagent matrix,
+  all 29 entry hooks invoke the exact versioned validator contract, generated prompts
   contain 0 `tools` overrides, and controlled invalid-entry fixtures prove mechanical
   blocking with hooks enabled, observed unconditional body rejection with hooks
   disabled, and trusted-tool rejection of every invalid durable transition/evidence

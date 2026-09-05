@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://engloopkit.dev/schemas/code-review-provider-claim.schema.json",
+  "title": "EngLoopKit durable Stage 13 campaign-item provider claim",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "sessionHash", "gateSha256", "packetSha256",
+    "campaignTrackerSha256", "campaignItemId", "adapterSha256",
+    "operation", "approvalSha256"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "sessionHash": { "$ref": "#/$defs/sha256" },
+    "gateSha256": { "$ref": "#/$defs/sha256" },
+    "packetSha256": { "$ref": "#/$defs/sha256" },
+    "campaignTrackerSha256": { "$ref": "#/$defs/sha256" },
+    "campaignItemId": { "$ref": "#/$defs/sha256" },
+    "adapterSha256": { "$ref": "#/$defs/sha256" },
+    "operation": { "enum": ["reply", "resolve", "reply-and-resolve"] },
+    "approvalSha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

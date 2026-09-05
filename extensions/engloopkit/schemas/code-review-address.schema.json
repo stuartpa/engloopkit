@@ -14,6 +14,13 @@
     "sourceRevision",
     "targetRevision",
     "iteration",
+    "campaignTracker",
+    "campaignTrackerSha256",
+    "campaignItemId",
+    "campaignItemContentSha256",
+    "campaignDecisionReceiptId",
+    "campaignReceipt",
+    "campaignReceiptSha256",
     "actingPrincipal",
     "threadStatus",
     "classification",
@@ -43,6 +50,13 @@
     "sourceRevision": { "$ref": "#/$defs/revision" },
     "targetRevision": { "$ref": "#/$defs/revision" },
     "iteration": { "$ref": "#/$defs/identity" },
+    "campaignTracker": { "type": "string", "pattern": "^\\.engloop/out/code-review-response/campaigns/[a-f0-9]{64}/tracker\\.json$" },
+    "campaignTrackerSha256": { "$ref": "#/$defs/sha256" },
+    "campaignItemId": { "$ref": "#/$defs/sha256" },
+    "campaignItemContentSha256": { "$ref": "#/$defs/sha256" },
+    "campaignDecisionReceiptId": { "type": "string", "minLength": 1 },
+    "campaignReceipt": { "type": "string", "pattern": "^\\.engloop/out/code-review-response/campaign-receipts/[a-f0-9]{64}\\.json$" },
+    "campaignReceiptSha256": { "$ref": "#/$defs/sha256" },
     "actingPrincipal": { "type": "string", "minLength": 1, "maxLength": 512 },
     "threadStatus": { "enum": ["active", "resolved"] },
     "classification": {
@@ -89,9 +103,17 @@
       },
       "then": {
         "properties": {
-          "changedFiles": { "minItems": 1 },
           "validationResults": { "minItems": 1 }
-        }
+        },
+        "anyOf": [
+          { "properties": { "changedFiles": { "minItems": 1 } } },
+          {
+            "properties": {
+              "changedFiles": { "maxItems": 0 },
+              "requiredFixRevision": { "$ref": "#/$defs/revision" }
+            }
+          }
+        ]
       }
     }
   ],

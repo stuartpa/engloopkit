@@ -1,9 +1,9 @@
 # Tasks: SPEC001 Ordered EngLoop v2
 
-> **Current-surface amendment (v1.16.0):** Checked tasks below retain original v1.7.0
+> **Current-surface amendment (v1.17.0):** Checked tasks below retain original v1.7.0
 > cutover wording as historical execution evidence. Any 13-command, 23-edge, retired
 > Stage 30/31 meaning, or 1.7.0 acceptance statement is superseded by the current
-> 28-command/31-edge `spec.md` and `contracts/command-surface.md` contracts.
+> 29-command/32-edge `spec.md` and `contracts/command-surface.md` contracts.
 
 Feature directory: `c:\boards\brd009\EngLoopKit\specs\SPEC001-ordered-engloop-v2`
 

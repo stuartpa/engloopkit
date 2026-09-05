@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://engloopkit.dev/schemas/code-review-campaign-transaction.schema.json",
+  "title": "EngLoopKit Stage 11 campaign write-ahead transaction",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "kind", "campaignId", "sessionHash",
+    "previousTrackerSha256", "trackerPath", "tracker", "gatePath", "gate",
+    "snapshotJson"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "kind": { "enum": ["initialize", "post-tool"] },
+    "campaignId": { "$ref": "#/$defs/sha256" },
+    "sessionHash": { "$ref": "#/$defs/sha256" },
+    "previousTrackerSha256": {
+      "oneOf": [
+        { "const": "" },
+        { "$ref": "#/$defs/sha256" }
+      ]
+    },
+    "trackerPath": {
+      "type": "string",
+      "pattern": "^\\.engloop/out/code-review-response/campaigns/[a-f0-9]{64}/tracker\\.json$"
+    },
+    "tracker": { "$ref": "code-review-campaign.schema.json" },
+    "gatePath": {
+      "type": "string",
+      "pattern": "^\\.engloop/out/code-review-response/campaign-gates/[a-f0-9]{64}\\.json$"
+    },
+    "gate": { "$ref": "#/$defs/gate" },
+    "snapshotJson": { "type": "string" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "kind": { "const": "initialize" } } },
+      "then": { "properties": { "snapshotJson": { "minLength": 2 } } },
+      "else": {
+        "properties": {
+          "previousTrackerSha256": { "$ref": "#/$defs/sha256" },
+          "snapshotJson": { "const": "" }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "identity": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^\\S+$"
+    },
+    "revision": { "type": "string", "pattern": "^[a-fA-F0-9]{40,64}$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion", "sessionHash", "head", "statusDigest", "toolVersion",
+        "manifestSha256", "provider", "repository", "pullRequest", "adapter",
+        "adapterSha256", "adapterArtifactSha256", "tracker", "trackerSha256",
+        "campaignId", "refreshNumber"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "1.0" },
+        "sessionHash": { "$ref": "#/$defs/sha256" },
+        "head": { "$ref": "#/$defs/revision" },
+        "statusDigest": { "$ref": "#/$defs/sha256" },
+        "toolVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "manifestSha256": { "$ref": "#/$defs/sha256" },
+        "provider": { "$ref": "#/$defs/identity" },
+        "repository": { "$ref": "#/$defs/identity" },
+        "pullRequest": { "$ref": "#/$defs/identity" },
+        "adapter": { "type": "string", "pattern": "^\\.engloop/provider-adapters/.+\\.json$" },
+        "adapterSha256": { "$ref": "#/$defs/sha256" },
+        "adapterArtifactSha256": { "$ref": "#/$defs/sha256" },
+        "tracker": { "type": "string", "pattern": "^\\.engloop/out/code-review-response/campaigns/[a-f0-9]{64}/tracker\\.json$" },
+        "trackerSha256": { "$ref": "#/$defs/sha256" },
+        "campaignId": { "$ref": "#/$defs/sha256" },
+        "refreshNumber": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

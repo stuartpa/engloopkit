@@ -8,6 +8,13 @@
   "sourceRevision": "<authoritative-source-revision>",
   "targetRevision": "<authoritative-target-revision>",
   "iteration": "<provider-iteration-id>",
+  "campaignTracker": ".engloop/out/code-review-response/campaigns/<campaign-sha256>/tracker.json",
+  "campaignTrackerSha256": "<sha256>",
+  "campaignItemId": "<sha256>",
+  "campaignItemContentSha256": "<sha256>",
+  "campaignDecisionReceiptId": "<receipt-id>",
+  "campaignReceipt": ".engloop/out/code-review-response/campaign-receipts/<receipt-sha256>.json",
+  "campaignReceiptSha256": "<sha256>",
   "actingPrincipal": "<authenticated-provider-principal>",
   "threadStatus": "active",
   "classification": "already-addressed",
@@ -17,7 +24,9 @@
   "finalStatusDigest": "<sha256>",
   "changedFiles": [],
   "validationResults": [],
-  "evidence": [],
+  "evidence": [
+    "<evidence-reference>"
+  ],
   "unresolvedRisks": [],
   "replyText": "<exact proposed reply>",
   "allowedOperations": [

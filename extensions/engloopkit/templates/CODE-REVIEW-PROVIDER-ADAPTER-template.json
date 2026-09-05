@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "adapterId": "<stable-adapter-id>",
   "provider": "<provider-id>",
-  "protocol": "engloop-review-response-v1",
+  "protocol": "engloop-review-response-v2",
   "command": [
     "<executable>",
     "<argument>",
@@ -12,9 +12,11 @@
   "commandArtifactSha256": "<sha256>",
   "timeoutSeconds": 120,
   "capabilities": [
+    "discover",
     "inspect",
     "reply",
     "resolve",
     "reply-and-resolve"
-  ]
+  ],
+  "discoveryRequest": {}
 }

@@ -14,7 +14,8 @@ public static class ValidationCommands
         "speckit.engloop.01-northstar", "speckit.engloop.02-scaffold", "speckit.engloop.03-architect",
         "speckit.engloop.04-refactor", "speckit.engloop.05-model", "speckit.engloop.06-explore",
         "speckit.engloop.07-validate", "speckit.engloop.08-unittest", "speckit.engloop.09-debugger-walk-thru",
-        "speckit.engloop.10-codereview-prepare", "speckit.engloop.11-codereview-address", "speckit.engloop.12-codereview-reply-resolve",
+        "speckit.engloop.10-codereview-prepare", "speckit.engloop.11-codereview-campaign", "speckit.engloop.12-codereview-address",
+        "speckit.engloop.13-codereview-reply-resolve",
         "speckit.engloop.20-incident", "speckit.engloop.21-postmortem",
         "speckit.engloop.22-repair", "speckit.engloop.23-happy-minute", "speckit.engloop.30-token-efficiency-analyze", "speckit.engloop.31-token-efficiency-implement",
         "speckit.engloop.40-refactor-plan", "speckit.engloop.41-deadcode", "speckit.engloop.42-learnings-pyramid",
@@ -35,8 +36,9 @@ public static class ValidationCommands
         ["speckit.engloop.08-unittest"] = ["read", "search", "edit", "execute", "agent"],
         ["speckit.engloop.09-debugger-walk-thru"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.10-codereview-prepare"] = ["read", "search", "edit", "execute", "web"],
-        ["speckit.engloop.11-codereview-address"] = ["read", "search", "edit", "execute", "web"],
-        ["speckit.engloop.12-codereview-reply-resolve"] = ["read", "execute", "vscode_askQuestions"],
+        ["speckit.engloop.11-codereview-campaign"] = ["read", "execute", "vscode_askQuestions"],
+        ["speckit.engloop.12-codereview-address"] = ["read", "search", "edit", "execute"],
+        ["speckit.engloop.13-codereview-reply-resolve"] = ["read", "execute", "vscode_askQuestions"],
         ["speckit.engloop.20-incident"] = ["read", "search", "edit", "execute", "agent"],
         ["speckit.engloop.21-postmortem"] = ["read", "search", "edit", "execute", "agent", "vscode_askQuestions"],
         ["speckit.engloop.22-repair"] = ["read", "search", "edit", "execute"],
@@ -62,7 +64,8 @@ public static class ValidationCommands
         ["speckit.engloop.05-model"] = ["Explore"], ["speckit.engloop.06-explore"] = [],
         ["speckit.engloop.07-validate"] = [], ["speckit.engloop.08-unittest"] = ["Explore"],
         ["speckit.engloop.09-debugger-walk-thru"] = [], ["speckit.engloop.10-codereview-prepare"] = [],
-        ["speckit.engloop.11-codereview-address"] = [], ["speckit.engloop.12-codereview-reply-resolve"] = [],
+        ["speckit.engloop.11-codereview-campaign"] = [], ["speckit.engloop.12-codereview-address"] = [],
+        ["speckit.engloop.13-codereview-reply-resolve"] = [],
         ["speckit.engloop.20-incident"] = ["speckit.engloop.21-postmortem"], ["speckit.engloop.21-postmortem"] = ["Explore"],
         ["speckit.engloop.22-repair"] = [], ["speckit.engloop.23-happy-minute"] = [], ["speckit.engloop.30-token-efficiency-analyze"] = ["Explore"],
         ["speckit.engloop.31-token-efficiency-implement"] = ["Explore"], ["speckit.engloop.40-refactor-plan"] = ["Explore"],
@@ -85,8 +88,9 @@ public static class ValidationCommands
         ["speckit.engloop.08-unittest"] = ["speckit.engloop.04-refactor", "speckit.engloop.05-model", "speckit.engloop.07-validate", "speckit.engloop.09-debugger-walk-thru"],
         ["speckit.engloop.09-debugger-walk-thru"] = [],
         ["speckit.engloop.10-codereview-prepare"] = ["speckit.engloop.08-unittest"],
-        ["speckit.engloop.11-codereview-address"] = ["speckit.engloop.12-codereview-reply-resolve"],
-        ["speckit.engloop.12-codereview-reply-resolve"] = [],
+        ["speckit.engloop.11-codereview-campaign"] = ["speckit.engloop.12-codereview-address"],
+        ["speckit.engloop.12-codereview-address"] = ["speckit.engloop.13-codereview-reply-resolve"],
+        ["speckit.engloop.13-codereview-reply-resolve"] = [],
         ["speckit.engloop.20-incident"] = ["speckit.engloop.21-postmortem"],
         ["speckit.engloop.21-postmortem"] = ["speckit.engloop.22-repair", "speckit.engloop.42-learnings-pyramid"],
         ["speckit.engloop.22-repair"] = ["speckit.engloop.04-refactor"],
@@ -512,7 +516,7 @@ public static class ValidationCommands
                 return 1;
             }
 
-            if (commandId is "speckit.engloop.09-debugger-walk-thru" or "speckit.engloop.12-codereview-reply-resolve" or "speckit.engloop.31-token-efficiency-implement" or "speckit.engloop.41-deadcode" or "speckit.engloop.42-learnings-pyramid" or "speckit.engloop.50-handoff-create" or "speckit.engloop.61-overlay-remove" or "speckit.engloop.70-six-pager-create" or "speckit.engloop.71-powerpnt-create" or "speckit.engloop.72-academic-paper-create" or "speckit.engloop.80-upgrade-elk")
+            if (commandId is "speckit.engloop.09-debugger-walk-thru" or "speckit.engloop.13-codereview-reply-resolve" or "speckit.engloop.31-token-efficiency-implement" or "speckit.engloop.41-deadcode" or "speckit.engloop.42-learnings-pyramid" or "speckit.engloop.50-handoff-create" or "speckit.engloop.61-overlay-remove" or "speckit.engloop.70-six-pager-create" or "speckit.engloop.71-powerpnt-create" or "speckit.engloop.72-academic-paper-create" or "speckit.engloop.80-upgrade-elk")
             {
                 if (map.ContainsKey("handoffs"))
                 {
@@ -959,7 +963,7 @@ public static class ValidationCommands
             }
         }
 
-        if (totalHandoffs != 31)
+        if (totalHandoffs != 32)
         {
             Console.Error.WriteLine($"wrong-handoff-count:{totalHandoffs}");
             return 1;

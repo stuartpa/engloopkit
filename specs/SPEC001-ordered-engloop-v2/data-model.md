@@ -82,14 +82,14 @@ actionable missing-runway result.
 
 | Field | Type | Rules |
 |---|---|---|
-| `ordinal` | integer | One of 01–12, 20–23, 30–31, 40–42, 50, 60–61, 70–72, or 80. |
+| `ordinal` | integer | One of 01–13, 20–23, 30–31, 40–42, 50, 60–61, 70–72, or 80. |
 | `id` | string | One exact `speckit.engloop.<NN>-<name>` ID from the command contract. |
 | `file` | root-relative path | Exactly one corresponding Markdown command file. |
 | `lane` | enum | Exact delivery, review-advisory, review, review-response, operations, positive-history, token-efficiency, stewardship, continuation, local-utility, publication, or presentation lane. |
 | `responsibility` | string | Matches SPEC001 ownership; cannot claim another stage's gate. |
 | `loopContract` | value object | Frontmatter description plus Trigger, Goal, Actions, Verification, Memory, Artifact root, Done when. |
 
-**Invariants:** Exactly 28 descriptors; IDs and files unique; ordinal sort equals ordinal
+**Invariants:** Exactly 29 descriptors; IDs and files unique; ordinal sort equals ordinal
 lexical ID sort; no current descriptor, registry, generated agent, or generated prompt
 contains `speckit.engloopkit.`.
 
@@ -102,14 +102,14 @@ The one authoritative custom-agent projection associated with a
 
 | Field | Type | Rules |
 |---|---|---|
-| `id` / `name` | exact command ID | Both equal the associated `CommandDescriptor.id`; all 28 are distinct. |
+| `id` / `name` | exact command ID | Both equal the associated `CommandDescriptor.id`; all 29 are distinct. |
 | `sourceCommandPath` | root-relative path | The one authoritative source Markdown command. |
 | `installedAgentPath` | root-relative path | Exactly `.github/agents/<id>.agent.md` in a disposable/consumer installation. |
 | `generatedPromptPath` | root-relative path | Exactly `.github/prompts/<id>.prompt.md`. |
 | `description` | non-empty string | Stage-specific trigger and outcome; preserved semantically. |
 | `argumentHint` | non-empty string | Stage-specific required input shown by VS Code. |
 | `target` | enum | Exactly `vscode`. |
-| `userInvocable` | bool | Exactly true; all 28 are visible. |
+| `userInvocable` | bool | Exactly true; all 29 are visible. |
 | `disableModelInvocation` | bool | False only for Stage 21's governed plain-language postmortem routing; true for every other stage. |
 | `toolPolicy` | `ToolPolicy` | Exact row from SPEC001; no missing, extra, or duplicate tool. |
 | `subagentPolicy` | `SubagentPolicy` | Explicit `Explore` allowlist or explicit empty list. |
@@ -119,7 +119,7 @@ The one authoritative custom-agent projection associated with a
 | `durableStageGate` | trusted command contract | Every operation that accepts durable transition/evidence state independently enforces current entry prerequisites. |
 | `modelPresent` / `inferPresent` | bool | Both false. Absence is validated, not defaulted. |
 
-Exactly 28 `AgentDescriptor` values exist. Source and installed headers have equivalent
+Exactly 29 `AgentDescriptor` values exist. Source and installed headers have equivalent
 canonical projections for every field above. Generated prompts select `id` through
 their exact `agent` field and have no `tools` field. A missing source, generated agent,
 generated prompt, or semantic value is not represented as a partial descriptor; it is
@@ -171,7 +171,7 @@ accepted transition/evidence state.
 | Field | Type | Rules |
 |---|---|---|
 | `fromAgentId` | exact ID | Existing source/installed agent. |
-| `targetAgentId` | exact ID | Existing member of the same 28-agent installed set. |
+| `targetAgentId` | exact ID | Existing member of the same 29-agent installed set. |
 | `label` | non-empty string | Exact branch-specific button label from the command-surface contract. |
 | `prompt` | non-empty string | Exact branch-specific prefilled prompt from the contract. |
 | `send` | bool | Always false. |
@@ -181,7 +181,7 @@ accepted transition/evidence state.
 A handoff is a UI suggestion that switches agents with context and a prefilled prompt.
 It creates no `TransitionAttempt`, mutates no `EngineeringLoopState`, satisfies no gate,
 and schedules no lane. User submission at the target creates a new entry-validation
-attempt. Stages 09, 12, 31, 41, 42, 50, 61, 70, 71, 72, and 80 have zero outgoing
+attempt. Stages 09, 13, 31, 41, 42, 50, 61, 70, 71, 72, and 80 have zero outgoing
 edges; Stage 08 has no edge to 20, 30, or 31.
 
 ### `GeneratedSurfaceSemanticComparison`
@@ -195,8 +195,8 @@ edges; Stage 08 has no edge to 20, 30, or 31.
 | `requiredAbsence` | field set | `infer` and `model` absent from agents; `tools` absent from prompts; handoff `model` absent. |
 | `mismatches` | list | Field path, source value, generated value, and affected agent ID; empty for PASS. |
 | `targetResolution` | exact-set result | All handoff and allowed-subagent targets resolve; no extra target. |
-| `promptProjection` | exact-set result | 28 prompts select 28 matching agent IDs and contain no tool override. |
-| `verdict` | PASS/FAIL | PASS only when all 28 source/install projections and absence constraints agree. |
+| `promptProjection` | exact-set result | 29 prompts select 29 matching agent IDs and contain no tool override. |
+| `verdict` | PASS/FAIL | PASS only when all 29 source/install projections and absence constraints agree. |
 
 The comparison is produced from YamlDotNet 18.1.0 parsing, not line equality or regex
 matching. A failed early canary comparison blocks production header authoring and
@@ -210,7 +210,7 @@ blocks package/release/consumer migration.
 | `vscodeVersion` / `target` | identity | Exactly `1.129.0-insider` / commit `29d19ddd1af725baf537b6b328843bcdc2d29ba1` and `vscode` for 1.7.0 acceptance; another build requires the identical canary. |
 | `schemaProjectionDigest` | digest | Tracked `schemas/vscode-agent-surface.schema.json` plus official-document provenance retrieved 2026-07-10. |
 | `workspaceRoot` | canonical path | Disposable or focused single-root consumer only. |
-| `loadedAgentIds` | set | Exactly the expected 28 visible IDs. |
+| `loadedAgentIds` | set | Exactly the expected 29 visible IDs. |
 | `errors` / `warnings` | diagnostic lists | Empty for EngLoop-owned agents/prompts/hooks; every finding retains file/field/message. |
 | `hookSetting` / `assuranceMode` | bool / enum | Recorded explicitly as strict hook-enabled or reduced-assurance hook-disabled; both fixtures are tested without equating their enforcement. |
 | `deterministicParserResult` | comparison digest | References the matching `GeneratedSurfaceSemanticComparison`. |
@@ -222,50 +222,111 @@ not a product-readiness verdict.
 
 ## 2B. Author-side code-review response protocol
 
-### `CodeReviewAddressPacket`
-
-An ignored canonical Stage 11 record binding one explicit provider/repository/PR/thread,
-source/target/iteration identity, acting principal, thread state, classification, exact
-reply, evidence, allowed operations, checkout digests, and false provider/commit-push
-claims. An actionable packet records the exact current changed paths and validation. After
-an external commit/push workflow, Stage 11 creates a new clean refresh packet at that head;
-only that packet is provider-ready.
-
-### `CodeReviewAddressReceipt`
-
-An ignored engine-created record written atomically only after Stage 11 completion checks.
-It binds the packet path/SHA-256, Stage 11 gate SHA-256, checkout head/status, and exact
-provider/revision identity. Stage 12 rejects a schema-correct, altered, or copied packet
-without its matching receipt.
-
 ### `ProviderAdapterManifest`
 
-A tracked, hash-bound `engloop-review-response-v1` capability containing one provider,
+A tracked, hash-bound `engloop-review-response-v2` capability containing one provider,
 one no-shell command vector, one tracked artifact/hash, a bounded timeout, mandatory
-`inspect`, and explicit mutation capabilities. Missing or ambiguous capability rejects;
-there is no inferred provider mapping or fallback adapter.
+`discover` and `inspect`, explicit mutation capabilities, and an opaque generic
+`discoveryRequest` object consumed only by that adapter. Missing or ambiguous capability,
+untracked/mutated artifacts, v1 protocol, or inline shell evaluation rejects; there is no
+inferred provider mapping, provider-name branch, CLI probing, or fallback adapter.
+
+### `ProviderDiscoverySnapshot`
+
+One immutable ignored result from Stage 11 containing exact provider/repository/PR,
+acting principal, source/target revisions, iteration, provider head, positive page count,
+`paginationComplete: true`, empty continuation token, exact thread count, complete current
+threads/comments, stable discovery receipt, and `mutationPerformed: false`. Thread/comment
+identities are unique and every thread contains its root comment. A partial or malformed
+snapshot is never written as accepted discovery.
+
+### `CodeReviewCampaignTracker` and `CampaignItem`
+
+The ignored current tracker is keyed by
+`SHA256(provider + repository + pullRequest)` and binds the exact tracked adapter/artifact,
+latest immutable snapshot/hash, refresh number, discovery receipt, provider identities,
+selected item, and all current/historical items. Each stable item ID is
+`SHA256(provider + repository + pullRequest + thread + rootComment)` and contains complete
+comments/provider state, a content hash, current or `not-returned` observation, human
+classification/priority evidence, source/response state, packet/fix evidence, and provider
+receipt. Refresh preserves unchanged decisions, marks changed decisions stale, adds new
+pending items, and retains missing items. Atomic replacement plus self-hash validation
+prevents partial tracker state.
+
+### `CodeReviewCampaignTransaction`
+
+One ignored write-ahead record per active campaign transition binds campaign/session,
+previous tracker hash, complete target tracker, complete target gate, and (for discovery)
+the immutable snapshot bytes. It is persisted before snapshot/tracker/gate replacement.
+Recovery under the campaign lock accepts only the exact previous or target tracker/gate
+hashes, completes and validates the target pair, then deletes the transaction. This covers
+discovery installation and human selection/triage updates without rediscovery or inferred
+answers.
+
+### `CampaignDecisionReceipt` and `CodeReviewCampaignReceipt`
+
+For active feedback, Stage 11 requires one exact current item selection and separate fixed
+classification/priority answers. The item's decision receipt binds host tool-use identity
+and exact question/response hashes; model proposals carry no authority. The engine-created
+campaign receipt binds tracker path/hash, campaign/provider/repository/PR, refresh number,
+and serialized Stage 11 gate/hash. Refresh and downstream stages reject a tracker without
+its exact receipt. A session-indexed `CodeReviewCampaignCompletionReceipt` binds that
+tracker/receipt pair, the exact historical tracker bytes, campaign, selected item, and
+active/undecided counts before the transient Stage 11 gate is deleted, so exact Stop
+re-entry reports success without rediscovery even after a later refresh replaces the live
+tracker.
+
+### `CodeReviewAddressPacket` and `CodeReviewAddressReceipt`
+
+An ignored canonical Stage 12 record binds one exact campaign/tracker/item/decision receipt,
+source/target/iteration identity, acting principal, thread state, classification, exact
+reply, evidence, allowed operations, checkout digests, and false provider/commit-push
+claims. An actionable packet records exact current changed paths and validation. After an
+external commit/push workflow, Stage 12 creates a clean packet at that head; only that
+packet is provider-ready. Its engine-created receipt binds packet/hash, Stage 12 gate/hash,
+campaign tracker/item/receipt hashes, checkout head/status, and exact provider revisions.
+Stage 13 rejects an altered, copied, stale, or campaign-mismatched packet/receipt.
 
 ### `ProviderInspection`
 
-A pre-approval read-only result binding the packet hash, exact provider identities,
-principal, revisions, current thread status, provider head, selected operation, one target,
-receipt, and explicit `mutationPerformed: false`. Its canonical bytes are persisted under
-ignored response state and its SHA-256 is bound into the Stage 12 gate and approval message.
+A pre-approval Stage 13 read-only result binding campaign tracker hash/item ID, packet hash,
+exact provider identities, principal, revisions, current thread status, provider head,
+selected operation, one target, receipt, and explicit `mutationPerformed: false`. Its
+canonical bytes are persisted under ignored response state and its SHA-256 is bound into
+the Stage 13 gate and approval message.
 
 ### `ReviewResponseApproval`
 
-A one-time ignored record binding the current gate/packet, operation, reply SHA-256, host
-tool-use identity, the exact question/response JSON strings, and SHA-256 digests recomputed
-from those strings before mutation. The fixed question's
-canonical JSON message displays the exact reply, principal, evidence, packet hash, and
-inspection hash. A second question cannot replace or cancel an existing approval.
+A one-time ignored record binding the current campaign/gate/packet, operation, reply
+SHA-256, host tool-use identity, the exact question/response JSON strings, and SHA-256
+digests recomputed from those strings before mutation. The fixed question's canonical
+JSON message displays the exact campaign/item, reply, principal, evidence, packet/Stage 12
+receipt, and inspection hashes. A second question cannot replace or cancel an existing
+approval.
 
 ### `ProviderAttempt` and `ProviderResult`
 
-The trusted engine writes packet/gate/adapter SHA-256 digests, operation, attempt ID, and marker
-before mutation. Success requires operation-specific authoritative read-back and a provider
-receipt. Rejected attempts cannot retry. Ambiguous attempts may only reconcile with the
-same ID/marker; every existing attempt is revalidated before reuse or idempotent success.
+The trusted engine writes campaign tracker/item, packet/gate/adapter SHA-256 digests,
+operation, attempt ID, and marker before mutation. A durable claim keyed by campaign/item
+binds the exact session, gate, packet, tracker, adapter, operation, and approval. Guarded
+apply holds the campaign lease from claim validation through provider read-back and queue
+advancement, so a competing operation cannot reach the provider. Success requires
+operation-specific authoritative read-back of that exact campaign item and a provider
+receipt. Only confirmed success atomically updates the item and emits a receipt for the
+new tracker hash. Rejected attempts cannot retry and idempotently release their exact
+claim. Ambiguous attempts may only reconcile with the same ID/marker/claim; every existing
+attempt is revalidated before reuse or idempotent success.
+
+### `CodeReviewCompletionReceipt`
+
+One immutable ignored Stage 13 receipt keyed by session identity binds the original gate
+bytes/hash, successful provider attempt path/hash, prior and resulting campaign tracker
+hashes, resulting campaign receipt path/hash, exact item, packet/hash, operation, and
+provider receipt. It is written after the serialized queue transition and before deleting
+the transient gate. Re-entry validates every binding and either replays the receipt or,
+when a crash occurred immediately after tracker advancement, proves the exact completed
+item and writes the same receipt without another provider invocation. Tamper, mismatch,
+or absent success evidence fails closed and leaves the queue unchanged.
 
 ## 3. Living direction
 
@@ -294,8 +355,8 @@ uncertain authority, or a forbidden/dual process root reject Stage 01.
 
 ### `Stage`
 
-The 28 command-stage values are the exact IDs in the command-surface contract: delivery
-01–08, review 09–12, operations/positive-history 20–23, token efficiency 30–31,
+The 29 command-stage values are the exact IDs in the command-surface contract: delivery
+01–08, review 09–13, operations/positive-history 20–23, token efficiency 30–31,
 stewardship 40–42, continuation 50, overlay utility 60–61, publication/presentation
 70–72, and upgrade utility 80.
 
@@ -305,7 +366,7 @@ automatic scheduler.
 ### `InvocationLane`
 
 - `Delivery`: Stages 01–08.
-- `Review`: Stages 09–12; Stage 11/12 author authority remains separate from reviewer publication.
+- `Review`: Stages 09–13; discovery/triage, source remediation, and provider publication authorities remain separate.
 - `OperationsAndPositiveHistory`: Stages 20–23, entered only by demand.
 - `TokenEfficiency`: Stages 30–31, entered independently by demand and explicit approval.
 - `Stewardship`: Stages 40–42, entered with explicit scope/capacity.
@@ -566,7 +627,7 @@ actual card/source IDs; exact comparison rejects omissions and false provenance.
 ### `ReleaseArtifact`
 
 Fields: kind (`tool`, `extension`, `bundle`), product ID `engloopkit`, release version
-1.16.0, path/URL, SHA-256, build revision, and acceptance result. Artifacts are immutable
+1.17.0, path/URL, SHA-256, build revision, and acceptance result. Artifacts are immutable
 after consumer acceptance; a changed bitstream receives a new version.
 
 ### `ConsumerInstallation`
@@ -578,7 +639,7 @@ after consumer acceptance; a changed bitstream receives a new version.
 | Root migration | One coherent old-root rename or direct target-root creation; no merge/copy compatibility state. |
 | Removal proof | No installed EngLoopKit directory/registry ownership/current old generated files. |
 | Installed artifact | Exact accepted release artifact digest; never rebuilt in place. |
-| Registry surface | Exactly 28 current IDs, zero old IDs. |
+| Registry surface | Exactly 29 current IDs, zero old IDs. |
 | Generated surface | Exactly one rich agent/prompt per v2 ID, zero old files, and a passing `GeneratedSurfaceSemanticComparison`. |
 | Customization diagnostics | Passing `CustomizationDiagnosticsResult` for the supported VS Code build. |
 | Entry validation | Invalid entry is mechanically blocked with Preview hooks enabled; hook-disabled use records observed unconditional body rejection and trusted-tool rejection of all invalid durable transition/evidence attempts. |
@@ -622,14 +683,20 @@ AgentDescriptor 1 ── 1 ToolPolicy
 AgentDescriptor 1 ── 1 SubagentPolicy
 AgentDescriptor 1 ── 1 EntryHook
 AgentDescriptor 1 ── * HandoffEdge
-GeneratedSurfaceSemanticComparison 1 ── 28 AgentDescriptor
+GeneratedSurfaceSemanticComparison 1 ── 29 AgentDescriptor
 CustomizationDiagnosticsResult 1 ── 1 GeneratedSurfaceSemanticComparison
+ProviderAdapterManifest 1 ── * ProviderDiscoverySnapshot
+ProviderDiscoverySnapshot * ── 1 CodeReviewCampaignTracker
+CodeReviewCampaignTracker 1 ── * CampaignItem
+CodeReviewCampaignTracker 1 ── 1 CodeReviewCampaignReceipt
+CampaignItem 1 ── 0..1 CampaignDecisionReceipt
+CampaignItem 1 ── 0..* CodeReviewAddressPacket
 CodeReviewAddressPacket 1 ── 1 CodeReviewAddressReceipt
-CodeReviewAddressReceipt 1 ── 1 ProviderAdapterManifest
-CodeReviewAddressPacket 1 ── 1 ProviderInspection
+CodeReviewAddressReceipt 1 ── 1 ProviderInspection
 ProviderInspection 1 ── 1 ReviewResponseApproval
 ReviewResponseApproval 1 ── 1 ProviderAttempt
 ProviderAttempt 1 ── 1 ProviderResult
+ProviderResult 1 ── 1 CampaignItem
 EngineeringLoopState 1 ── * EvidenceStamp
 EngineeringLoopState 1 ── * RepairObligation
 EngineeringLoopState 1 ── 1 LearningRefreshObligation
@@ -659,6 +726,8 @@ The model is sufficient for implementation planning because it explicitly repres
 - Stage 08 path disposition and deletion revalidation;
 - model-derived legal, illegal-order, and invalid-input outcomes;
 - deterministic learning completeness and retrieval evidence;
+- complete provider discovery, immutable refresh history, persistent campaign items,
+  human decisions, and campaign-bound one-item mutation/reconciliation;
 - exact hidden-root/config discovery and forbidden dual-root rejection;
 - exact custom-agent tool/subagent/hook/handoff semantics and UI-only handoff effects;
 - semantic source-to-installed comparison, prompt precedence protection, and

@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://engloopkit.dev/schemas/code-review-completion-receipt.schema.json",
+  "title": "EngLoopKit trusted Stage 13 campaign-completion receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "sessionHash", "gateSha256", "gateJson", "attempt",
+    "attemptSha256", "campaignTracker", "previousCampaignTrackerSha256",
+    "campaignTrackerSha256", "campaignReceipt", "campaignReceiptSha256",
+    "campaignItemId", "packet", "packetSha256", "operation", "providerReceiptId"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "sessionHash": { "$ref": "#/$defs/sha256" },
+    "gateSha256": { "$ref": "#/$defs/sha256" },
+    "gateJson": { "type": "string", "minLength": 2 },
+    "attempt": { "type": "string", "pattern": "^\\.engloop/out/code-review-response/attempts/[a-f0-9]{64}\\.(reply|resolve|reply-and-resolve)\\.json$" },
+    "attemptSha256": { "$ref": "#/$defs/sha256" },
+    "campaignTracker": { "type": "string", "pattern": "^\\.engloop/out/code-review-response/campaigns/[a-f0-9]{64}/tracker\\.json$" },
+    "previousCampaignTrackerSha256": { "$ref": "#/$defs/sha256" },
+    "campaignTrackerSha256": { "$ref": "#/$defs/sha256" },
+    "campaignReceipt": { "type": "string", "pattern": "^\\.engloop/out/code-review-response/campaign-receipts/[a-f0-9]{64}\\.json$" },
+    "campaignReceiptSha256": { "$ref": "#/$defs/sha256" },
+    "campaignItemId": { "$ref": "#/$defs/sha256" },
+    "packet": { "type": "string", "pattern": "^\\.engloop/out/code-review-response/address/[^/]+\\.json$" },
+    "packetSha256": { "$ref": "#/$defs/sha256" },
+    "operation": { "enum": ["reply", "resolve", "reply-and-resolve"] },
+    "providerReceiptId": { "type": "string", "minLength": 1 }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

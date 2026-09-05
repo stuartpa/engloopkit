@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://engloopkit.dev/schemas/code-review-campaign-receipt.schema.json",
+  "title": "EngLoopKit trusted campaign tracker receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "tracker", "trackerSha256", "campaignId", "provider", "repository", "pullRequest", "refreshNumber", "gateSha256", "gateJson"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "tracker": { "type": "string", "pattern": "^\\.engloop/out/code-review-response/campaigns/[a-f0-9]{64}/tracker\\.json$" },
+    "trackerSha256": { "$ref": "#/$defs/sha256" },
+    "campaignId": { "$ref": "#/$defs/sha256" },
+    "provider": { "$ref": "#/$defs/identity" },
+    "repository": { "$ref": "#/$defs/identity" },
+    "pullRequest": { "$ref": "#/$defs/identity" },
+    "refreshNumber": { "type": "integer", "minimum": 1 },
+    "gateSha256": { "$ref": "#/$defs/sha256" },
+    "gateJson": { "type": "string", "minLength": 2 }
+  },
+  "$defs": {
+    "identity": { "type": "string", "minLength": 1, "maxLength": 512, "pattern": "^\\S+$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

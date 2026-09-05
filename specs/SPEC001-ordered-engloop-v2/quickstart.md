@@ -2,21 +2,18 @@
 
 This guide is the post-implementation acceptance path for SPEC001. It proves behavior;
 it does not contain implementation code or replace the contracts in [`contracts/`](contracts/).
-Run from `C:\boards\brd009\EngLoopKit` on Windows PowerShell unless a step explicitly
-says it runs in CI as well.
+Run from the EngLoopKit repository root in PowerShell unless a step explicitly says it
+runs in CI as well.
 
 ## Prerequisites
 
 - clean implementation worktree on the SPEC001 implementation branch;
 - `.specify/` remains local cache state and is not staged or used as a deliverable;
-- .NET SDK selected by root `global.json` (planned pin: 8.0.422);
+- .NET SDK selected by root `global.json` (10.0.303);
 - Git;
 - Spec Kit CLI 0.12.4;
-- VS Code Insiders `1.129.0-insider`, commit
-  `29d19ddd1af725baf537b6b328843bcdc2d29ba1`, for the 1.7.0 agent-surface acceptance;
-- sibling SEK checkout at the exact revision recorded by the implementation, containing
-  model-derived negative conformance and the portable single-path generated binding;
-- local package source containing the just-built EngLoopKit 1.7.0 tool for pre-release
+- exact SEK v0.1.3 release artifacts restored with their pinned SHA-256 values;
+- local package source containing the just-built EngLoopKit 1.17.0 tool for pre-release
   consumer validation.
 
 The post-implementation EngLoopKit root must already be in the v2 layout: one tracked
@@ -29,11 +26,12 @@ Verify the selected tools:
 dotnet --version
 specify --version
 git status --short --branch
-git -C ..\SEK rev-parse HEAD
+pwsh .\scripts\ensure-sek-v0.1.3.ps1 -Root . -InstallExtension
+dotnet tool run sek -- version
 ```
 
-Expected: .NET reports the pinned 8.0 SDK; Spec Kit reports 0.12.4; SEK HEAD equals the
-recorded pin; only intended SPEC001 implementation changes are present.
+Expected: .NET reports 10.0.303; Spec Kit reports 0.12.4; only intended SPEC001
+implementation changes are present.
 
 Prove the physical root before any config-driven command:
 
@@ -65,7 +63,7 @@ YamlDotNet 18.1.0, and proves every required scalar/list/map value and absence. 
 cover empty and nonempty `agents`, nested valid `SessionStart` YAML, branching
 handoffs, terminal agents' absent `handoffs`, exact prompt agent selection, and prompt
 `tools` absence. A passing fixture is removed; a failing fixture/report is retained.
-Any mismatch blocks all 28 production headers and routes only to an upstream Spec Kit
+Any mismatch blocks all 29 production headers and routes only to an upstream Spec Kit
 capability—never an EngLoopKit-owned generator or post-processing path.
 
 ## 1. Restore and build
@@ -104,35 +102,35 @@ incomplete, or the final run is red.
 ```powershell
 dotnet run --project .\src\EngLoopKit.Tool -- validate config --root .
 dotnet run --project .\src\EngLoopKit.Tool -- validate commands --root .
-pwsh .\scripts\validate-package.ps1 -Version 1.7.0
+pwsh .\scripts\validate-package.ps1 -Version 1.17.0
 ```
 
 Expected:
 
-- exactly 28 source/archive IDs in the order 01–12, 20–23, 30–31, 40–42, 50, 60–61, 70–72, 80;
-- all 28 command-loop shapes pass;
+- exactly 29 source/archive IDs in the order 01–13, 20–23, 30–31, 40–42, 50, 60–61, 70–72, 80;
+- all 29 command-loop shapes pass;
 - zero old IDs in current package surfaces;
 - bundle remains composition-only;
 - extension, bundle, tool, and catalog versions agree;
-- disposable install generates 28 agents and 28 prompts, then removal leaves zero
+- disposable install generates 29 agents and 29 prompts, then removal leaves zero
   EngLoop-owned generated files.
 
 ## 3A. Validate exemplary agent surfaces and interaction
 
 ```powershell
-pwsh .\scripts\validate-agent-surfaces.ps1 -Version 1.7.0 -VsCodeVersion 1.129.0-insider -VsCodeCommit 29d19ddd1af725baf537b6b328843bcdc2d29ba1
+pwsh .\scripts\validate-agent-surfaces.ps1 -Version 1.17.0
 ```
 
 Expected deterministic source/archive/install rows:
 
-- installed agents: 28/28 in exact lexical command-ID order;
-- common source→installed fields: 28/28 semantic matches;
-- justified tools/subagent policies: 28/28 exact, with every declared `Explore` target resolved;
-- handoffs: exact ordered graph 31/31, targets 31/31, `send: false` 31/31,
+- installed agents: 29/29 in exact lexical command-ID order;
+- common source→installed fields: 29/29 semantic matches;
+- justified tools/subagent policies: 29/29 exact, with every declared `Explore` target resolved;
+- handoffs: exact ordered graph 32/32, targets 32/32, `send: false` 32/32,
   handoff model overrides 0, terminal-stage handoffs 0, Stage 08 operations/stewardship edges 0;
-- prompts: exact agent selectors 28/28 and `tools` fields 0;
+- prompts: exact agent selectors 29/29 and `tools` fields 0;
 - deterministic semantic mismatches: 0;
-- handoff contract: 31/31 `send: false`, exact targets/prompts, no model override;
+- handoff contract: 32/32 `send: false`, exact targets/prompts, no model override;
 - invalid entry: deterministically rejected by exit code 2;
 - sensitive generated-agent/prompt/tool-manifest/config paths require manual edit
   approval, with zero broad approval/Autopilot/Bypass settings.
@@ -144,8 +142,8 @@ the same installed digests. UI validation is intentionally not performed or requ
 
 ```powershell
 dotnet build .\model\EngLoopKit.Model\EngLoopKit.Model.csproj -c Debug
-dotnet run --project ..\SEK\src\Sek.Cli -- validate --project .
-dotnet run --project ..\SEK\src\Sek.Cli -- explore OrderedEngLoopV2 --project .
+dotnet tool run sek -- validate --project .
+dotnet tool run sek -- explore OrderedEngLoopV2 --project .
 pwsh .\scripts\generate-loop-tests.ps1
 ```
 
@@ -242,14 +240,14 @@ fresh digests; it may not accept stale committed output merely because files exi
 
 ## 9. Migrate consumers one at a time
 
-Build final immutable 1.7.0 artifacts first. Record their SHA-256 values, then run the
+Build final immutable 1.17.0 artifacts first. Record their SHA-256 values, then run the
 migration helper for exactly one root per invocation:
 
 ```powershell
-pwsh .\scripts\validate-package.ps1 -Version 1.7.0 -EmitReleaseManifest .\.engloop\out\release-manifest.json
+pwsh .\scripts\validate-package.ps1 -Version 1.17.0 -OutDir .\.engloop\out\release -EmitReleaseManifest .\.engloop\out\release-manifest.json
 $release = Get-Content .\.engloop\out\release-manifest.json -Raw | ConvertFrom-Json
-$extensionArtifact = (Resolve-Path $release.extension.path).Path
-$toolSource = (Resolve-Path $release.tool.source).Path
+$extensionArtifact = (Resolve-Path (Join-Path .\.engloop\out\release $release.artifacts.extension.name)).Path
+$toolSource = (Resolve-Path .\.engloop\out\release\nupkg).Path
 $consumerMigrations = @(
   [pscustomobject]@{ Root = 'C:\boards\brd009\tthp'; TrackingMode = 'ExistingGit' },
   [pscustomobject]@{ Root = 'C:\boards\brd009\engloop-workshop'; TrackingMode = 'ExistingGit' },
@@ -298,16 +296,14 @@ Expected per root:
 - existing Git consumers show the visible-tree migration as a rename and all moved
   internal links resolve; the consumer that began without Git retains a full checksum
   backup, explicitly bootstraps tracking, and makes no claim to pre-bootstrap history;
-- exact v2 registry set, 28 generated agents, 28 generated prompts, zero old files;
-- 28/28 semantic headers, exact 31-edge graph, exact prompt policy, and zero EngLoop-
-  owned customization errors or warnings on the pinned VS Code build;
+- exact v2 registry set, 29 generated agents, 29 generated prompts, zero old files;
+- 29/29 semantic headers, exact 32-edge graph, exact prompt policy, and zero
+  deterministic customization errors or warnings;
 - installed extension/tool digests equal release artifacts;
-- folder-open operation succeeds without sibling resolution;
-- focused root-local `.code-workspace` contains only `.` and shows one ordered EngLoop
-  registration;
-- focused hook-enabled invalid entry is mechanically blocked; direct folder-open with
-  hooks disabled reports reduced assurance, observes the body check, and proves trusted
-  tooling rejects invalid durable state/evidence;
+- disposable Spec Kit installation succeeds without sibling resolution and removes
+  cleanly;
+- hook-enabled invalid entry is mechanically blocked, and trusted tooling rejects
+  invalid durable state/evidence;
 - stages whose runway is explicitly unproven fail with `missing-proven-runway` rather
   than choosing a framework/destination.
 
@@ -323,28 +319,28 @@ forbidden config root, or dual-root state stops before mutation. Rollback valida
 must restore the complete captured root transaction and then prove that it did not
 leave `engloop/` and `.engloop/` live together.
 
-## 10. Verify the integration workspace and release
+## 10. Verify deterministic release artifacts
 
-Open the existing mega-workspace only after all three standalone checks pass. Confirm it
-remains useful as an integration view and may show one independent 28-command set per
-root. Confirm documentation points routine work to focused one-root entry points; do
-not add cross-root deduplication.
+Do not use editor UI, picker inspection, screenshots, accessibility scraping, or folder-
+open automation as release evidence. Source, archive, disposable Spec Kit installation,
+tool execution, hashes, and tests are the release contract.
 
 Before publishing:
 
 ```powershell
 pwsh .\scripts\validate-v2.ps1 -Release
 $release = Get-Content .\.engloop\out\release-manifest.json -Raw | ConvertFrom-Json
-Get-FileHash (Resolve-Path $release.tool.path) -Algorithm SHA256
-Get-FileHash (Resolve-Path $release.extension.path) -Algorithm SHA256
-Get-FileHash (Resolve-Path $release.bundle.path) -Algorithm SHA256
+$releaseRoot = Resolve-Path .\.engloop\out\release
+Get-FileHash (Join-Path $releaseRoot (Join-Path 'nupkg' $release.artifacts.tool.name)) -Algorithm SHA256
+Get-FileHash (Join-Path $releaseRoot $release.artifacts.extension.name) -Algorithm SHA256
+Get-FileHash (Join-Path $releaseRoot $release.artifacts.bundle.name) -Algorithm SHA256
 ```
 
 Publish exactly the validated bits. If any final check fails, do not publish or rebuild
-under the same 1.7.0 identity.
+under the same 1.17.0 identity.
 
 ## Acceptance result
 
 SPEC001 is implementation-complete only when all local gates, all three standalone
-consumer migrations, focused picker checks, and the integration-view check pass. A
-passing plan/design review alone does not confer product readiness.
+consumer migrations, deterministic source/archive/install checks, and release hashes
+pass. A passing plan/design review alone does not confer product readiness.

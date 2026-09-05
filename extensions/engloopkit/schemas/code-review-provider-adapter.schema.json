@@ -4,12 +4,12 @@
   "title": "EngLoopKit explicit provider adapter manifest",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "adapterId", "provider", "protocol", "command", "commandArtifact", "commandArtifactSha256", "timeoutSeconds", "capabilities"],
+  "required": ["schemaVersion", "adapterId", "provider", "protocol", "command", "commandArtifact", "commandArtifactSha256", "timeoutSeconds", "capabilities", "discoveryRequest"],
   "properties": {
     "schemaVersion": { "const": "1.0" },
     "adapterId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-z0-9][a-z0-9._-]*$" },
     "provider": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^\\S+$" },
-    "protocol": { "const": "engloop-review-response-v1" },
+    "protocol": { "const": "engloop-review-response-v2" },
     "command": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
     "commandArtifact": {
       "type": "string",
@@ -22,10 +22,12 @@
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
-      "items": { "enum": ["inspect", "reply", "resolve", "reply-and-resolve"] },
-      "contains": { "const": "inspect" },
-      "minContains": 1,
-      "maxContains": 1
-    }
+      "items": { "enum": ["discover", "inspect", "reply", "resolve", "reply-and-resolve"] },
+      "allOf": [
+        { "contains": { "const": "discover" }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "const": "inspect" }, "minContains": 1, "maxContains": 1 }
+      ]
+    },
+    "discoveryRequest": { "type": "object" }
   }
 }

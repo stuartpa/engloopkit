@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://engloopkit.dev/schemas/code-review-campaign-completion-receipt.schema.json",
+  "title": "EngLoopKit trusted Stage 11 campaign completion receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "sessionHash", "tracker", "trackerSha256", "trackerJson",
+    "campaignReceipt", "campaignReceiptSha256", "campaignId", "active",
+    "undecided", "selectedItemId"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "sessionHash": { "$ref": "#/$defs/sha256" },
+    "tracker": {
+      "type": "string",
+      "pattern": "^\\.engloop/out/code-review-response/campaigns/[a-f0-9]{64}/tracker\\.json$"
+    },
+    "trackerSha256": { "$ref": "#/$defs/sha256" },
+    "trackerJson": { "type": "string", "minLength": 2 },
+    "campaignReceipt": {
+      "type": "string",
+      "pattern": "^\\.engloop/out/code-review-response/campaign-receipts/[a-f0-9]{64}\\.json$"
+    },
+    "campaignReceiptSha256": { "$ref": "#/$defs/sha256" },
+    "campaignId": { "$ref": "#/$defs/sha256" },
+    "active": { "type": "integer", "minimum": 0 },
+    "undecided": { "type": "integer", "minimum": 0 },
+    "selectedItemId": {
+      "oneOf": [
+        { "const": "" },
+        { "$ref": "#/$defs/sha256" }
+      ]
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

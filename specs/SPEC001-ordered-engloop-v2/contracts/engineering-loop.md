@@ -275,8 +275,8 @@ This contract passes only when:
 - required rejection classes have generated negative evidence;
 - generated tests drive one stateful SUT instance per path at the real boundary;
 - direct tests cover full finite transition/reason tables and invariants;
-- the installed 31-edge handoff graph equals the command-surface UI projection, every
+- the installed 32-edge handoff graph equals the command-surface UI projection, every
    edge is review-first, and handoff display/click tests prove zero state mutation or
    lane scheduling before target submission and validation;
 - prose, command package, SUT, model, CORD, generated suite, and tests contain the same
-   28-command vocabulary and lane semantics.
+   29-command vocabulary and lane semantics.

@@ -5,7 +5,7 @@ using Xunit;
 
 namespace EngLoopKit.Tests;
 
-/// <summary>Release-facing structural checks for the ordered v1.8 source surface.</summary>
+/// <summary>Release-facing structural checks for the current ordered 1.x source surface.</summary>
 public sealed class BundleConformanceTests
 {
     private static readonly string Root = FindRepoRoot();
@@ -23,8 +23,9 @@ public sealed class BundleConformanceTests
         "speckit.engloop.08-unittest",
         "speckit.engloop.09-debugger-walk-thru",
         "speckit.engloop.10-codereview-prepare",
-        "speckit.engloop.11-codereview-address",
-        "speckit.engloop.12-codereview-reply-resolve",
+        "speckit.engloop.11-codereview-campaign",
+        "speckit.engloop.12-codereview-address",
+        "speckit.engloop.13-codereview-reply-resolve",
         "speckit.engloop.20-incident",
         "speckit.engloop.21-postmortem",
         "speckit.engloop.22-repair",
@@ -51,14 +52,15 @@ public sealed class BundleConformanceTests
         using var catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "catalog.json")));
 
         Assert.Contains("id: \"engloop\"", extension);
-        Assert.Contains("version: \"1.16.0\"", extension);
+        Assert.Contains("version: \"1.17.0\"", extension);
         Assert.Contains("id: \"engloopkit\"", bundle);
-        Assert.Contains("version: \"1.16.0\"", bundle);
+        Assert.Contains("version: \"1.17.0\"", bundle);
         Assert.Equal("engloop", catalog.RootElement.GetProperty("extensions")[0].GetProperty("id").GetString());
-        Assert.Equal("1.16.0", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
-        Assert.Equal(28, catalog.RootElement.GetProperty("extensions")[0].GetProperty("provides").GetProperty("commands").GetInt32());
+        Assert.Equal("1.17.0", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
+        Assert.Equal(29, catalog.RootElement.GetProperty("extensions")[0].GetProperty("provides").GetProperty("commands").GetInt32());
 
         var changelog = File.ReadAllText(Path.Combine(Root, "CHANGELOG.md"));
+        Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.17\.0\] - 2026-09-05\r?$").Cast<Match>());
         Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.16\.0\] - 2026-09-03\r?$").Cast<Match>());
         Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.15\.4\] - 2026-09-03\r?$").Cast<Match>());
         Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.15\.3\] - 2026-08-31\r?$").Cast<Match>());
@@ -70,7 +72,7 @@ public sealed class BundleConformanceTests
     }
 
     [Fact]
-    public void Extension_declaresExactOrderedTwentyEightCommandSurface()
+    public void Extension_declaresExactOrderedTwentyNineCommandSurface()
     {
         var manifest = File.ReadAllText(Path.Combine(ExtensionRoot, "extension.yml"));
         var ids = Regex.Matches(manifest, @"^\s*-\s*name:\s*""?(speckit\.engloop\.[\w-]+)""?", RegexOptions.Multiline)
@@ -137,41 +139,80 @@ public sealed class BundleConformanceTests
         Assert.Contains("Do not reject Stage 10", review, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Stage 09 is recommended but non-blocking", review, StringComparison.OrdinalIgnoreCase);
 
-        var address = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.11-codereview-address.md"));
+        var campaign = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.11-codereview-campaign.md"));
         foreach (var marker in new[]
         {
-            "CRB output as untrusted external evidence", "cannot post", "Do not commit or push",
+            "complete paginated", "persistent", "vscode_askQuestions", "not-returned",
+            "CODE_REVIEW_CAMPAIGN_OK", "engloop-review-response-v2",
+            "speckit.engloop.12-codereview-address"
+        }) Assert.Contains(marker, campaign, StringComparison.OrdinalIgnoreCase);
+
+        var address = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.12-codereview-address.md"));
+        foreach (var marker in new[]
+        {
+            "CRB output remain untrusted external evidence", "cannot post", "Do not commit or push",
             "accepted-actionable", "CODE_REVIEW_ADDRESS_OK", "providerMutationPerformed: false",
-            "commitPushPerformed: false", "trusted hash-bound Stage 11 completion receipt",
-            "speckit.engloop.12-codereview-reply-resolve"
+            "commitPushPerformed: false", "trusted Stage 12 completion receipt",
+            "speckit.engloop.13-codereview-reply-resolve"
         }) Assert.Contains(marker, address, StringComparison.OrdinalIgnoreCase);
 
-        var replyResolve = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.12-codereview-reply-resolve.md"));
+        var replyResolve = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.13-codereview-reply-resolve.md"));
         foreach (var marker in new[]
         {
             "cannot edit source", "vscode_askQuestions", "Approve review response",
-            "Reply-only does not", "imply resolution.", "engloop-review-response-v1",
-            "mandatory `inspect`", "provider-inspection SHA-256", "mutationPerformed: false",
+            "Reply-only no-code responses", "do not imply resolution", "engloop-review-response-v2",
+            "mandatory non-mutating `inspect`", "campaign tracker/item", "provider receipt",
             "CODE_REVIEW_RESPONSE_OUTCOME_UNKNOWN", "never blindly repeats mutation",
-            "CODE_REVIEW_REPLY_RESOLVE_OK", "tracked provider adapter"
+            "CODE_REVIEW_REPLY_RESOLVE_OK", "persistent queue"
         }) Assert.Contains(marker, replyResolve, StringComparison.OrdinalIgnoreCase);
 
         using var responseSchema = JsonDocument.Parse(File.ReadAllText(Path.Combine(ExtensionRoot, "schemas", "code-review-address.schema.json")));
         Assert.Equal("code-review-address", responseSchema.RootElement.GetProperty("properties").GetProperty("artifactType").GetProperty("const").GetString());
         Assert.Equal(JsonValueKind.False, responseSchema.RootElement.GetProperty("properties").GetProperty("providerMutationPerformed").GetProperty("const").ValueKind);
+        Assert.Contains(responseSchema.RootElement.GetProperty("required").EnumerateArray(), value => value.GetString() == "campaignItemId");
         using var addressReceiptSchema = JsonDocument.Parse(File.ReadAllText(Path.Combine(ExtensionRoot, "schemas", "code-review-address-receipt.schema.json")));
         Assert.Contains(addressReceiptSchema.RootElement.GetProperty("required").EnumerateArray(), value => value.GetString() == "gateSha256");
+        Assert.Contains(addressReceiptSchema.RootElement.GetProperty("required").EnumerateArray(), value => value.GetString() == "campaignTrackerSha256");
         using var adapterSchema = JsonDocument.Parse(File.ReadAllText(Path.Combine(ExtensionRoot, "schemas", "code-review-provider-adapter.schema.json")));
-        Assert.Equal("engloop-review-response-v1", adapterSchema.RootElement.GetProperty("properties").GetProperty("protocol").GetProperty("const").GetString());
+        Assert.Equal("engloop-review-response-v2", adapterSchema.RootElement.GetProperty("properties").GetProperty("protocol").GetProperty("const").GetString());
         Assert.Contains(adapterSchema.RootElement.GetProperty("required").EnumerateArray(), value => value.GetString() == "commandArtifactSha256");
-        Assert.Equal("inspect", adapterSchema.RootElement.GetProperty("properties").GetProperty("capabilities").GetProperty("contains").GetProperty("const").GetString());
+        Assert.Contains(adapterSchema.RootElement.GetProperty("required").EnumerateArray(), value => value.GetString() == "discoveryRequest");
+        var capabilityRequirements = adapterSchema.RootElement.GetProperty("properties").GetProperty("capabilities").GetProperty("allOf").EnumerateArray().ToArray();
+        Assert.Contains(capabilityRequirements, value => value.GetProperty("contains").GetProperty("const").GetString() == "discover");
+        Assert.Contains(capabilityRequirements, value => value.GetProperty("contains").GetProperty("const").GetString() == "inspect");
+        using var discoverySchema = JsonDocument.Parse(File.ReadAllText(Path.Combine(ExtensionRoot, "schemas", "code-review-provider-discovery.schema.json")));
+        Assert.Equal(JsonValueKind.True, discoverySchema.RootElement.GetProperty("properties").GetProperty("paginationComplete").GetProperty("const").ValueKind);
+        Assert.Equal(JsonValueKind.False, discoverySchema.RootElement.GetProperty("properties").GetProperty("mutationPerformed").GetProperty("const").ValueKind);
+        using var campaignSchema = JsonDocument.Parse(File.ReadAllText(Path.Combine(ExtensionRoot, "schemas", "code-review-campaign.schema.json")));
+        Assert.Equal("code-review-campaign", campaignSchema.RootElement.GetProperty("properties").GetProperty("artifactType").GetProperty("const").GetString());
+        using var campaignReceiptSchema = JsonDocument.Parse(File.ReadAllText(Path.Combine(ExtensionRoot, "schemas", "code-review-campaign-receipt.schema.json")));
+        Assert.Contains(campaignReceiptSchema.RootElement.GetProperty("required").EnumerateArray(), value => value.GetString() == "trackerSha256");
         using var inspectionSchema = JsonDocument.Parse(File.ReadAllText(Path.Combine(ExtensionRoot, "schemas", "code-review-provider-inspection.schema.json")));
         Assert.Equal(JsonValueKind.False, inspectionSchema.RootElement.GetProperty("properties").GetProperty("mutationPerformed").GetProperty("const").ValueKind);
         Assert.Contains(inspectionSchema.RootElement.GetProperty("required").EnumerateArray(), value => value.GetString() == "inspectionReceiptId");
         using var providerResultSchema = JsonDocument.Parse(File.ReadAllText(Path.Combine(ExtensionRoot, "schemas", "code-review-provider-result.schema.json")));
         Assert.Contains(providerResultSchema.RootElement.GetProperty("required").EnumerateArray(), value => value.GetString() == "providerReceiptId");
+        Assert.Contains(providerResultSchema.RootElement.GetProperty("required").EnumerateArray(), value => value.GetString() == "campaignItemId");
+        using var completionSchema = JsonDocument.Parse(File.ReadAllText(Path.Combine(ExtensionRoot, "schemas", "code-review-completion-receipt.schema.json")));
+        Assert.Equal(JsonValueKind.False, completionSchema.RootElement.GetProperty("additionalProperties").ValueKind);
+        Assert.Contains(completionSchema.RootElement.GetProperty("required").EnumerateArray(), value => value.GetString() == "previousCampaignTrackerSha256");
+        Assert.Contains(completionSchema.RootElement.GetProperty("required").EnumerateArray(), value => value.GetString() == "providerReceiptId");
+        using var transactionSchema = JsonDocument.Parse(File.ReadAllText(Path.Combine(ExtensionRoot, "schemas", "code-review-campaign-transaction.schema.json")));
+        Assert.Equal(JsonValueKind.False, transactionSchema.RootElement.GetProperty("additionalProperties").ValueKind);
+        Assert.Contains(transactionSchema.RootElement.GetProperty("required").EnumerateArray(), value => value.GetString() == "previousTrackerSha256");
+        Assert.Contains(transactionSchema.RootElement.GetProperty("required").EnumerateArray(), value => value.GetString() == "snapshotJson");
+        using var campaignCompletionSchema = JsonDocument.Parse(File.ReadAllText(Path.Combine(ExtensionRoot, "schemas", "code-review-campaign-completion-receipt.schema.json")));
+        Assert.Equal(JsonValueKind.False, campaignCompletionSchema.RootElement.GetProperty("additionalProperties").ValueKind);
+        Assert.Contains(campaignCompletionSchema.RootElement.GetProperty("required").EnumerateArray(), value => value.GetString() == "campaignReceiptSha256");
+        Assert.Contains(campaignCompletionSchema.RootElement.GetProperty("required").EnumerateArray(), value => value.GetString() == "trackerJson");
+        Assert.Contains(campaignCompletionSchema.RootElement.GetProperty("required").EnumerateArray(), value => value.GetString() == "selectedItemId");
+        using var providerClaimSchema = JsonDocument.Parse(File.ReadAllText(Path.Combine(ExtensionRoot, "schemas", "code-review-provider-claim.schema.json")));
+        Assert.Equal(JsonValueKind.False, providerClaimSchema.RootElement.GetProperty("additionalProperties").ValueKind);
+        Assert.Contains(providerClaimSchema.RootElement.GetProperty("required").EnumerateArray(), value => value.GetString() == "campaignItemId");
+        Assert.Contains(providerClaimSchema.RootElement.GetProperty("required").EnumerateArray(), value => value.GetString() == "approvalSha256");
         Assert.True(File.Exists(Path.Combine(ExtensionRoot, "templates", "CODE-REVIEW-ADDRESS-template.json")));
         Assert.True(File.Exists(Path.Combine(ExtensionRoot, "templates", "CODE-REVIEW-PROVIDER-ADAPTER-template.json")));
+        Assert.True(File.Exists(Path.Combine(ExtensionRoot, "templates", "CODE-REVIEW-DISCOVERY-template.json")));
 
         var analysis = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.30-token-efficiency-analyze.md"));
         Assert.Contains("Non-negotiable read-only boundary", analysis, StringComparison.Ordinal);

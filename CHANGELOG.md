@@ -3,6 +3,57 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.0] - 2026-09-05
+
+### Added
+
+- Added `speckit.engloop.11-codereview-campaign`: one explicit tracked provider adapter
+  retrieves every current PR review conversation with complete-pagination proof, stores
+  immutable refresh snapshots, and maintains a persistent private queue that preserves
+  unchanged decisions, marks changed decisions stale, retains missing items, and never
+  mutates source or provider state.
+- Added exact human selection, classification, and priority receipts before any item can
+  enter remediation. Model proposals are advisory; no first-item, batch, provider,
+  identity, or fallback inference is allowed.
+- Added public schemas/templates for complete provider discovery, campaign trackers, and
+  campaign receipts. The tracked adapter protocol is now
+  `engloop-review-response-v2`, requiring `discover`, `inspect`, explicit mutation
+  capabilities, and provider-specific declarative discovery metadata.
+
+### Changed
+
+- Renumbered author remediation to `speckit.engloop.12-codereview-address` and provider
+  publication to `speckit.engloop.13-codereview-reply-resolve`. Both stages require the
+  exact current campaign tracker/item, non-stale human decision, and hash-bound campaign
+  receipt; old Stage 11/12 aliases are not retained.
+- Stage 13 inspection, approval display, mutation request, provider read-back, and final
+  tracker transition now bind the exact campaign tracker hash and item ID. Verified
+  provider success records packet/fix/provider receipts in the persistent queue; unknown
+  outcomes still reconcile with one marker and never blindly retry.
+- Expanded the deterministic source/archive/disposable-install surface to 29 commands and
+  32 review-first handoffs while remaining on the 1.x product maturity line.
+
+### Fixed
+
+- Serialized refresh, triage, downstream binding, and provider-success queue advancement
+  through one campaign-scoped lock. Stage 13 now revalidates the exact currently selected
+  item under that lock, so contention leaves tracker bytes unchanged and a stale second
+  completion cannot overwrite an accepted transition.
+- Added validated write-ahead recovery for Stage 11 snapshot/tracker/gate installation and
+  human selection/triage updates, preserving exact decisions across process interruption.
+- Added a session-indexed Stage 11 completion receipt so success remains exactly reportable
+  after its transient gate is deleted, without repeating provider discovery.
+- Moved Stage 13 queue advancement into the guarded apply while it owns a durable per-item
+  provider claim and campaign lease; competing approved operations can no longer both
+  reach the provider, and durable rejection cleanup never permits a mutation retry.
+- Serialized Stage 13 apply and Stop with the same session-operation lock, preventing gate
+  cleanup from racing completion-receipt persistence after provider success.
+- Added a hash-bound Stage 13 completion receipt so a crash after campaign advancement or
+  transient-gate cleanup can replay verified success without repeating provider mutation.
+- Bound a host-confirmed Stage 21 postmortem in the same tool turn as confirmation,
+  including correlated failure recovery, so collection no longer requires an unrelated
+  follow-up prompt before analysis can begin.
+
 ## [1.16.0] - 2026-09-03
 
 ### Added
