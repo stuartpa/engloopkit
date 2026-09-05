@@ -729,20 +729,20 @@ public static class CodeReviewResponseCommands
         attemptPath = null;
         attempt = null;
         campaign = null;
-        Ensure(gate.SchemaVersion == "1.0" && gate.Mode == "reply-resolve"
-            && gate.SessionHash == sessionHash && IsHash(gate.SessionHash)
-            && IsHash(gate.PacketSha256) && IsHash(gate.CampaignTrackerSha256)
-            && IsHash(gate.CampaignItemId) && IsHash(gate.CampaignItemContentSha256)
-            && IsHash(gate.CampaignReceiptSha256) && gate.Operation is not null
-            && Operations.Contains(gate.Operation), "review-response-completion-gate-invalid");
+        Ensure(gate.SchemaVersion == "1.0" & gate.Mode == "reply-resolve"
+            & gate.SessionHash == sessionHash & IsHash(gate.SessionHash)
+            & IsHash(gate.PacketSha256) & IsHash(gate.CampaignTrackerSha256)
+            & IsHash(gate.CampaignItemId) & IsHash(gate.CampaignItemContentSha256)
+            & IsHash(gate.CampaignReceiptSha256) & gate.Operation is not null
+            && Operations.Contains(gate.Operation!), "review-response-completion-gate-invalid");
         _ = PacketPath(root, gate.Packet);
         _ = CodeReviewCampaignCommands.NormalizeTrackerPath(root, gate.CampaignTracker);
         _ = GovernedPath(root, gate.CampaignReceipt,
             ".engloop/out/code-review-response/campaign-receipts/");
-        Ensure(gate.AddressReceipt is not null && IsHash(gate.AddressReceiptSha256 ?? string.Empty)
-            && gate.Adapter is not null && IsHash(gate.AdapterSha256 ?? string.Empty)
-            && IsHash(gate.AdapterArtifactSha256 ?? string.Empty)
-            && gate.Inspection is not null && IsHash(gate.InspectionSha256 ?? string.Empty),
+        Ensure(gate.AddressReceipt is not null & IsHash(gate.AddressReceiptSha256 ?? string.Empty)
+            & gate.Adapter is not null & IsHash(gate.AdapterSha256 ?? string.Empty)
+            & IsHash(gate.AdapterArtifactSha256 ?? string.Empty)
+            & gate.Inspection is not null & IsHash(gate.InspectionSha256 ?? string.Empty),
             "review-response-completion-gate-invalid");
         var operation = gate.Operation!;
         var adapterRelative = gate.Adapter!;
@@ -805,16 +805,16 @@ public static class CodeReviewResponseCommands
             completion.CampaignItemId, completion.Packet, completion.PacketSha256,
             completion.Operation, completion.ProviderReceiptId),
             "review-response-completion-receipt-fields-missing");
-        Ensure(completion.SchemaVersion == "1.0" && completion.SessionHash == sessionHash
-            && IsHash(completion.SessionHash) && IsHash(completion.GateSha256)
-            && IsHash(completion.AttemptSha256)
-            && IsHash(completion.PreviousCampaignTrackerSha256)
-            && IsHash(completion.CampaignTrackerSha256)
-            && completion.PreviousCampaignTrackerSha256 != completion.CampaignTrackerSha256
-            && IsHash(completion.CampaignReceiptSha256)
-            && IsHash(completion.CampaignItemId) && IsHash(completion.PacketSha256)
-            && Operations.Contains(completion.Operation)
-            && !string.IsNullOrWhiteSpace(completion.ProviderReceiptId),
+        Ensure(completion.SchemaVersion == "1.0" & completion.SessionHash == sessionHash
+            & IsHash(completion.SessionHash) & IsHash(completion.GateSha256)
+            & IsHash(completion.AttemptSha256)
+            & IsHash(completion.PreviousCampaignTrackerSha256)
+            & IsHash(completion.CampaignTrackerSha256)
+            & completion.PreviousCampaignTrackerSha256 != completion.CampaignTrackerSha256
+            & IsHash(completion.CampaignReceiptSha256)
+            & IsHash(completion.CampaignItemId) & IsHash(completion.PacketSha256)
+            & Operations.Contains(completion.Operation)
+            & !string.IsNullOrWhiteSpace(completion.ProviderReceiptId),
             "review-response-completion-receipt-invalid");
         Ensure(Sha256Text(completion.GateJson) == completion.GateSha256,
             "review-response-completion-gate-changed");
@@ -822,13 +822,13 @@ public static class CodeReviewResponseCommands
         try { gate = JsonSerializer.Deserialize<Gate>(completion.GateJson, JsonOptions)
             ?? throw new InvalidOperationException("review-response-completion-gate-invalid"); }
         catch (JsonException) { throw new InvalidOperationException("review-response-completion-gate-invalid"); }
-        Ensure(gate.SchemaVersion == "1.0" && gate.Mode == "reply-resolve"
-            && gate.SessionHash == sessionHash && gate.Packet == completion.Packet
-            && gate.PacketSha256 == completion.PacketSha256
-            && gate.CampaignTracker == completion.CampaignTracker
-            && gate.CampaignTrackerSha256 == completion.PreviousCampaignTrackerSha256
-            && gate.CampaignItemId == completion.CampaignItemId
-            && gate.Operation == completion.Operation,
+        Ensure(gate.SchemaVersion == "1.0" & gate.Mode == "reply-resolve"
+            & gate.SessionHash == sessionHash & gate.Packet == completion.Packet
+            & gate.PacketSha256 == completion.PacketSha256
+            & gate.CampaignTracker == completion.CampaignTracker
+            & gate.CampaignTrackerSha256 == completion.PreviousCampaignTrackerSha256
+            & gate.CampaignItemId == completion.CampaignItemId
+            & gate.Operation == completion.Operation,
             "review-response-completion-gate-invalid");
         if (gatePath is not null)
             Ensure(FileSha256(gatePath) == completion.GateSha256,
@@ -843,7 +843,7 @@ public static class CodeReviewResponseCommands
         var attempt = Read<Attempt>(attemptPath, "review-response-attempt-invalid");
         ValidateAttemptAgainstHash(attempt, gate, completion.GateSha256);
         Ensure(attempt.State == "success"
-            && attempt.ProviderReceiptId == completion.ProviderReceiptId,
+            & attempt.ProviderReceiptId == completion.ProviderReceiptId,
             "review-response-completion-attempt-invalid");
         Ensure(FileSha256(attemptPath) == completion.AttemptSha256,
             "review-response-completion-attempt-changed");
@@ -916,17 +916,17 @@ public static class CodeReviewResponseCommands
         Ensure(IsRevision(gate.TargetRevision), "review-response-gate-target-invalid");
         Ensure(IsIdentity(gate.Iteration), "review-response-gate-iteration-invalid");
         Ensure(IsHash(gate.InitialStatusDigest), "review-response-gate-status-invalid");
-        Ensure(IsHash(gate.CampaignTrackerSha256) && IsHash(gate.CampaignItemId)
-            && IsHash(gate.CampaignItemContentSha256) && IsHash(gate.CampaignReceiptSha256)
-            && !string.IsNullOrWhiteSpace(gate.CampaignDecisionReceiptId),
+        Ensure(IsHash(gate.CampaignTrackerSha256) & IsHash(gate.CampaignItemId)
+            & IsHash(gate.CampaignItemContentSha256) & IsHash(gate.CampaignReceiptSha256)
+            & !string.IsNullOrWhiteSpace(gate.CampaignDecisionReceiptId),
             "review-response-gate-campaign-invalid");
         Ensure(gate.Head == GitHead(root), "review-response-head-changed");
         var binding = CodeReviewCampaignCommands.BindItemForStage(root, gate.CampaignTracker, gate.CampaignItemId);
         Ensure(binding.TrackerSha256 == gate.CampaignTrackerSha256
-            && binding.Item.ContentSha256 == gate.CampaignItemContentSha256
-            && binding.Item.DecisionReceiptId == gate.CampaignDecisionReceiptId
-            && binding.CampaignReceiptPath == gate.CampaignReceipt
-            && binding.CampaignReceiptSha256 == gate.CampaignReceiptSha256,
+            & binding.Item.ContentSha256 == gate.CampaignItemContentSha256
+            & binding.Item.DecisionReceiptId == gate.CampaignDecisionReceiptId
+            & binding.CampaignReceiptPath == gate.CampaignReceipt
+            & binding.CampaignReceiptSha256 == gate.CampaignReceiptSha256,
             "review-response-gate-campaign-changed");
         if (gate.Mode == "address")
         {
@@ -1001,33 +1001,33 @@ public static class CodeReviewResponseCommands
             actual.CampaignItemId, actual.CampaignItemContentSha256, actual.CampaignDecisionReceiptId,
             actual.CampaignReceipt, actual.CampaignReceiptSha256), "review-response-address-receipt-fields-missing");
         Ensure(actual.SchemaVersion == "1.0", "review-response-address-receipt-invalid");
-        Ensure(IsHash(actual.GateSha256) && Sha256Text(actual.GateJson) == actual.GateSha256, "review-response-address-receipt-gate-invalid");
+        Ensure(IsHash(actual.GateSha256) & Sha256Text(actual.GateJson) == actual.GateSha256, "review-response-address-receipt-gate-invalid");
         Gate acceptedGate;
         try { acceptedGate = JsonSerializer.Deserialize<Gate>(actual.GateJson, JsonOptions) ?? throw new InvalidOperationException("review-response-address-receipt-gate-invalid"); }
         catch (JsonException) { throw new InvalidOperationException("review-response-address-receipt-gate-invalid"); }
         Ensure(acceptedGate.SchemaVersion == "1.0" && acceptedGate.Mode == "address" && IsHash(acceptedGate.SessionHash)
             && acceptedGate.Packet == actual.Packet && acceptedGate.PacketSha256.Length == 0,
             "review-response-address-receipt-gate-invalid");
-        Ensure(acceptedGate.AddressReceipt is null && acceptedGate.AddressReceiptSha256 is null
-            && acceptedGate.Adapter is null && acceptedGate.AdapterSha256 is null && acceptedGate.AdapterArtifactSha256 is null
-            && acceptedGate.Inspection is null && acceptedGate.InspectionSha256 is null && acceptedGate.Operation is null,
+        Ensure(acceptedGate.AddressReceipt is null & acceptedGate.AddressReceiptSha256 is null
+            & acceptedGate.Adapter is null & acceptedGate.AdapterSha256 is null & acceptedGate.AdapterArtifactSha256 is null
+            & acceptedGate.Inspection is null & acceptedGate.InspectionSha256 is null & acceptedGate.Operation is null,
             "review-response-address-receipt-gate-invalid");
-        Ensure(acceptedGate.Head == actual.Head && acceptedGate.Provider == actual.Provider && acceptedGate.Repository == actual.Repository
-            && acceptedGate.PullRequest == actual.PullRequest && acceptedGate.Thread == actual.Thread && acceptedGate.SourceRevision == actual.SourceRevision
-            && acceptedGate.TargetRevision == actual.TargetRevision && acceptedGate.Iteration == actual.Iteration, "review-response-address-receipt-gate-invalid");
-        Ensure(actual.Packet == currentGate.Packet && actual.PacketSha256 == packetSha256 && actual.Head == currentGate.Head
-            && actual.CampaignTracker == currentGate.CampaignTracker
-            && actual.CampaignTrackerSha256 == currentGate.CampaignTrackerSha256
-            && actual.CampaignItemId == currentGate.CampaignItemId
-            && actual.CampaignItemContentSha256 == currentGate.CampaignItemContentSha256
-            && actual.CampaignDecisionReceiptId == currentGate.CampaignDecisionReceiptId
-            && actual.CampaignReceipt == currentGate.CampaignReceipt
-            && actual.CampaignReceiptSha256 == currentGate.CampaignReceiptSha256
-            && actual.Provider == currentGate.Provider && actual.Repository == currentGate.Repository && actual.PullRequest == currentGate.PullRequest
-            && actual.Thread == currentGate.Thread && actual.SourceRevision == currentGate.SourceRevision && actual.TargetRevision == currentGate.TargetRevision
-            && actual.Iteration == currentGate.Iteration && actual.FinalStatusDigest == packet.FinalStatusDigest
-            && acceptedGate.InitialStatusDigest == packet.InitialStatusDigest && acceptedGate.ToolVersion == currentGate.ToolVersion
-            && acceptedGate.ManifestSha256 == currentGate.ManifestSha256, error);
+        Ensure(acceptedGate.Head == actual.Head & acceptedGate.Provider == actual.Provider & acceptedGate.Repository == actual.Repository
+            & acceptedGate.PullRequest == actual.PullRequest & acceptedGate.Thread == actual.Thread & acceptedGate.SourceRevision == actual.SourceRevision
+            & acceptedGate.TargetRevision == actual.TargetRevision & acceptedGate.Iteration == actual.Iteration, "review-response-address-receipt-gate-invalid");
+        Ensure(actual.Packet == currentGate.Packet & actual.PacketSha256 == packetSha256 & actual.Head == currentGate.Head
+            & actual.CampaignTracker == currentGate.CampaignTracker
+            & actual.CampaignTrackerSha256 == currentGate.CampaignTrackerSha256
+            & actual.CampaignItemId == currentGate.CampaignItemId
+            & actual.CampaignItemContentSha256 == currentGate.CampaignItemContentSha256
+            & actual.CampaignDecisionReceiptId == currentGate.CampaignDecisionReceiptId
+            & actual.CampaignReceipt == currentGate.CampaignReceipt
+            & actual.CampaignReceiptSha256 == currentGate.CampaignReceiptSha256
+            & actual.Provider == currentGate.Provider & actual.Repository == currentGate.Repository & actual.PullRequest == currentGate.PullRequest
+            & actual.Thread == currentGate.Thread & actual.SourceRevision == currentGate.SourceRevision & actual.TargetRevision == currentGate.TargetRevision
+            & actual.Iteration == currentGate.Iteration & actual.FinalStatusDigest == packet.FinalStatusDigest
+            & acceptedGate.InitialStatusDigest == packet.InitialStatusDigest & acceptedGate.ToolVersion == currentGate.ToolVersion
+            & acceptedGate.ManifestSha256 == currentGate.ManifestSha256, error);
     }
 
     private static void ValidatePacket(string root, AddressPacket packet, Gate gate, bool requireReadyForProvider)
@@ -1052,12 +1052,12 @@ public static class CodeReviewResponseCommands
         Ensure(packet.TargetRevision == gate.TargetRevision, "review-response-revision-identity-mismatch");
         Ensure(packet.Iteration == gate.Iteration, "review-response-revision-identity-mismatch");
         Ensure(packet.CampaignTracker == gate.CampaignTracker
-            && packet.CampaignTrackerSha256 == gate.CampaignTrackerSha256
-            && packet.CampaignItemId == gate.CampaignItemId
-            && packet.CampaignItemContentSha256 == gate.CampaignItemContentSha256
-            && packet.CampaignDecisionReceiptId == gate.CampaignDecisionReceiptId
-            && packet.CampaignReceipt == gate.CampaignReceipt
-            && packet.CampaignReceiptSha256 == gate.CampaignReceiptSha256,
+            & packet.CampaignTrackerSha256 == gate.CampaignTrackerSha256
+            & packet.CampaignItemId == gate.CampaignItemId
+            & packet.CampaignItemContentSha256 == gate.CampaignItemContentSha256
+            & packet.CampaignDecisionReceiptId == gate.CampaignDecisionReceiptId
+            & packet.CampaignReceipt == gate.CampaignReceipt
+            & packet.CampaignReceiptSha256 == gate.CampaignReceiptSha256,
             "review-response-campaign-identity-mismatch");
         Ensure(packet.InitialHead == gate.Head, "review-response-local-head-mismatch");
         Ensure(packet.FinalHead == gate.Head, "review-response-local-head-mismatch");
@@ -1068,13 +1068,13 @@ public static class CodeReviewResponseCommands
         Ensure(packet.CommitPushPerformed is false, "review-response-stage11-commit-push-forbidden");
         Ensure(ThreadStatuses.Contains(packet.ThreadStatus), "review-response-thread-status-invalid");
         Ensure(Classifications.Contains(packet.Classification), "review-response-classification-invalid");
-        Ensure(!string.IsNullOrWhiteSpace(packet.ActingPrincipal) && packet.ActingPrincipal.Length <= 512,
+        Ensure(!string.IsNullOrWhiteSpace(packet.ActingPrincipal) & packet.ActingPrincipal.Length <= 512,
             "review-response-principal-missing");
         Ensure(packet.AllowedOperations.Length > 0, "review-response-operations-empty");
         Ensure(packet.AllowedOperations.Distinct(StringComparer.Ordinal).Count() == packet.AllowedOperations.Length, "review-response-operations-duplicate");
         Ensure(packet.AllowedOperations.All(Operations.Contains), "review-response-operations-invalid");
         Ensure(!string.IsNullOrWhiteSpace(packet.ReplyText), "review-response-reply-empty");
-        Ensure(packet.ChangedFiles.Distinct(StringComparer.Ordinal).Count() == packet.ChangedFiles.Length && packet.ChangedFiles.All(value => !string.IsNullOrWhiteSpace(value)), "review-response-changed-files-invalid");
+        Ensure(packet.ChangedFiles.Distinct(StringComparer.Ordinal).Count() == packet.ChangedFiles.Length & packet.ChangedFiles.All(value => !string.IsNullOrWhiteSpace(value)), "review-response-changed-files-invalid");
         Ensure(packet.ValidationResults.All(value => !string.IsNullOrWhiteSpace(value)), "review-response-validation-invalid");
         Ensure(packet.Evidence.Length > 0, "review-response-evidence-missing");
         Ensure(packet.Evidence.All(value => !string.IsNullOrWhiteSpace(value)), "review-response-evidence-missing");
@@ -1099,7 +1099,7 @@ public static class CodeReviewResponseCommands
             {
                 Ensure(IsRevision(packet.RequiredFixRevision), "review-response-clean-fix-revision-required");
                 Ensure(packet.RequiredFixRevision == packet.ProviderHead
-                    && packet.RequiredFixRevision == gate.Head,
+                    & packet.RequiredFixRevision == gate.Head,
                     "review-response-clean-fix-not-on-head");
             }
         }
@@ -1110,7 +1110,7 @@ public static class CodeReviewResponseCommands
             {
                 Ensure(IsRevision(packet.RequiredFixRevision), "review-response-fix-revision-required");
                 Ensure(packet.RequiredFixRevision == packet.ProviderHead
-                    && packet.RequiredFixRevision == gate.Head,
+                    & packet.RequiredFixRevision == gate.Head,
                     "review-response-fix-not-on-provider-head");
             }
             else
@@ -1128,7 +1128,7 @@ public static class CodeReviewResponseCommands
         {
             Ensure(IsRevision(packet.RequiredFixRevision), "review-response-fix-revision-required");
             Ensure(packet.RequiredFixRevision == packet.ProviderHead
-                && packet.RequiredFixRevision == gate.Head,
+                & packet.RequiredFixRevision == gate.Head,
                 "review-response-fix-not-on-provider-head");
         }
         if (operation.Contains("resolve", StringComparison.Ordinal))
@@ -1155,7 +1155,7 @@ public static class CodeReviewResponseCommands
             "review-response-adapter-fields-missing");
         Ensure(adapter.SchemaVersion == "1.0", "review-response-adapter-schema-invalid");
         Ensure(Regex.IsMatch(adapter.AdapterId, "^[a-z0-9][a-z0-9._-]{0,127}$", RegexOptions.CultureInvariant), "review-response-adapter-id-invalid");
-        Ensure(adapter.Provider.Length is > 0 and <= 128 && !adapter.Provider.Any(char.IsWhiteSpace), "review-response-adapter-provider-invalid");
+        Ensure(adapter.Provider.Length is > 0 and <= 128 & !adapter.Provider.Any(char.IsWhiteSpace), "review-response-adapter-provider-invalid");
         Ensure(adapter.Protocol == "engloop-review-response-v2", "review-response-adapter-protocol-invalid");
         Ensure(adapter.Provider == packet.Provider, "review-response-adapter-provider-mismatch");
         Ensure(adapter.Command.Length > 0, "review-response-adapter-command-invalid");
@@ -1259,7 +1259,7 @@ public static class CodeReviewResponseCommands
         Ensure(inspection.Operation == gate.Operation, "review-response-provider-inspection-operation-mismatch");
         Ensure(inspection.PacketSha256 == gate.PacketSha256, "review-response-provider-inspection-packet-mismatch");
         Ensure(inspection.CampaignTrackerSha256 == gate.CampaignTrackerSha256
-            && inspection.CampaignItemId == gate.CampaignItemId,
+            & inspection.CampaignItemId == gate.CampaignItemId,
             "review-response-provider-inspection-campaign-mismatch");
         Ensure(inspection.AddressReceiptSha256 == gate.AddressReceiptSha256, "review-response-provider-inspection-address-receipt-mismatch");
         Ensure(inspection.MatchCount is not null, "review-response-provider-inspection-match-count-invalid");
@@ -1280,15 +1280,15 @@ public static class CodeReviewResponseCommands
             "review-response-adapter-result-fields-missing");
         Ensure(result.SchemaVersion == "1.0", "review-response-adapter-result-schema-invalid");
         Ensure(AdapterStatuses.Contains(result.Status), "review-response-adapter-result-status-invalid");
-        Ensure(result.Provider == packet.Provider && result.Repository == packet.Repository && result.PullRequest == packet.PullRequest && result.Thread == packet.Thread, "review-response-adapter-result-identity-mismatch");
-        Ensure(result.SourceRevision == packet.SourceRevision && result.TargetRevision == packet.TargetRevision && result.Iteration == packet.Iteration, "review-response-adapter-result-revision-mismatch");
-        Ensure(result.ActingPrincipal == packet.ActingPrincipal && result.Operation == gate.Operation && result.PacketSha256 == gate.PacketSha256 && result.Marker == marker, "review-response-adapter-result-authorization-mismatch");
+        Ensure(result.Provider == packet.Provider & result.Repository == packet.Repository & result.PullRequest == packet.PullRequest & result.Thread == packet.Thread, "review-response-adapter-result-identity-mismatch");
+        Ensure(result.SourceRevision == packet.SourceRevision & result.TargetRevision == packet.TargetRevision & result.Iteration == packet.Iteration, "review-response-adapter-result-revision-mismatch");
+        Ensure(result.ActingPrincipal == packet.ActingPrincipal & result.Operation == gate.Operation & result.PacketSha256 == gate.PacketSha256 & result.Marker == marker, "review-response-adapter-result-authorization-mismatch");
         Ensure(result.CampaignTrackerSha256 == gate.CampaignTrackerSha256
-            && result.CampaignItemId == gate.CampaignItemId,
+            & result.CampaignItemId == gate.CampaignItemId,
             "review-response-adapter-result-campaign-mismatch");
         Ensure(result.AddressReceiptSha256 == gate.AddressReceiptSha256, "review-response-adapter-result-address-receipt-mismatch");
-        Ensure(result.InspectionSha256 == gate.InspectionSha256 && result.InspectionReceiptId == inspection.InspectionReceiptId, "review-response-adapter-result-inspection-mismatch");
-        Ensure(result.ReplyObserved is not null && result.ResolveObserved is not null && result.MatchCount is not null && result.ProviderReceiptId is not null, "review-response-adapter-result-fields-missing");
+        Ensure(result.InspectionSha256 == gate.InspectionSha256 & result.InspectionReceiptId == inspection.InspectionReceiptId, "review-response-adapter-result-inspection-mismatch");
+        Ensure(result.ReplyObserved is not null & result.ResolveObserved is not null & result.MatchCount is not null & result.ProviderReceiptId is not null, "review-response-adapter-result-fields-missing");
         Ensure(result.MatchCount >= 0, "review-response-adapter-result-match-count-invalid");
         Ensure(ThreadStatuses.Contains(result.ThreadStatus), "review-response-adapter-result-thread-status-invalid");
         Ensure(result.ProviderHead == packet.ProviderHead, "review-response-adapter-result-provider-head-mismatch");
@@ -1298,9 +1298,9 @@ public static class CodeReviewResponseCommands
             var replyObserved = result.ReplyObserved.GetValueOrDefault();
             var resolveObserved = result.ResolveObserved.GetValueOrDefault();
             Ensure(result.MatchCount == 1, "review-response-adapter-result-match-count-invalid");
-            Ensure(!gate.Operation!.Contains("reply", StringComparison.Ordinal) || replyObserved, "review-response-adapter-result-reply-not-observed");
-            Ensure(!gate.Operation!.Contains("resolve", StringComparison.Ordinal) || resolveObserved, "review-response-adapter-result-resolution-not-observed");
-            Ensure(!gate.Operation.Contains("resolve", StringComparison.Ordinal) || result.ThreadStatus == "resolved", "review-response-adapter-result-thread-not-resolved");
+            Ensure(!gate.Operation!.Contains("reply", StringComparison.Ordinal) | replyObserved, "review-response-adapter-result-reply-not-observed");
+            Ensure(!gate.Operation!.Contains("resolve", StringComparison.Ordinal) | resolveObserved, "review-response-adapter-result-resolution-not-observed");
+            Ensure(!gate.Operation.Contains("resolve", StringComparison.Ordinal) | result.ThreadStatus == "resolved", "review-response-adapter-result-thread-not-resolved");
             Ensure(!string.IsNullOrWhiteSpace(result.ProviderReceiptId), "review-response-adapter-result-receipt-missing");
         }
     }
@@ -1319,7 +1319,7 @@ public static class CodeReviewResponseCommands
         Ensure(AttemptStates.Contains(attempt.State), "review-response-attempt-state-invalid");
         Ensure(Regex.IsMatch(attempt.AttemptId, "^[a-f0-9]{32}$", RegexOptions.CultureInvariant), "review-response-attempt-id-invalid");
         Ensure(attempt.GateSha256 == gateSha256, "review-response-attempt-gate-hash-invalid");
-        Ensure(attempt.PacketSha256 == gate.PacketSha256 && attempt.AdapterSha256 == gate.AdapterSha256 && attempt.Operation == gate.Operation, "review-response-attempt-identity-mismatch");
+        Ensure(attempt.PacketSha256 == gate.PacketSha256 & attempt.AdapterSha256 == gate.AdapterSha256 & attempt.Operation == gate.Operation, "review-response-attempt-identity-mismatch");
         Ensure(attempt.Marker == $"elk-review-response:{gate.PacketSha256[..16]}:{attempt.AttemptId}", "review-response-attempt-marker-invalid");
         Ensure(IsHash(attempt.ApprovalSha256), "review-response-attempt-approval-invalid");
         Ensure(Sha256Text(attempt.ApprovalJson) == attempt.ApprovalSha256, "review-response-attempt-approval-invalid");
@@ -1331,11 +1331,11 @@ public static class CodeReviewResponseCommands
         Ensure(IsHash(attempt.ApprovalResponseSha256), "review-response-attempt-approval-invalid");
         Ensure(Sha256Text(attempt.ApprovalQuestionJson) == attempt.ApprovalQuestionSha256, "review-response-attempt-approval-invalid");
         Ensure(Sha256Text(attempt.ApprovalResponseJson) == attempt.ApprovalResponseSha256, "review-response-attempt-approval-invalid");
-        Ensure(approval.SchemaVersion == "1.0" && approval.SessionHash == gate.SessionHash
-            && approval.GateSha256 == attempt.GateSha256 && approval.PacketSha256 == attempt.PacketSha256
-            && approval.Operation == attempt.Operation && approval.ToolUseId == attempt.ApprovalToolUseId
-            && approval.QuestionSha256 == attempt.ApprovalQuestionSha256 && approval.ResponseSha256 == attempt.ApprovalResponseSha256
-            && approval.QuestionJson == attempt.ApprovalQuestionJson && approval.ResponseJson == attempt.ApprovalResponseJson,
+        Ensure(approval.SchemaVersion == "1.0" & approval.SessionHash == gate.SessionHash
+            & approval.GateSha256 == attempt.GateSha256 & approval.PacketSha256 == attempt.PacketSha256
+            & approval.Operation == attempt.Operation & approval.ToolUseId == attempt.ApprovalToolUseId
+            & approval.QuestionSha256 == attempt.ApprovalQuestionSha256 & approval.ResponseSha256 == attempt.ApprovalResponseSha256
+            & approval.QuestionJson == attempt.ApprovalQuestionJson & approval.ResponseJson == attempt.ApprovalResponseJson,
             "review-response-attempt-approval-invalid");
         if (attempt.State == "success") Ensure(!string.IsNullOrWhiteSpace(attempt.ProviderReceiptId), "review-response-attempt-success-receipt-missing");
     }
@@ -1375,14 +1375,14 @@ public static class CodeReviewResponseCommands
             claim.PacketSha256, claim.CampaignTrackerSha256, claim.CampaignItemId,
             claim.AdapterSha256, claim.Operation, claim.ApprovalSha256),
             "review-response-provider-claim-fields-missing");
-        Ensure(claim.SchemaVersion == "1.0" && claim.SessionHash == gate.SessionHash
-            && claim.GateSha256 == gateSha256
-            && claim.PacketSha256 == gate.PacketSha256
-            && claim.CampaignTrackerSha256 == gate.CampaignTrackerSha256
-            && claim.CampaignItemId == gate.CampaignItemId
-            && claim.AdapterSha256 == gate.AdapterSha256
-            && claim.Operation == gate.Operation
-            && claim.ApprovalSha256 == approvalSha256,
+        Ensure(claim.SchemaVersion == "1.0" & claim.SessionHash == gate.SessionHash
+            & claim.GateSha256 == gateSha256
+            & claim.PacketSha256 == gate.PacketSha256
+            & claim.CampaignTrackerSha256 == gate.CampaignTrackerSha256
+            & claim.CampaignItemId == gate.CampaignItemId
+            & claim.AdapterSha256 == gate.AdapterSha256
+            & claim.Operation == gate.Operation
+            & claim.ApprovalSha256 == approvalSha256,
             "review-response-campaign-item-operation-in-progress");
     }
 
@@ -1695,12 +1695,12 @@ public static class CodeReviewResponseCommands
 
     private static bool IsRevision(string value) => Regex.IsMatch(value, "^[a-fA-F0-9]{40,64}$", RegexOptions.CultureInvariant);
     private static bool IsHash(string value) => Regex.IsMatch(value, "^[a-f0-9]{64}$", RegexOptions.CultureInvariant);
-    private static bool IsIdentity(string value) => value.Length is > 0 and <= 512 && !value.Any(char.IsWhiteSpace);
+    private static bool IsIdentity(string value) => value.Length is > 0 and <= 512 & !value.Any(char.IsWhiteSpace);
 
     private static string GovernedPath(string root, string value, string prefix)
     {
         var normalized = value.Replace('\\', '/');
-        Ensure(normalized.Length > prefix.Length && !Path.IsPathRooted(normalized) && !normalized.Contains('\0'), "review-response-path-invalid");
+        Ensure(normalized.Length > prefix.Length & !Path.IsPathRooted(normalized) & !normalized.Contains('\0'), "review-response-path-invalid");
         var full = Path.GetFullPath(Path.Combine(root, normalized.Replace('/', Path.DirectorySeparatorChar)));
         var prefixFull = Path.GetFullPath(Path.Combine(root, prefix.Replace('/', Path.DirectorySeparatorChar))).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
         Ensure(full.StartsWith(prefixFull, PathComparison), "review-response-path-invalid");
@@ -1841,7 +1841,7 @@ public static class CodeReviewResponseCommands
     private static string GitHead(string root)
     {
         var result = Git(root, "rev-parse", "HEAD");
-        Ensure(result.ExitCode == 0 && IsRevision(result.Output.Trim()), "review-response-git-head-unavailable");
+        Ensure(result.ExitCode == 0 & IsRevision(result.Output.Trim()), "review-response-git-head-unavailable");
         return result.Output.Trim().ToLowerInvariant();
     }
 
@@ -1939,6 +1939,6 @@ public static class CodeReviewResponseCommands
         if (value.ValueKind != JsonValueKind.Object) return false;
         var actual = value.EnumerateObject().Select(property => property.Name).ToArray();
         return actual.Length == expected.Length
-            && actual.OrderBy(name => name, StringComparer.Ordinal).SequenceEqual(expected.OrderBy(name => name, StringComparer.Ordinal), StringComparer.Ordinal);
+            & actual.OrderBy(name => name, StringComparer.Ordinal).SequenceEqual(expected.OrderBy(name => name, StringComparer.Ordinal), StringComparer.Ordinal);
     }
 }

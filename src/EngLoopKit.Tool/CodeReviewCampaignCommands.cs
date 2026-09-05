@@ -298,9 +298,9 @@ public static class CodeReviewCampaignCommands
         if (File.Exists(gatePath))
         {
             var existingGate = ReadGate(root, gatePath);
-            Ensure(existingGate.SessionHash == sessionHash && existingGate.Provider == provider
-                && existingGate.Repository == repository && existingGate.PullRequest == pullRequest
-                && existingGate.Adapter == adapterRelative, "review-campaign-gate-already-exists");
+            Ensure(existingGate.SessionHash == sessionHash & existingGate.Provider == provider
+                & existingGate.Repository == repository & existingGate.PullRequest == pullRequest
+                & existingGate.Adapter == adapterRelative, "review-campaign-gate-already-exists");
             var existingTracker = ReadTracker(root, existingGate.Tracker);
             WriteCampaignScopeActive(existingTracker);
             return 0;
@@ -315,7 +315,7 @@ public static class CodeReviewCampaignCommands
         if (File.Exists(Full(root, trackerRelative)))
         {
             previous = ReadTracker(root, trackerRelative);
-            Ensure(previous.Provider == provider && previous.Repository == repository && previous.PullRequest == pullRequest,
+            Ensure(previous.Provider == provider & previous.Repository == repository & previous.PullRequest == pullRequest,
                 "review-campaign-tracker-identity-mismatch");
             _ = ValidateCampaignReceipt(root, trackerRelative, previous);
         }
@@ -402,7 +402,7 @@ public static class CodeReviewCampaignCommands
         if (TryValidateSelectionQuestion(question, tracker, out var selectionQuestion))
         {
             var selected = QuestionDecision(response, selectionQuestion, "Select review thread");
-            Ensure(tracker.Items.Any(item => item.ItemId == selected && item.Status == "active" && item.ObservationState == "current"),
+            Ensure(tracker.Items.Any(item => item.ItemId == selected & item.Status == "active" & item.ObservationState == "current"),
                 "review-campaign-selected-item-invalid");
             if (tracker.SelectedItemId == selected)
             {
@@ -426,10 +426,10 @@ public static class CodeReviewCampaignCommands
             if (existing.DecisionToolUseId == toolUseId)
             {
                 Ensure(existing.ProposedClassification == proposal
-                    && existing.HumanDecision == decision && existing.Priority == priority
-                    && !existing.DecisionStale
-                    && existing.DecisionQuestionSha256 == Sha256Text(questionJson)
-                    && existing.DecisionResponseSha256 == Sha256Text(responseJson),
+                    & existing.HumanDecision == decision & existing.Priority == priority
+                    & !existing.DecisionStale
+                    & existing.DecisionQuestionSha256 == Sha256Text(questionJson)
+                    & existing.DecisionResponseSha256 == Sha256Text(responseJson),
                     "review-campaign-question-tool-use-id-reused");
                 WriteHook(true, systemMessage: $"CODE_REVIEW_CAMPAIGN_UPDATED tracker={gate.Tracker} selected={tracker.SelectedItemId}");
                 return 0;
@@ -483,7 +483,7 @@ public static class CodeReviewCampaignCommands
         }
         var gate = ReadGate(root, gatePath);
         var tracker = ReadTracker(root, gate.Tracker);
-        var active = tracker.Items.Count(item => item.Status == "active" && item.ObservationState == "current");
+        var active = tracker.Items.Count(item => item.Status == "active" & item.ObservationState == "current");
         if (active > 0)
         {
             Ensure(IsHash(tracker.SelectedItemId), "review-campaign-selection-required");
@@ -491,8 +491,8 @@ public static class CodeReviewCampaignCommands
         }
         else
             Ensure(tracker.SelectedItemId.Length == 0, "review-campaign-selected-item-invalid");
-        var undecided = tracker.Items.Count(item => item.Status == "active" && item.ObservationState == "current"
-            && (item.HumanDecision == "pending" || item.DecisionStale));
+        var undecided = tracker.Items.Count(item => item.Status == "active" & item.ObservationState == "current"
+            & (item.HumanDecision == "pending" | item.DecisionStale));
         var gateJson = File.ReadAllText(gatePath);
         var receiptRelative = ReceiptRelative(gate.Tracker, tracker.TrackerSha256);
         var receiptPath = Full(root, receiptRelative);
@@ -527,13 +527,13 @@ public static class CodeReviewCampaignCommands
             completion.CampaignId, completion.SelectedItemId),
             "review-campaign-completion-receipt-fields-missing");
         Ensure(completion.SchemaVersion == "1.0"
-            && completion.SessionHash == sessionHash && IsHash(completion.SessionHash)
-            && IsHash(completion.TrackerSha256)
-            && IsHash(completion.CampaignReceiptSha256)
-            && IsHash(completion.CampaignId)
-            && completion.Active >= 0 && completion.Undecided >= 0
-            && (completion.SelectedItemId.Length == 0
-                || IsHash(completion.SelectedItemId)),
+            & completion.SessionHash == sessionHash & IsHash(completion.SessionHash)
+            & IsHash(completion.TrackerSha256)
+            & IsHash(completion.CampaignReceiptSha256)
+            & IsHash(completion.CampaignId)
+            & completion.Active >= 0 & completion.Undecided >= 0
+            & (completion.SelectedItemId.Length == 0
+                | IsHash(completion.SelectedItemId)),
             "review-campaign-completion-receipt-invalid");
         var trackerRelative = NormalizeTrackerPath(root, completion.Tracker);
         Ensure(trackerRelative == TrackerRelative(completion.CampaignId),
@@ -547,13 +547,13 @@ public static class CodeReviewCampaignCommands
             "review-campaign-completion-receipt-invalid"); }
         ValidateTracker(root, tracker, trackerRelative);
         Ensure(tracker.TrackerSha256 == completion.TrackerSha256
-            && tracker.CampaignId == completion.CampaignId
-            && tracker.SelectedItemId == completion.SelectedItemId
-            && tracker.Items.Count(item => item.Status == "active"
-                && item.ObservationState == "current") == completion.Active
-            && tracker.Items.Count(item => item.Status == "active"
-                && item.ObservationState == "current"
-                && (item.HumanDecision == "pending" || item.DecisionStale))
+            & tracker.CampaignId == completion.CampaignId
+            & tracker.SelectedItemId == completion.SelectedItemId
+            & tracker.Items.Count(item => item.Status == "active"
+                & item.ObservationState == "current") == completion.Active
+            & tracker.Items.Count(item => item.Status == "active"
+                & item.ObservationState == "current"
+                & (item.HumanDecision == "pending" | item.DecisionStale))
                 == completion.Undecided,
             "review-campaign-completion-tracker-changed");
         var receiptRelative = GovernedPath(root, completion.CampaignReceipt,
@@ -566,7 +566,7 @@ public static class CodeReviewCampaignCommands
             "review-campaign-completion-receipt-changed");
         var validated = ValidateCampaignReceipt(root, trackerRelative, tracker);
         Ensure(validated.Relative == receiptRelative
-            && validated.Sha256 == completion.CampaignReceiptSha256,
+            & validated.Sha256 == completion.CampaignReceiptSha256,
             "review-campaign-completion-receipt-invalid");
         var receipt = Read<CampaignReceipt>(receiptPath,
             "review-campaign-receipt-missing-or-invalid");
@@ -595,8 +595,8 @@ public static class CodeReviewCampaignCommands
         var matches = tracker.Items.Where(item => item.ItemId == itemId).ToArray();
         Ensure(matches.Length == 1, "review-campaign-item-match-invalid");
         var item = matches[0];
-        Ensure(item.Status == "active" && item.ObservationState == "current", "review-campaign-item-not-active");
-        Ensure(item.HumanDecision != "pending" && Classifications.Contains(item.HumanDecision), "review-campaign-item-decision-missing");
+        Ensure(item.Status == "active" & item.ObservationState == "current", "review-campaign-item-not-active");
+        Ensure(item.HumanDecision != "pending" & Classifications.Contains(item.HumanDecision), "review-campaign-item-decision-missing");
         Ensure(!item.DecisionStale, "review-campaign-item-decision-stale");
         Ensure(!string.IsNullOrWhiteSpace(item.DecisionReceiptId), "review-campaign-item-decision-receipt-missing");
         return item;
@@ -627,23 +627,23 @@ public static class CodeReviewCampaignCommands
         var receiptRelative = ReceiptRelative(trackerRelative, tracker.TrackerSha256);
         var receiptPath = Full(root, receiptRelative);
         var receipt = Read<CampaignReceipt>(receiptPath, "review-campaign-receipt-missing-or-invalid");
-        Ensure(receipt.SchemaVersion == "1.0" && receipt.Tracker == trackerRelative
-            && receipt.TrackerSha256 == tracker.TrackerSha256 && receipt.CampaignId == tracker.CampaignId
-            && receipt.Provider == tracker.Provider && receipt.Repository == tracker.Repository
-            && receipt.PullRequest == tracker.PullRequest && receipt.RefreshNumber == tracker.RefreshNumber
-            && IsHash(receipt.GateSha256) && Sha256Text(receipt.GateJson) == receipt.GateSha256,
+        Ensure(receipt.SchemaVersion == "1.0" & receipt.Tracker == trackerRelative
+            & receipt.TrackerSha256 == tracker.TrackerSha256 & receipt.CampaignId == tracker.CampaignId
+            & receipt.Provider == tracker.Provider & receipt.Repository == tracker.Repository
+            & receipt.PullRequest == tracker.PullRequest & receipt.RefreshNumber == tracker.RefreshNumber
+            & IsHash(receipt.GateSha256) & Sha256Text(receipt.GateJson) == receipt.GateSha256,
             "review-campaign-receipt-invalid");
         CampaignGate gate;
         try { gate = JsonSerializer.Deserialize<CampaignGate>(receipt.GateJson, JsonOptions)
             ?? throw new InvalidOperationException("review-campaign-receipt-invalid"); }
         catch (JsonException) { throw new InvalidOperationException("review-campaign-receipt-invalid"); }
-        Ensure(gate.SchemaVersion == "1.0" && gate.ToolVersion == CurrentToolVersion
-            && gate.Tracker == trackerRelative && gate.TrackerSha256 == tracker.TrackerSha256
-            && gate.CampaignId == tracker.CampaignId && gate.RefreshNumber == tracker.RefreshNumber
-            && gate.Provider == tracker.Provider && gate.Repository == tracker.Repository
-            && gate.PullRequest == tracker.PullRequest && gate.Adapter == tracker.Adapter
-            && gate.AdapterSha256 == tracker.AdapterSha256
-            && gate.AdapterArtifactSha256 == tracker.AdapterArtifactSha256,
+        Ensure(gate.SchemaVersion == "1.0" & gate.ToolVersion == CurrentToolVersion
+            & gate.Tracker == trackerRelative & gate.TrackerSha256 == tracker.TrackerSha256
+            & gate.CampaignId == tracker.CampaignId & gate.RefreshNumber == tracker.RefreshNumber
+            & gate.Provider == tracker.Provider & gate.Repository == tracker.Repository
+            & gate.PullRequest == tracker.PullRequest & gate.Adapter == tracker.Adapter
+            & gate.AdapterSha256 == tracker.AdapterSha256
+            & gate.AdapterArtifactSha256 == tracker.AdapterArtifactSha256,
             "review-campaign-receipt-invalid");
         return (receiptRelative, FileSha256(receiptPath));
     }
@@ -696,8 +696,8 @@ public static class CodeReviewCampaignCommands
     {
         Ensure(binding.TrackerSha256 == expectedTrackerSha256,
             "review-campaign-completion-tracker-changed");
-        Ensure(IsHash(packetSha256) && !string.IsNullOrWhiteSpace(packet)
-            && !string.IsNullOrWhiteSpace(providerReceiptId), "review-campaign-completion-evidence-invalid");
+        Ensure(IsHash(packetSha256) & !string.IsNullOrWhiteSpace(packet)
+            & !string.IsNullOrWhiteSpace(providerReceiptId), "review-campaign-completion-evidence-invalid");
         Ensure(operation is "reply" or "resolve" or "reply-and-resolve", "review-campaign-completion-operation-invalid");
         var index = Array.FindIndex(binding.Tracker.Items,
             item => item.ItemId == binding.Item.ItemId);
@@ -759,11 +759,11 @@ public static class CodeReviewCampaignCommands
             ? "resolved"
             : "replied";
         var completed = item.ResponsePacket == packet
-            && item.ResponsePacketSha256 == packetSha256
-            && item.RequiredFixRevision == requiredFixRevision
-            && item.ResponseState == expectedResponseState
-            && item.ProviderReceiptId == providerReceiptId
-            && (!operation.Contains("resolve", StringComparison.Ordinal) || item.Status == "resolved");
+            & item.ResponsePacketSha256 == packetSha256
+            & item.RequiredFixRevision == requiredFixRevision
+            & item.ResponseState == expectedResponseState
+            & item.ProviderReceiptId == providerReceiptId
+            & (!operation.Contains("resolve", StringComparison.Ordinal) | item.Status == "resolved");
         if (!completed)
         {
             binding = null;
@@ -791,22 +791,22 @@ public static class CodeReviewCampaignCommands
         var receiptPath = Full(root, normalizedReceipt);
         Ensure(FileSha256(receiptPath) == receiptSha256, "review-campaign-receipt-changed");
         var receipt = Read<CampaignReceipt>(receiptPath, "review-campaign-receipt-missing-or-invalid");
-        Ensure(receipt.SchemaVersion == "1.0" && receipt.Tracker == normalized
-            && receipt.TrackerSha256 == trackerSha256 && receipt.CampaignId == current.CampaignId
-            && receipt.Provider == current.Provider && receipt.Repository == current.Repository
-            && receipt.PullRequest == current.PullRequest && receipt.RefreshNumber >= 1
-            && receipt.RefreshNumber <= current.RefreshNumber && IsHash(receipt.GateSha256)
-            && Sha256Text(receipt.GateJson) == receipt.GateSha256,
+        Ensure(receipt.SchemaVersion == "1.0" & receipt.Tracker == normalized
+            & receipt.TrackerSha256 == trackerSha256 & receipt.CampaignId == current.CampaignId
+            & receipt.Provider == current.Provider & receipt.Repository == current.Repository
+            & receipt.PullRequest == current.PullRequest & receipt.RefreshNumber >= 1
+            & receipt.RefreshNumber <= current.RefreshNumber & IsHash(receipt.GateSha256)
+            & Sha256Text(receipt.GateJson) == receipt.GateSha256,
             "review-campaign-receipt-invalid");
         CampaignGate gate;
         try { gate = JsonSerializer.Deserialize<CampaignGate>(receipt.GateJson, JsonOptions)
             ?? throw new InvalidOperationException("review-campaign-receipt-invalid"); }
         catch (JsonException) { throw new InvalidOperationException("review-campaign-receipt-invalid"); }
-        Ensure(gate.SchemaVersion == "1.0" && gate.ToolVersion == CurrentToolVersion
-            && gate.Tracker == normalized && gate.TrackerSha256 == trackerSha256
-            && gate.CampaignId == current.CampaignId && gate.RefreshNumber == receipt.RefreshNumber
-            && gate.Provider == current.Provider && gate.Repository == current.Repository
-            && gate.PullRequest == current.PullRequest,
+        Ensure(gate.SchemaVersion == "1.0" & gate.ToolVersion == CurrentToolVersion
+            & gate.Tracker == normalized & gate.TrackerSha256 == trackerSha256
+            & gate.CampaignId == current.CampaignId & gate.RefreshNumber == receipt.RefreshNumber
+            & gate.Provider == current.Provider & gate.Repository == current.Repository
+            & gate.PullRequest == current.PullRequest,
             "review-campaign-receipt-invalid");
     }
 
@@ -820,18 +820,18 @@ public static class CodeReviewCampaignCommands
         var gate = Read<CampaignGate>(gatePath, "review-campaign-gate-missing-or-invalid");
         ValidateGateStatic(root, gate);
         var tracker = ReadTracker(root, gate.Tracker);
-        Ensure(tracker.TrackerSha256 == gate.TrackerSha256 && tracker.CampaignId == gate.CampaignId
-            && tracker.RefreshNumber == gate.RefreshNumber, "review-campaign-tracker-changed");
+        Ensure(tracker.TrackerSha256 == gate.TrackerSha256 & tracker.CampaignId == gate.CampaignId
+            & tracker.RefreshNumber == gate.RefreshNumber, "review-campaign-tracker-changed");
         return gate;
     }
 
     private static void ValidateGateStatic(string root, CampaignGate gate)
     {
-        Ensure(gate.SchemaVersion == "1.0" && IsHash(gate.SessionHash) && IsRevision(gate.Head)
-            && IsHash(gate.StatusDigest) && gate.ToolVersion == CurrentToolVersion && IsHash(gate.ManifestSha256)
-            && IsIdentity(gate.Provider) && IsIdentity(gate.Repository) && IsIdentity(gate.PullRequest)
-            && IsHash(gate.AdapterSha256) && IsHash(gate.AdapterArtifactSha256) && IsHash(gate.TrackerSha256)
-            && IsHash(gate.CampaignId) && gate.RefreshNumber >= 1, "review-campaign-gate-invalid");
+        Ensure(gate.SchemaVersion == "1.0" & IsHash(gate.SessionHash) & IsRevision(gate.Head)
+            & IsHash(gate.StatusDigest) & gate.ToolVersion == CurrentToolVersion & IsHash(gate.ManifestSha256)
+            & IsIdentity(gate.Provider) & IsIdentity(gate.Repository) & IsIdentity(gate.PullRequest)
+            & IsHash(gate.AdapterSha256) & IsHash(gate.AdapterArtifactSha256) & IsHash(gate.TrackerSha256)
+            & IsHash(gate.CampaignId) & gate.RefreshNumber >= 1, "review-campaign-gate-invalid");
         _ = GovernedPath(root, gate.Adapter, ".engloop/provider-adapters/");
         _ = NormalizeTrackerPath(root, gate.Tracker);
         Ensure(gate.Head == GitHead(root), "review-campaign-head-changed");
@@ -854,13 +854,13 @@ public static class CodeReviewCampaignCommands
     private static void ValidateTracker(string root, ReviewCampaignTracker tracker, string relative,
         bool requireSnapshotFile = true)
     {
-        Ensure(tracker.SchemaVersion == "1.0" && tracker.ArtifactType == "code-review-campaign"
-            && IsHash(tracker.CampaignId) && IsIdentity(tracker.Provider) && IsIdentity(tracker.Repository)
-            && IsIdentity(tracker.PullRequest) && IsRevision(tracker.SourceRevision) && IsRevision(tracker.TargetRevision)
-            && IsRevision(tracker.ProviderHead) && tracker.RefreshNumber >= 1 && IsHash(tracker.SnapshotSha256)
-            && !string.IsNullOrWhiteSpace(tracker.DiscoveryReceiptId) && tracker.PageCount >= 1
-            && tracker.PaginationComplete is true && tracker.ProviderMutationPerformed is false
-            && IsHash(tracker.TrackerSha256), "review-campaign-tracker-invalid");
+        Ensure(tracker.SchemaVersion == "1.0" & tracker.ArtifactType == "code-review-campaign"
+            & IsHash(tracker.CampaignId) & IsIdentity(tracker.Provider) & IsIdentity(tracker.Repository)
+            & IsIdentity(tracker.PullRequest) & IsRevision(tracker.SourceRevision) & IsRevision(tracker.TargetRevision)
+            & IsRevision(tracker.ProviderHead) & tracker.RefreshNumber >= 1 & IsHash(tracker.SnapshotSha256)
+            & !string.IsNullOrWhiteSpace(tracker.DiscoveryReceiptId) & tracker.PageCount >= 1
+            & tracker.PaginationComplete is true & tracker.ProviderMutationPerformed is false
+            & IsHash(tracker.TrackerSha256), "review-campaign-tracker-invalid");
         Ensure(tracker.CampaignId == Sha256Text(tracker.Provider + "\n" + tracker.Repository + "\n" + tracker.PullRequest),
             "review-campaign-id-mismatch");
         Ensure(relative == TrackerRelative(tracker.CampaignId), "review-campaign-tracker-path-mismatch");
@@ -869,7 +869,7 @@ public static class CodeReviewCampaignCommands
         var adapter = ReadAdapter(root, adapterRelative);
         ValidateAdapter(root, adapter, adapterRelative, tracker.Provider);
         Ensure(FileSha256(Full(root, adapterRelative)) == tracker.AdapterSha256
-            && FileSha256(Full(root, adapter.CommandArtifact)) == tracker.AdapterArtifactSha256,
+            & FileSha256(Full(root, adapter.CommandArtifact)) == tracker.AdapterArtifactSha256,
             "review-campaign-tracker-adapter-mismatch");
         var snapshotRelative = GovernedPath(root, tracker.Snapshot,
             ".engloop/out/code-review-response/campaign-snapshots/");
@@ -877,43 +877,43 @@ public static class CodeReviewCampaignCommands
             "review-campaign-tracker-snapshot-mismatch");
         if (requireSnapshotFile)
             Ensure(File.Exists(Full(root, snapshotRelative))
-                && FileSha256(Full(root, snapshotRelative)) == tracker.SnapshotSha256,
+                & FileSha256(Full(root, snapshotRelative)) == tracker.SnapshotSha256,
                 "review-campaign-tracker-snapshot-mismatch");
         Ensure(tracker.Items.Select(item => item.ItemId).Distinct(StringComparer.Ordinal).Count() == tracker.Items.Length,
             "review-campaign-item-duplicate");
         foreach (var item in tracker.Items)
         {
-            Ensure(IsHash(item.ItemId) && IsIdentity(item.Thread) && IsIdentity(item.RootComment)
-                && TrackerStatuses.Contains(item.Status) && item.ObservationState is "current" or "not-returned"
-                && IsHash(item.ContentSha256) && item.Comments.Length > 0 && item.ProviderState.ValueKind == JsonValueKind.Object
-                && (item.ProposedClassification == "pending-analysis" || Classifications.Contains(item.ProposedClassification))
-                && (item.HumanDecision == "pending" || Classifications.Contains(item.HumanDecision))
-                && (item.Priority == "unassigned" || PriorityOrder.Contains(item.Priority, StringComparer.Ordinal))
-                && SourceStates.Contains(item.SourceState) && ResponseStates.Contains(item.ResponseState),
+            Ensure(IsHash(item.ItemId) & IsIdentity(item.Thread) & IsIdentity(item.RootComment)
+                & TrackerStatuses.Contains(item.Status) & item.ObservationState is "current" or "not-returned"
+                & IsHash(item.ContentSha256) & item.Comments.Length > 0 & item.ProviderState.ValueKind == JsonValueKind.Object
+                & (item.ProposedClassification == "pending-analysis" | Classifications.Contains(item.ProposedClassification))
+                & (item.HumanDecision == "pending" | Classifications.Contains(item.HumanDecision))
+                & (item.Priority == "unassigned" | PriorityOrder.Contains(item.Priority, StringComparer.Ordinal))
+                & SourceStates.Contains(item.SourceState) & ResponseStates.Contains(item.ResponseState),
                 "review-campaign-item-invalid");
             Ensure(item.ItemId == ItemId(tracker.Provider, tracker.Repository, tracker.PullRequest,
                 item.Thread, item.RootComment), "review-campaign-item-id-mismatch");
             Ensure(item.ContentSha256 == ItemContentHash(item), "review-campaign-item-content-hash-mismatch");
             Ensure(item.Comments.Select(comment => comment.Comment).Distinct(StringComparer.Ordinal).Count() == item.Comments.Length
-                && item.Comments.Any(comment => comment.Comment == item.RootComment), "review-campaign-comment-duplicate");
+                & item.Comments.Any(comment => comment.Comment == item.RootComment), "review-campaign-comment-duplicate");
             Ensure(item.Comments.All(comment => IsIdentity(comment.Comment)
-                && !string.IsNullOrWhiteSpace(comment.Author)
-                && !string.IsNullOrWhiteSpace(comment.CreatedAt)
-                && !string.IsNullOrWhiteSpace(comment.UpdatedAt)
-                && comment.IsDeleted is not null), "review-campaign-comment-invalid");
+                & !string.IsNullOrWhiteSpace(comment.Author)
+                & !string.IsNullOrWhiteSpace(comment.CreatedAt)
+                & !string.IsNullOrWhiteSpace(comment.UpdatedAt)
+                & comment.IsDeleted is not null), "review-campaign-comment-invalid");
             Ensure(item.ObservationState == "not-returned" == (item.Status == "not-returned"),
                 "review-campaign-item-observation-mismatch");
             if (item.HumanDecision == "pending")
             {
-                Ensure(item.Priority == "unassigned" && item.DecisionReceiptId.Length == 0
-                    && item.DecisionToolUseId.Length == 0 && item.DecisionQuestionSha256.Length == 0
-                    && item.DecisionResponseSha256.Length == 0, "review-campaign-pending-decision-evidence-forbidden");
+                Ensure(item.Priority == "unassigned" & item.DecisionReceiptId.Length == 0
+                    & item.DecisionToolUseId.Length == 0 & item.DecisionQuestionSha256.Length == 0
+                    & item.DecisionResponseSha256.Length == 0, "review-campaign-pending-decision-evidence-forbidden");
             }
             else
             {
-                Ensure(item.Priority != "unassigned" && Regex.IsMatch(item.DecisionReceiptId, "^[a-f0-9]{32}$")
-                    && item.DecisionToolUseId.Length is > 0 and <= 512
-                    && IsHash(item.DecisionQuestionSha256) && IsHash(item.DecisionResponseSha256),
+                Ensure(item.Priority != "unassigned" & Regex.IsMatch(item.DecisionReceiptId, "^[a-f0-9]{32}$")
+                    & item.DecisionToolUseId.Length is > 0 and <= 512
+                    & IsHash(item.DecisionQuestionSha256) & IsHash(item.DecisionResponseSha256),
                     "review-campaign-decision-evidence-invalid");
             }
             Ensure(item.RequiredFixRevision.Length == 0 || IsRevision(item.RequiredFixRevision),
@@ -926,8 +926,8 @@ public static class CodeReviewCampaignCommands
                 Ensure(item.ResponseState is "replied" or "resolved", "review-campaign-provider-receipt-state-invalid");
         }
         Ensure(tracker.SelectedItemId.Length == 0
-            || tracker.Items.Count(item => item.ItemId == tracker.SelectedItemId
-                && item.Status == "active" && item.ObservationState == "current") == 1,
+            | tracker.Items.Count(item => item.ItemId == tracker.SelectedItemId
+                & item.Status == "active" & item.ObservationState == "current") == 1,
             "review-campaign-selected-item-invalid");
     }
 
@@ -1040,15 +1040,15 @@ public static class CodeReviewCampaignCommands
             var item = questions[0];
             Ensure(HasExactProperties(item, "header", "question", "message", "multiSelect", "allowFreeformInput", "options"),
                 "review-campaign-question-invalid");
-            Ensure(ReadString(item, "header") == "Select review thread" && ReadString(item, "question") == questionText,
+            Ensure(ReadString(item, "header") == "Select review thread" & ReadString(item, "question") == questionText,
                 "review-campaign-question-invalid");
             Ensure(ReadString(item, "message") == SelectionMessage(tracker), "review-campaign-question-invalid");
             Ensure(item.GetProperty("multiSelect").ValueKind == JsonValueKind.False
-                && item.GetProperty("allowFreeformInput").ValueKind == JsonValueKind.False, "review-campaign-question-invalid");
+                & item.GetProperty("allowFreeformInput").ValueKind == JsonValueKind.False, "review-campaign-question-invalid");
             var options = item.GetProperty("options").EnumerateArray().ToArray();
-            var expected = tracker.Items.Where(candidate => candidate.Status == "active" && candidate.ObservationState == "current")
+            var expected = tracker.Items.Where(candidate => candidate.Status == "active" & candidate.ObservationState == "current")
                 .OrderBy(candidate => candidate.ItemId, StringComparer.Ordinal).Select(candidate => candidate.ItemId).ToArray();
-            Ensure(expected.Length > 0 && options.Length == expected.Length, "review-campaign-question-invalid");
+            Ensure(expected.Length > 0 & options.Length == expected.Length, "review-campaign-question-invalid");
             Ensure(options.All(option => HasExactProperties(option, "label")), "review-campaign-question-invalid");
             Ensure(options.Select(option => ReadString(option, "label")).SequenceEqual(expected, StringComparer.Ordinal),
                 "review-campaign-question-invalid");
@@ -1102,21 +1102,21 @@ public static class CodeReviewCampaignCommands
     {
         Ensure(HasExactProperties(item, "header", "question", "message", "multiSelect", "allowFreeformInput", "options"),
             "review-campaign-question-invalid");
-        Ensure(ReadString(item, "header") == header && ReadString(item, "question") == question,
+        Ensure(ReadString(item, "header") == header & ReadString(item, "question") == question,
             "review-campaign-question-invalid");
         Ensure(item.GetProperty("multiSelect").ValueKind == JsonValueKind.False
-            && item.GetProperty("allowFreeformInput").ValueKind == JsonValueKind.False,
+            & item.GetProperty("allowFreeformInput").ValueKind == JsonValueKind.False,
             "review-campaign-question-invalid");
         var options = item.GetProperty("options").EnumerateArray().ToArray();
         Ensure(options.All(option => HasExactProperties(option, "label"))
-            && options.Select(option => ReadString(option, "label")).SequenceEqual(labels, StringComparer.Ordinal),
+            & options.Select(option => ReadString(option, "label")).SequenceEqual(labels, StringComparer.Ordinal),
             "review-campaign-question-invalid");
     }
 
     private static ReviewCampaignItem RequireCurrentSelected(ReviewCampaignTracker tracker)
     {
         var matches = tracker.Items.Where(item => item.ItemId == tracker.SelectedItemId
-            && item.Status == "active" && item.ObservationState == "current").ToArray();
+            & item.Status == "active" & item.ObservationState == "current").ToArray();
         Ensure(matches.Length == 1, "review-campaign-selected-item-invalid");
         return matches[0];
     }
@@ -1179,22 +1179,22 @@ public static class CodeReviewCampaignCommands
         Ensure(adapter.SchemaVersion == "1.0", "review-campaign-adapter-schema-invalid");
         Ensure(Regex.IsMatch(adapter.AdapterId, "^[a-z0-9][a-z0-9._-]{0,127}$", RegexOptions.CultureInvariant),
             "review-campaign-adapter-id-invalid");
-        Ensure(adapter.Provider.Length is > 0 and <= 128 && !adapter.Provider.Any(char.IsWhiteSpace),
+        Ensure(adapter.Provider.Length is > 0 and <= 128 & !adapter.Provider.Any(char.IsWhiteSpace),
             "review-campaign-adapter-provider-invalid");
         Ensure(adapter.Provider == provider, "review-campaign-adapter-provider-mismatch");
         Ensure(adapter.Protocol == Protocol, "review-campaign-adapter-protocol-invalid");
         Ensure(adapter.Command.Length > 0
-            && adapter.Command.All(value => !string.IsNullOrWhiteSpace(value)
-                && value.IndexOfAny(['\0', '\r', '\n']) < 0), "review-campaign-adapter-command-invalid");
+            & adapter.Command.All(value => !string.IsNullOrWhiteSpace(value)
+                & value.IndexOfAny(['\0', '\r', '\n']) < 0), "review-campaign-adapter-command-invalid");
         Ensure(!adapter.Command.Any(InlineEvaluationFlags.Contains), "review-campaign-adapter-shell-command-forbidden");
         var artifact = GovernedPath(root, adapter.CommandArtifact, ".engloop/provider-adapters/");
         Ensure(IsTracked(root, artifact), "review-campaign-adapter-artifact-must-be-tracked");
         Ensure(IsTrackedAtHead(root, artifact), "review-campaign-adapter-artifact-must-match-head");
         Ensure(IsHash(adapter.CommandArtifactSha256)
-            && FileSha256(Full(root, artifact)) == adapter.CommandArtifactSha256,
+            & FileSha256(Full(root, artifact)) == adapter.CommandArtifactSha256,
             "review-campaign-adapter-artifact-hash-mismatch");
         Ensure(adapter.Command.Count(value => value == artifact) == 1
-            && relative.EndsWith(".json", StringComparison.Ordinal), "review-campaign-adapter-command-artifact-invalid");
+            & relative.EndsWith(".json", StringComparison.Ordinal), "review-campaign-adapter-command-artifact-invalid");
         Ensure(adapter.TimeoutSeconds is >= 1 and <= 300, "review-campaign-adapter-timeout-invalid");
         Ensure(adapter.Capabilities.Length > 0, "review-campaign-adapter-capabilities-empty");
         Ensure(adapter.Capabilities.Distinct(StringComparer.Ordinal).Count() == adapter.Capabilities.Length,
@@ -1211,28 +1211,28 @@ public static class CodeReviewCampaignCommands
     private static void ValidateDiscovery(DiscoveryResult result, string provider, string repository, string pullRequest)
     {
         var threads = result.Threads ?? throw new InvalidOperationException("review-campaign-provider-discovery-invalid");
-        Ensure(result.SchemaVersion == "1.0" && result.Status is "success" or "rejected"
-            && result.Provider == provider && result.Repository == repository && result.PullRequest == pullRequest
-            && !string.IsNullOrWhiteSpace(result.ActingPrincipal) && IsRevision(result.SourceRevision)
-            && IsRevision(result.TargetRevision) && IsIdentity(result.Iteration) && IsRevision(result.ProviderHead)
-            && result.PageCount is >= 1 && result.PaginationComplete is true && result.ContinuationToken == string.Empty
-            && result.ThreadCount is >= 0 && result.ThreadCount == threads.Length
-            && !string.IsNullOrWhiteSpace(result.DiscoveryReceiptId) && result.MutationPerformed is false,
+        Ensure(result.SchemaVersion == "1.0" & result.Status is "success" or "rejected"
+            & result.Provider == provider & result.Repository == repository & result.PullRequest == pullRequest
+            & !string.IsNullOrWhiteSpace(result.ActingPrincipal) & IsRevision(result.SourceRevision)
+            & IsRevision(result.TargetRevision) & IsIdentity(result.Iteration) & IsRevision(result.ProviderHead)
+            & result.PageCount is >= 1 & result.PaginationComplete is true & result.ContinuationToken == string.Empty
+            & result.ThreadCount is >= 0 & result.ThreadCount == threads.Length
+            & !string.IsNullOrWhiteSpace(result.DiscoveryReceiptId) & result.MutationPerformed is false,
             "review-campaign-provider-discovery-invalid");
         Ensure(threads.Select(thread => thread.Thread).Distinct(StringComparer.Ordinal).Count() == threads.Length,
             "review-campaign-thread-duplicate");
         foreach (var thread in threads)
         {
-            Ensure(IsIdentity(thread.Thread) && IsIdentity(thread.RootComment) && ThreadStatuses.Contains(thread.Status)
-                && !string.IsNullOrWhiteSpace(thread.Summary) && !string.IsNullOrWhiteSpace(thread.UpdatedAt)
-                && thread.Comments is { Length: > 0 } && thread.ProviderState.ValueKind == JsonValueKind.Object
-                && thread.Comments.Any(comment => comment.Comment == thread.RootComment), "review-campaign-thread-invalid");
+            Ensure(IsIdentity(thread.Thread) & IsIdentity(thread.RootComment) & ThreadStatuses.Contains(thread.Status)
+                & !string.IsNullOrWhiteSpace(thread.Summary) & !string.IsNullOrWhiteSpace(thread.UpdatedAt)
+                & thread.Comments is { Length: > 0 } & thread.ProviderState.ValueKind == JsonValueKind.Object
+                & thread.Comments.Any(comment => comment.Comment == thread.RootComment), "review-campaign-thread-invalid");
             Ensure(thread.Comments.Select(comment => comment.Comment).Distinct(StringComparer.Ordinal).Count() == thread.Comments.Length,
                 "review-campaign-comment-duplicate");
             foreach (var comment in thread.Comments)
-                Ensure(IsIdentity(comment.Comment) && !string.IsNullOrWhiteSpace(comment.Author)
-                    && !string.IsNullOrWhiteSpace(comment.CreatedAt) && !string.IsNullOrWhiteSpace(comment.UpdatedAt)
-                    && comment.IsDeleted is not null, "review-campaign-comment-invalid");
+                Ensure(IsIdentity(comment.Comment) & !string.IsNullOrWhiteSpace(comment.Author)
+                    & !string.IsNullOrWhiteSpace(comment.CreatedAt) & !string.IsNullOrWhiteSpace(comment.UpdatedAt)
+                    & comment.IsDeleted is not null, "review-campaign-comment-invalid");
         }
     }
 
@@ -1292,8 +1292,8 @@ public static class CodeReviewCampaignCommands
     }
 
     private static bool IsEntryValidationCommand(string tool, string command)
-        => (tool.Equals("run_in_terminal", StringComparison.OrdinalIgnoreCase) || tool.Equals("execute", StringComparison.OrdinalIgnoreCase))
-            && command == $"dotnet tool run engloopkit validate agent-entry --stage {StageId} --root .";
+        => (tool.Equals("run_in_terminal", StringComparison.OrdinalIgnoreCase) | tool.Equals("execute", StringComparison.OrdinalIgnoreCase))
+            & command == $"dotnet tool run engloopkit validate agent-entry --stage {StageId} --root .";
 
     private static string TrackerRelative(string campaignId)
         => $".engloop/out/code-review-response/campaigns/{campaignId}/tracker.json";
@@ -1356,15 +1356,15 @@ public static class CodeReviewCampaignCommands
         CampaignTransaction transaction)
     {
         Ensure(transaction.SchemaVersion == "1.0"
-            && transaction.Kind is "initialize" or "post-tool"
-            && IsHash(transaction.CampaignId) && IsHash(transaction.SessionHash)
-            && (transaction.PreviousTrackerSha256.Length == 0
-                || IsHash(transaction.PreviousTrackerSha256))
-            && relative == CampaignTransactionRelative(transaction.CampaignId,
+            & transaction.Kind is "initialize" or "post-tool"
+            & IsHash(transaction.CampaignId) & IsHash(transaction.SessionHash)
+            & (transaction.PreviousTrackerSha256.Length == 0
+                | IsHash(transaction.PreviousTrackerSha256))
+            & relative == CampaignTransactionRelative(transaction.CampaignId,
                 transaction.SessionHash), "review-campaign-transaction-invalid");
         var trackerRelative = NormalizeTrackerPath(root, transaction.TrackerPath);
         Ensure(trackerRelative == TrackerRelative(transaction.CampaignId)
-            && transaction.Tracker.CampaignId == transaction.CampaignId,
+            & transaction.Tracker.CampaignId == transaction.CampaignId,
             "review-campaign-transaction-invalid");
         ValidateTracker(root, transaction.Tracker, trackerRelative,
             requireSnapshotFile: transaction.Kind != "initialize");
@@ -1375,23 +1375,23 @@ public static class CodeReviewCampaignCommands
             "review-campaign-transaction-invalid");
         ValidateGateStatic(root, transaction.Gate);
         Ensure(transaction.Gate.SessionHash == transaction.SessionHash
-            && transaction.Gate.CampaignId == transaction.CampaignId
-            && transaction.Gate.Tracker == trackerRelative
-            && transaction.Gate.TrackerSha256 == transaction.Tracker.TrackerSha256
-            && transaction.Gate.RefreshNumber == transaction.Tracker.RefreshNumber
-            && transaction.Gate.Provider == transaction.Tracker.Provider
-            && transaction.Gate.Repository == transaction.Tracker.Repository
-            && transaction.Gate.PullRequest == transaction.Tracker.PullRequest
-            && transaction.Gate.Adapter == transaction.Tracker.Adapter
-            && transaction.Gate.AdapterSha256 == transaction.Tracker.AdapterSha256
-            && transaction.Gate.AdapterArtifactSha256
+            & transaction.Gate.CampaignId == transaction.CampaignId
+            & transaction.Gate.Tracker == trackerRelative
+            & transaction.Gate.TrackerSha256 == transaction.Tracker.TrackerSha256
+            & transaction.Gate.RefreshNumber == transaction.Tracker.RefreshNumber
+            & transaction.Gate.Provider == transaction.Tracker.Provider
+            & transaction.Gate.Repository == transaction.Tracker.Repository
+            & transaction.Gate.PullRequest == transaction.Tracker.PullRequest
+            & transaction.Gate.Adapter == transaction.Tracker.Adapter
+            & transaction.Gate.AdapterSha256 == transaction.Tracker.AdapterSha256
+            & transaction.Gate.AdapterArtifactSha256
                 == transaction.Tracker.AdapterArtifactSha256,
             "review-campaign-transaction-invalid");
 
         if (transaction.Kind == "initialize")
         {
             Ensure(transaction.SnapshotJson.Length > 0
-                && Sha256Text(transaction.SnapshotJson)
+                & Sha256Text(transaction.SnapshotJson)
                     == transaction.Tracker.SnapshotSha256,
                 "review-campaign-transaction-snapshot-invalid");
             DiscoveryResult discovery;
@@ -1404,14 +1404,14 @@ public static class CodeReviewCampaignCommands
             ValidateDiscovery(discovery, transaction.Tracker.Provider,
                 transaction.Tracker.Repository, transaction.Tracker.PullRequest);
             Ensure(discovery.Status == "success"
-                && transaction.Tracker.Snapshot == SnapshotRelative(
+                & transaction.Tracker.Snapshot == SnapshotRelative(
                     transaction.CampaignId, transaction.Tracker.RefreshNumber),
                 "review-campaign-transaction-snapshot-invalid");
         }
         else
         {
             Ensure(transaction.SnapshotJson.Length == 0
-                && IsHash(transaction.PreviousTrackerSha256),
+                & IsHash(transaction.PreviousTrackerSha256),
                 "review-campaign-transaction-invalid");
         }
 
@@ -1420,7 +1420,7 @@ public static class CodeReviewCampaignCommands
         {
             var current = ReadTracker(root, trackerRelative);
             Ensure(current.TrackerSha256 == transaction.PreviousTrackerSha256
-                || current.TrackerSha256 == transaction.Tracker.TrackerSha256,
+                | current.TrackerSha256 == transaction.Tracker.TrackerSha256,
                 "review-campaign-transaction-tracker-conflict");
         }
         else
@@ -1436,10 +1436,10 @@ public static class CodeReviewCampaignCommands
                 "review-campaign-gate-missing-or-invalid");
             ValidateGateStatic(root, currentGate);
             Ensure(currentGate.SessionHash == transaction.SessionHash
-                && currentGate.CampaignId == transaction.CampaignId
-                && currentGate.Tracker == trackerRelative
-                && (currentGate.TrackerSha256 == transaction.PreviousTrackerSha256
-                    || currentGate.TrackerSha256
+                & currentGate.CampaignId == transaction.CampaignId
+                & currentGate.Tracker == trackerRelative
+                & (currentGate.TrackerSha256 == transaction.PreviousTrackerSha256
+                    | currentGate.TrackerSha256
                         == transaction.Tracker.TrackerSha256),
                 "review-campaign-transaction-gate-conflict");
         }
@@ -1487,8 +1487,8 @@ public static class CodeReviewCampaignCommands
         if (File.Exists(gatePath))
         {
             var gate = Read<CampaignGate>(gatePath, "review-campaign-gate-missing-or-invalid");
-            Ensure(gate.SchemaVersion == "1.0" && IsHash(gate.CampaignId)
-                && gate.Tracker == TrackerRelative(gate.CampaignId), "review-campaign-gate-invalid");
+            Ensure(gate.SchemaVersion == "1.0" & IsHash(gate.CampaignId)
+                & gate.Tracker == TrackerRelative(gate.CampaignId), "review-campaign-gate-invalid");
             return gate.CampaignId;
         }
 
@@ -1498,8 +1498,8 @@ public static class CodeReviewCampaignCommands
             var completion = Read<CampaignCompletionReceipt>(completionPath,
                 "review-campaign-completion-receipt-missing-or-invalid");
             Ensure(completion.SchemaVersion == "1.0"
-                && completion.SessionHash == sessionHash
-                && IsHash(completion.CampaignId),
+                & completion.SessionHash == sessionHash
+                & IsHash(completion.CampaignId),
                 "review-campaign-completion-receipt-invalid");
             return completion.CampaignId;
         }
@@ -1508,8 +1508,8 @@ public static class CodeReviewCampaignCommands
         Ensure(pending.Length == 1, "review-campaign-gate-missing-or-invalid");
         var transaction = Read<CampaignTransaction>(pending[0],
             "review-campaign-transaction-invalid");
-        Ensure(transaction.SchemaVersion == "1.0" && transaction.SessionHash == sessionHash
-            && IsHash(transaction.CampaignId), "review-campaign-transaction-invalid");
+        Ensure(transaction.SchemaVersion == "1.0" & transaction.SessionHash == sessionHash
+            & IsHash(transaction.CampaignId), "review-campaign-transaction-invalid");
         return transaction.CampaignId;
     }
 
@@ -1541,7 +1541,7 @@ public static class CodeReviewCampaignCommands
         return value;
     }
 
-    private static bool IsIdentity(string value) => value.Length is > 0 and <= 512 && !value.Any(char.IsWhiteSpace);
+    private static bool IsIdentity(string value) => value.Length is > 0 and <= 512 & !value.Any(char.IsWhiteSpace);
     private static bool IsRevision(string value) => Regex.IsMatch(value, "^[a-fA-F0-9]{40,64}$", RegexOptions.CultureInvariant);
     private static bool IsHash(string value) => Regex.IsMatch(value, "^[a-f0-9]{64}$", RegexOptions.CultureInvariant);
     private static string Short(string value) => value.Length >= 12 ? value[..12] : value;
@@ -1549,7 +1549,7 @@ public static class CodeReviewCampaignCommands
     private static string GovernedPath(string root, string value, string prefix)
     {
         var normalized = value.Replace('\\', '/');
-        Ensure(normalized.Length > prefix.Length && !Path.IsPathRooted(normalized) && !normalized.Contains('\0'), "review-campaign-path-invalid");
+        Ensure(normalized.Length > prefix.Length & !Path.IsPathRooted(normalized) & !normalized.Contains('\0'), "review-campaign-path-invalid");
         var full = Path.GetFullPath(Path.Combine(root, normalized.Replace('/', Path.DirectorySeparatorChar)));
         var prefixFull = Path.GetFullPath(Path.Combine(root, prefix.Replace('/', Path.DirectorySeparatorChar))).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
         Ensure(full.StartsWith(prefixFull, PathComparison), "review-campaign-path-invalid");
@@ -1582,7 +1582,7 @@ public static class CodeReviewCampaignCommands
     private static string GitHead(string root)
     {
         var result = Git(root, "rev-parse", "HEAD");
-        Ensure(result.ExitCode == 0 && IsRevision(result.Output.Trim()), "review-campaign-git-head-unavailable");
+        Ensure(result.ExitCode == 0 & IsRevision(result.Output.Trim()), "review-campaign-git-head-unavailable");
         return result.Output.Trim().ToLowerInvariant();
     }
 
