@@ -1,0 +1,14 @@
+{
+  "provenance": "Independent Explore retrieval, 2026-09-06. Reader was given questions but forbidden from reading retrieval cases or expected results; followed root index, cards, and source documents. No runtime navigation or release-SLO proof is claimed.",
+  "results": [
+    {"id":"readiness-gate","actualCardIds":["readiness-is-a-gate"],"actualSourceIds":["PM001/LEARN001","PM001/LEARN002","PM001/LEARN003"],"verdict":"PASS"},
+    {"id":"artifact-class","actualCardIds":["verification-follows-artifact-class"],"actualSourceIds":["PM002/LEARN001","PM002/LEARN002","PM002/LEARN003"],"verdict":"PASS"},
+    {"id":"model-granularity","actualCardIds":["model-observable-behavior"],"actualSourceIds":["PM002/LEARN002","PM003/LEARN001","PM003/LEARN002"],"verdict":"PASS"},
+    {"id":"negative-conformance","actualCardIds":["adequate-models-prove-rejection"],"actualSourceIds":["PM004/LEARN001","PM004/LEARN002","PM004/LEARN003"],"verdict":"PASS"},
+    {"id":"incident-navigation","actualCardIds":["readiness-is-a-gate"],"actualSourceIds":["PM001/LEARN001","PM001/LEARN002","PM001/LEARN003"],"verdict":"PASS"},
+    {"id":"active-incident-analysis","actualCardIds":["readiness-is-a-gate"],"actualSourceIds":["PM001/LEARN001","PM001/LEARN002","PM001/LEARN003"],"verdict":"PASS"},
+    {"id":"bounded-release","actualCardIds":["verification-follows-artifact-class"],"actualSourceIds":["PM002/LEARN001","PM002/LEARN002","PM002/LEARN003"],"verdict":"PASS"},
+    {"id":"upgrade-proof","actualCardIds":["verification-follows-artifact-class"],"actualSourceIds":["PM002/LEARN001","PM002/LEARN002","PM002/LEARN003"],"verdict":"PASS"},
+    {"id":"no-cue","actualCardIds":[],"actualSourceIds":[],"verdict":"GAP"}
+  ]
+}

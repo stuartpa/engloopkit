@@ -33,6 +33,38 @@
       "expectGap": false
     },
     {
+      "id": "incident-navigation",
+      "question": "The user wants Postmortem now, but incident IDs and current readiness are missing and the Incident Stop hook failed. May ELK deny switching agents?",
+      "expectedCardIds": ["readiness-is-a-gate"],
+      "expectedSourceIds": ["PM001/LEARN001", "PM001/LEARN002", "PM001/LEARN003"],
+      "tags": ["navigation", "incident", "postmortem"],
+      "expectGap": false
+    },
+    {
+      "id": "active-incident-analysis",
+      "question": "Can the user enter Postmortem while an incident is still active, without claiming stabilization or granting permission for unsafe mutations?",
+      "expectedCardIds": ["readiness-is-a-gate"],
+      "expectedSourceIds": ["PM001/LEARN001", "PM001/LEARN002", "PM001/LEARN003"],
+      "tags": ["navigation", "claims", "authority"],
+      "expectGap": false
+    },
+    {
+      "id": "bounded-release",
+      "question": "A small release is forecast to exceed 90 minutes after repeated coverage runs. Should the agent keep rerunning full suites, rewrite boolean guards to raise coverage, or reuse branch hits from changed binaries?",
+      "expectedCardIds": ["verification-follows-artifact-class"],
+      "expectedSourceIds": ["PM002/LEARN001", "PM002/LEARN002", "PM002/LEARN003"],
+      "tags": ["release", "latency", "coverage"],
+      "expectGap": false
+    },
+    {
+      "id": "upgrade-proof",
+      "question": "A release has valid asset hashes and a passing fresh install. Is that enough to prove the prior stable updater can consume the final manifest and retain the upgrade?",
+      "expectedCardIds": ["verification-follows-artifact-class"],
+      "expectedSourceIds": ["PM002/LEARN001", "PM002/LEARN002", "PM002/LEARN003"],
+      "tags": ["release", "upgrade", "contract"],
+      "expectGap": false
+    },
+    {
       "id": "no-cue",
       "question": "Which learning governs a visual color palette decision?",
       "expectedCardIds": [],

@@ -68,10 +68,10 @@ foreach ($case in $cases.cases) {
     }
 
     $actual = $observedById[$case.id]
-    $actualCards = NormalizeSet @($actual.actualCardIds)
-    $actualSources = NormalizeSet @($actual.actualSourceIds)
-    $expectedCards = NormalizeSet @($case.expectedCardIds)
-    $expectedSources = NormalizeSet @($case.expectedSourceIds)
+    $actualCards = @(NormalizeSet @($actual.actualCardIds))
+    $actualSources = @(NormalizeSet @($actual.actualSourceIds))
+    $expectedCards = @(NormalizeSet @($case.expectedCardIds))
+    $expectedSources = @(NormalizeSet @($case.expectedSourceIds))
 
     # Observed cards must be current cards and sources must actually be cited by them.
     foreach ($card in $actualCards) {
