@@ -52,14 +52,15 @@ public sealed class BundleConformanceTests
         using var catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "catalog.json")));
 
         Assert.Contains("id: \"engloop\"", extension);
-        Assert.Contains("version: \"1.17.0\"", extension);
+        Assert.Contains("version: \"1.18.0\"", extension);
         Assert.Contains("id: \"engloopkit\"", bundle);
-        Assert.Contains("version: \"1.17.0\"", bundle);
+        Assert.Contains("version: \"1.18.0\"", bundle);
         Assert.Equal("engloop", catalog.RootElement.GetProperty("extensions")[0].GetProperty("id").GetString());
-        Assert.Equal("1.17.0", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
+        Assert.Equal("1.18.0", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
         Assert.Equal(29, catalog.RootElement.GetProperty("extensions")[0].GetProperty("provides").GetProperty("commands").GetInt32());
 
         var changelog = File.ReadAllText(Path.Combine(Root, "CHANGELOG.md"));
+        Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.18\.0\] - 2026-09-06\r?$").Cast<Match>());
         Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.17\.0\] - 2026-09-05\r?$").Cast<Match>());
         Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.16\.0\] - 2026-09-03\r?$").Cast<Match>());
         Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.15\.4\] - 2026-09-03\r?$").Cast<Match>());
@@ -420,6 +421,8 @@ public sealed class BundleConformanceTests
             "Assert-DotNetPlatform", "ELK_UPGRADE_DOTNET_TOO_OLD", "net10.0", "EngLoopKit.slnx"
         }) Assert.Contains(marker, updater, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("dotnet tool install -g", updater, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("ELK_UPGRADE_RELEASE_MANIFEST_COMMANDS_INVALID", updater, StringComparison.Ordinal);
+        Assert.Contains("manifest.commands.ContainsKey('ids')", updater, StringComparison.Ordinal);
     }
 
     [Fact]

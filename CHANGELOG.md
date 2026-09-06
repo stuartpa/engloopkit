@@ -3,6 +3,19 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.18.0] - 2026-09-06
+
+### Fixed
+
+- Restored the ordered 29-command `commands.ids` contract in the canonical release
+  manifest and made the updater reject missing, duplicate, malformed, or count-mismatched
+  command catalogs before any local tool, extension, registry, agent, or prompt mutation.
+- Added complete pre-mutation validation for ELK/SEK artifact identities and SHA-256
+  fields used by the upgrade transaction.
+- Added a release requirement that the final immutable tool, extension, and manifest pass
+  a disposable prior-stable v1.16.0 → v1.18.0 upgrade with `ELK_UPGRADE_PASS` and exact
+  installed command/agent/prompt surfaces.
+
 ## [1.17.0] - 2026-09-05
 
 ### Added

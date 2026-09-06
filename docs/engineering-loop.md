@@ -2,7 +2,7 @@
 
 **Workflow generation:** Ordered EngLoop v2.
 **Product versioning:** EngLoopKit remains on the **1.x** line; the ordered workflow
-ships in v1.7.0 and the current complete review-campaign, active-chat postmortem, and distinct refactor-plan/refactor workflow in v1.17.0. “v2” is not a v2.0 product release.
+ships in v1.7.0 and the current complete review-campaign, upgrade-contract repair, active-chat postmortem, and distinct refactor-plan/refactor workflow in v1.18.0. “v2” is not a v2.0 product release.
 
 EngLoopKit has independently invoked lifecycle, positive-history, and local utility lanes.
 Command ordinals give the picker a

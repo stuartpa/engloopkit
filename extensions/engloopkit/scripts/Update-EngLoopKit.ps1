@@ -73,6 +73,37 @@ function Read-ReleaseManifest($Release, [string]$Version, [string]$Directory) {
     Save-Asset (Get-Asset $Release $name) $path
     $manifest = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json -AsHashtable
     if ($manifest.schemaVersion -ne '1.0' -or $manifest.version -ne $Version) { throw 'ELK_UPGRADE_RELEASE_MANIFEST_INVALID' }
+    foreach ($field in @('platform','artifacts','commands','dependencies')) {
+        if (-not $manifest.ContainsKey($field) -or $null -eq $manifest[$field]) { throw "ELK_UPGRADE_RELEASE_MANIFEST_FIELD_MISSING field=$field" }
+    }
+    if (-not $manifest.commands.ContainsKey('count') -or -not $manifest.commands.ContainsKey('ids')) {
+        throw 'ELK_UPGRADE_RELEASE_MANIFEST_COMMANDS_INVALID'
+    }
+    $ids = @($manifest.commands.ids)
+    if ($ids.Count -lt 1 -or $ids.Count -ne [int]$manifest.commands.count -or
+        @($ids | Sort-Object -Unique).Count -ne $ids.Count -or
+        @($ids | Where-Object { [string]$_ -notmatch '^speckit\.engloop\.\d{2}-[a-z0-9-]+$' }).Count -ne 0) {
+        throw 'ELK_UPGRADE_RELEASE_MANIFEST_COMMANDS_INVALID'
+    }
+    foreach ($key in @('tool','extension','bundle')) {
+        if (-not $manifest.artifacts.ContainsKey($key) -or
+            [string]::IsNullOrWhiteSpace([string]$manifest.artifacts[$key].name) -or
+            [string]$manifest.artifacts[$key].sha256 -notmatch '^[a-f0-9]{64}$') {
+            throw "ELK_UPGRADE_RELEASE_MANIFEST_ARTIFACT_INVALID key=$key"
+        }
+    }
+    if (-not $manifest.dependencies.ContainsKey('sek') -or
+        [string]$manifest.dependencies.sek.version -ne '0.1.3') {
+        throw 'ELK_UPGRADE_RELEASE_MANIFEST_SEK_INVALID'
+    }
+    foreach ($key in @('tool','modeling','extension')) {
+        $entry = $manifest.dependencies.sek.artifacts[$key]
+        if ($null -eq $entry -or [string]::IsNullOrWhiteSpace([string]$entry.name) -or
+            [string]::IsNullOrWhiteSpace([string]$entry.url) -or
+            [string]$entry.sha256 -notmatch '^[a-f0-9]{64}$') {
+            throw "ELK_UPGRADE_RELEASE_MANIFEST_SEK_ARTIFACT_INVALID key=$key"
+        }
+    }
     return $manifest
 }
 
