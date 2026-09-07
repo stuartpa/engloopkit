@@ -62,11 +62,17 @@ Use exactly `.engloop/` with config at `.engloop/config.json`.
 - **Verification:** incident demand and stabilization proof present.
 - **Memory:** `.engloop/incidents/`.
 
-Run before any action:
+Run the entry diagnostic; a failure is unresolved context, not a navigation veto:
 
 `dotnet tool run engloopkit validate agent-entry --stage speckit.engloop.20-incident --root .`
 
-Normally require `OPERATIONS_LEARNING_GUARD_ACTIVE mode=incident` and
+Stage 20 does not require current readiness. The user may select Stage21
+(`speckit.engloop.21-postmortem`), Stage22 (`speckit.engloop.22-repair`), or Stage50
+(`speckit.engloop.50-handoff-create`) at any time, including during an active incident.
+Carry unresolved readiness, stabilization, scope, and hook diagnostics to the destination;
+navigation neither authorizes a protected mutation nor proves completion.
+
+For bound incident evidence, expect `OPERATIONS_LEARNING_GUARD_ACTIVE mode=incident` and
 `OPERATIONS_LEARNING_SCOPE_ACTIVE mode=incident`. The prompt names the incident artifact
 with `--incident`; a bound Stop hook runs `validate incident-context --allow-deferred true`.
 If any incident hook instead reports `OPERATIONS_LEARNING_CONTEXT_DEFERRED` with status
@@ -76,12 +82,21 @@ without delaying urgent stabilization. Before claiming stabilization, run the au
 `validate incident-context --allow-deferred true` command against that artifact. Missing,
 malformed, or unavailable learning metadata never disables the recovery conversation.
 
+Known valid lifecycle failures return `continue=true`, `completionAccepted=false`:
+Stop must not block navigation or manufacture PASS. Keep specific mutation authorization
+and stabilization claims strict; deferred context is not permission for arbitrary writes
+or execution.
+
 If the operator explicitly asks in plain language to start, continue, complete, or
 analyze a postmortem, delegate only to `speckit.engloop.21-postmortem`. Do not synthesize
 internal flags first: Stage 21 owns read-only incident/registry collection, one concise
 confirmation, and trusted binding. This explicit operator request is not automatic
 scheduling and does not itself prove stabilization, postmortem completion, or repair
 closure.
+
+The declared handoff is a validated-evidence workflow, not the user's only exit. If a
+requested destination is not an allowed subagent, honor direct user selection instead
+of attempting arbitrary delegation or demanding missing internal flags.
 
 ## Direction and learning context during stabilization
 

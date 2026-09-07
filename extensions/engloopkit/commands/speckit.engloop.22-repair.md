@@ -42,21 +42,29 @@ Use exactly `.engloop/` with config at `.engloop/config.json`.
 
 ## Loop definition
 
-- **Trigger:** at least one accepted repair item exists.
+- **Trigger:** user requests repair discussion; accepted routing requires at least one accepted repair item.
 - **Goal:** full repair closure through 04 and applicable 05-08 gates.
 - **Actions:** bind the PM/RPI to direction, rules, and its SEK escape disposition; when relevant repair the model/CORD scenario before regenerating; execute the exact gate and downstream readiness flow.
 - **Verification:** no bypass; relevant SEK scenario/model/CORD fields match the PM; the SEK recurrence gate is the executable gate and passes from current generated output; current readiness passes.
 - **Memory:** `.engloop/postmortems/`, `.engloop/repairs/`, and downstream repair evidence.
 
-Run before any action:
+Run the entry diagnostic; a failure is unresolved context, not a navigation veto:
 
 `dotnet tool run engloopkit validate agent-entry --stage speckit.engloop.22-repair --root .`
 
 ## Rule-bound repair acceptance
 
-This agent requires the `OPERATIONS_LEARNING_GUARD_ACTIVE mode=repair` and
-`OPERATIONS_LEARNING_SCOPE_ACTIVE mode=repair` hook markers. Inputs are explicit and
-must match the selected PM's `RPIxxx learning contract` exactly.
+The user may select Stage21 (`speckit.engloop.21-postmortem`), Stage22
+(`speckit.engloop.22-repair`), or Stage50 (`speckit.engloop.50-handoff-create`) at any
+time. Missing flags, readiness, PM/RPI evidence, or failed hooks never veto navigation
+or read-only discussion. Carry unresolved evidence and diagnostics forward. Direct
+user selection does not authorize arbitrary delegation or a protected mutation.
+
+Accepted repair routing/closure requires the `OPERATIONS_LEARNING_GUARD_ACTIVE mode=repair`
+and `OPERATIONS_LEARNING_SCOPE_ACTIVE mode=repair` hook markers. Collect missing context
+without requiring the user to reconstruct internal options. Before protected operations,
+bind explicit inputs matching the selected PM's `RPIxxx learning contract` exactly;
+do not invent rule IDs, acceptance paths, or PASS evidence.
 
 ### Route phase
 
@@ -69,7 +77,9 @@ must match the selected PM's `RPIxxx learning contract` exactly.
 3. Create immutable `.engloop/repairs/PMxxx-RPIxxx.route.json` from the route template with
   `phase: route`, `status: ROUTED`, current hashes, exact Rule IDs, executable gate, and
   all SEK applicability/scenario/repair fields.
-4. The Stop hook validates the route record before showing the Stage 04 handoff.
+4. The Stop hook validates route acceptance, not permission to show or select the
+  Stage 04 handoff. Carry any unaccepted route and missing evidence to the destination;
+  navigation alone does not authorize implementation.
 
 ### Close phase
 
@@ -89,8 +99,10 @@ must match the selected PM's `RPIxxx learning contract` exactly.
   readiness record to be a current PASS. A code change or green unrelated suite is not
   repair closure.
 
-The Stop hook runs `validate repair-learning` and fails closed on missing rule IDs,
+The Stop hook runs `validate repair-learning` and rejects acceptance on missing rule IDs,
 changed direction/pyramid, substituted gate, missing gate evidence, or stale readiness.
+Known valid lifecycle failures return `continue=true`, `completionAccepted=false`;
+Stop never blocks navigation or manufactures PASS. These are evidence gates, not exits.
 
 ## Done when
 

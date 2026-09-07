@@ -14,8 +14,8 @@ in the bundle's [document standards](../docs/standards.md). Artifact root is `.e
 | `MODEL` | SEK model records | `MODEL002` | latest = direction/pyramid-bound operations behavior |
 | `CORD` | CORD exploration records | `CORD002` | latest = operations learning/gate conformance exploration |
 | `COV` | Coverage/validation/readiness records | `COV003` | COV001 = conformance; COV002 = functional; COV003 = readiness |
-| `IN` | Incidents | `IN008` | latest = v1.17 manifest/updater contract mismatch blocked supported upgrades |
-| `PM` | Post-mortems | `PM004` | PM001 = no readiness gate; PM002 = verification method by module class; PM003 = self-model criterion is behavior-level; PM004 = self-model must be behaviorally rich + prove negative conformance |
+| `IN` | Incidents | `IN009` | latest = HANDOFF012/013 operations hooks and stage guidance blocked user navigation |
+| `PM` | Post-mortems | `PM005` | PM001 = no readiness gate; PM002 = verification method by module class; PM003 = self-model criterion is behavior-level; PM004 = self-model must be behaviorally rich + prove negative conformance; PM005 = navigation vs evidence gates, analyzed; validation/release pending |
 | `REFACT` | Refactor decisions | `REFACT001` | REFACT001 = ordered EngLoop v2 workflow, Northstar, verification split, and Learnings Pyramid |
 | `DEADCODE` | High-certainty dead-code proposals | `DEADCODE000` | explicit user approval is required before current-source removal |
 | `HAPPY` | Happy Minute records | `HAPPY000` | moments of gratitude and readily available conditions worth repeating |

@@ -1588,7 +1588,7 @@ public sealed class CodeReviewResponseTests : IDisposable
         File.WriteAllText(Path.Combine(repo, "src", "fixture.cs"), "// fixture\n");
         File.WriteAllText(Path.Combine(repo, "src", "fixture.csproj"), "<Project Sdk=\"Microsoft.NET.Sdk\" />\n");
         File.WriteAllText(Path.Combine(repo, ".engloop", "config.json"), "{\"schemaVersion\":\"2.0\",\"productId\":\"fixture\",\"artifactRoot\":\".engloop\",\"transientOutputRoot\":\".engloop/out\",\"northstarPath\":\"NORTHSTAR.md\",\"validatorCommand\":[\"dotnet\",\"--version\"],\"moduleDiscoveryCommand\":[\"dotnet\",\"--version\"],\"architectureCommand\":[\"dotnet\",\"--version\"],\"regressionCommand\":[\"dotnet\",\"--version\"],\"coverageInputs\":{\"wholeProduct\":\"src/fixture.csproj\"},\"testRunway\":{\"status\":\"proven\",\"framework\":\"xunit\",\"terseCommand\":[\"dotnet\",\"--version\"],\"boundaryTest\":\"Fixture.Boundary\",\"generatedDestination\":\"tests/generated\",\"evidenceDigest\":\"fixture\",\"provenAtRevision\":\"content:fixture\"},\"moduleInventory\":[{\"id\":\"core\",\"path\":\"src/fixture.csproj\"}]}\n");
-        File.WriteAllText(Path.Combine(repo, ".config", "dotnet-tools.json"), "{\"version\":1,\"isRoot\":true,\"tools\":{\"engloopkit\":{\"version\":\"1.18.0\",\"commands\":[\"engloopkit\"]}}}\n");
+        File.WriteAllText(Path.Combine(repo, ".config", "dotnet-tools.json"), "{\"version\":1,\"isRoot\":true,\"tools\":{\"engloopkit\":{\"version\":\"1.19.0\",\"commands\":[\"engloopkit\"]}}}\n");
 
         var adapterScript = Path.Combine(repo, ".engloop", "provider-adapters", "fake.ps1");
         File.WriteAllText(adapterScript, FakeAdapterScript);
@@ -2014,7 +2014,7 @@ public sealed class CodeReviewResponseTests : IDisposable
             sessionHash = Sha256Text("fixture-campaign-session"),
             head,
             statusDigest = StatusDigest(repo),
-            toolVersion = "1.18.0",
+            toolVersion = "1.19.0",
             manifestSha256 = FileHash(Path.Combine(repo, ".config", "dotnet-tools.json")),
             provider = "fixture-provider",
             repository = "fixture-repo",

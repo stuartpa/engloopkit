@@ -212,7 +212,7 @@ public sealed class ToolSurfaceFailureTests : IDisposable
         Assert.Equal(1, Program.Main(["validate", "postmortem-learning", "--root", SourceRoot]));
         Assert.Equal(1, Program.Main(["validate", "repair-learning", "--root", SourceRoot]));
         Assert.Equal(2, Program.Main(["validate", "agent-entry", "--root", SourceRoot]));
-        Assert.Equal(2, Program.Main(["validate", "agent-entry", "--stage", "speckit.engloop.20-incident", "--root", SourceRoot]));
+        Assert.Equal(0, Program.Main(["validate", "agent-entry", "--stage", "speckit.engloop.20-incident", "--root", SourceRoot]));
     }
 
     [Fact]

@@ -9,6 +9,8 @@ namespace EngLoopKit.Tool;
 
 public static class OperationsHookCommands
 {
+    private const string NavigationRecovery = "The user may select Stage 22 (speckit.engloop.22-repair) or Stage 50 (speckit.engloop.50-handoff-create) any time without binder tokens. Stop does not veto navigation. Selection does not authorize mutations or claim completion.";
+
     private static readonly HashSet<string> CollectionReadOrQuestionTools = new(StringComparer.OrdinalIgnoreCase)
     {
         "read", "search", "read_file", "file_search", "grep_search", "semantic_search", "list_dir", "vscode_askQuestions",
@@ -84,17 +86,24 @@ public static class OperationsHookCommands
     {
         var action = args.Length > 0 ? args[0] : "unknown";
         var mode = args.Length > 1 ? args[1] : "unknown";
+        var validDispatch = false;
+        var toolName = string.Empty;
         try
         {
             Ensure(args.Length >= 2, "operations-hook-requires-action-and-mode");
             Ensure(mode is "incident" or "postmortem" or "repair", "operations-hook-mode-invalid");
+            Ensure(action is "start" or "subagent-start" or "initialize" or "guard" or "post-tool" or "stop" or "subagent-stop", "operations-hook-action-invalid");
+            Ensure(action is not ("guard" or "post-tool") || mode == "postmortem", "operations-hook-action-mode-invalid");
+            validDispatch = true;
             using var input = JsonDocument.Parse(Console.In.ReadToEnd());
+            Ensure(input.RootElement.ValueKind == JsonValueKind.Object, "operations-hook-input-invalid");
+            toolName = ReadString(input.RootElement, "tool_name", "toolName");
             var root = ExactGitRoot(ReadString(input.RootElement, "cwd"));
-            if (mode == "postmortem") RequirePostmortemAgentEntry(root);
             var sessionId = ReadString(input.RootElement, "session_id", "sessionId");
             Ensure(!string.IsNullOrWhiteSpace(sessionId), "operations-hook-session-id-missing");
             var sessionHash = Sha256(Encoding.UTF8.GetBytes(sessionId));
             var gatePath = GatePath(root, sessionHash, mode);
+            if (action is "start" or "subagent-start") _ = CurrentToolIdentity(root);
 
             return action switch
             {
@@ -110,10 +119,10 @@ public static class OperationsHookCommands
         }
         catch (Exception ex)
         {
-            if (mode == "incident") WriteIncidentContextDeferred(action, IncidentDiagnosticCode(ex), ex.Message);
-            else if (mode == "postmortem" && action == "subagent-stop") WriteSubagentStopBlocked(ex.Message);
-            else if (mode == "postmortem" && action == "post-tool") WriteResult(true, systemMessage: "OPERATIONS_POSTMORTEM_CONFIRMATION_REJECTED completionAccepted=false diagnostic=" + IncidentDiagnosticCode(ex));
-            else WriteResult(false, "Operations learning hook failed closed: " + ex.Message);
+            if (!validDispatch) WriteResult(false, "Operations learning hook failed closed: " + Bound(ex.Message));
+            else if (action == "guard") WritePostmortemScopeDecision(toolName, IncidentDiagnosticCode(ex), ex.Message);
+            else WriteLifecycleDeferred(mode, action, IncidentDiagnosticCode(ex), ex.Message,
+                action == "post-tool" ? "OPERATIONS_POSTMORTEM_CONFIRMATION_REJECTED" : null);
             return 0;
         }
     }
@@ -130,10 +139,10 @@ public static class OperationsHookCommands
         {
             var root = ExactGitRoot(Environment.CurrentDirectory);
             RequirePostmortemAgentEntry(root);
-            var collectionRelative = GovernedPath(CliOption(args, "--collection"), ".engloop/out/postmortem-context/");
+            var collectionRelative = ExactRoutePath(CliOption(args, "--collection"));
             var incidents = IdList(CliOption(args, "--incidents"), @"^IN\d{3}$", "incident");
-            var postmortem = GovernedPath(CliOption(args, "--postmortem"), ".engloop/postmortems/");
-            var confirmationRelative = GovernedPath(CliOption(args, "--confirmation-receipt"), ".engloop/out/postmortem-context/");
+            var postmortem = PostmortemPath(CliOption(args, "--postmortem"));
+            var confirmationRelative = ExactRoutePath(CliOption(args, "--confirmation-receipt"));
             var bound = BindPostmortemRoute(root, collectionRelative, CliOption(args, "--token"),
                 incidents, postmortem, confirmationRelative);
             Console.WriteLine($"POSTMORTEM_ROUTE_BOUND OPERATIONS_LEARNING_SCOPE_ACTIVE mode=postmortem gate={bound.Gate} bindingReceipt={bound.Receipt} incidents={string.Join(',', incidents)} postmortem={postmortem}");
@@ -148,13 +157,13 @@ public static class OperationsHookCommands
 
     private static int Start(string mode, string sessionHash)
     {
-        WriteResult(true, systemMessage: $"OPERATIONS_LEARNING_GUARD_ACTIVE mode={mode} session={sessionHash[..12]}");
+        WriteResult(true, systemMessage: $"OPERATIONS_LEARNING_GUARD_ACTIVE mode={mode} session={sessionHash[..12]} " + NavigationRecovery);
         return 0;
     }
 
     private static int SubagentStart(string mode, string sessionHash)
     {
-        var context = $"OPERATIONS_LEARNING_GUARD_ACTIVE mode={mode} session={sessionHash[..12]}";
+        var context = $"OPERATIONS_LEARNING_GUARD_ACTIVE mode={mode} session={sessionHash[..12]} " + NavigationRecovery;
         Console.WriteLine(JsonSerializer.Serialize(new
         {
             @continue = true,
@@ -167,6 +176,7 @@ public static class OperationsHookCommands
 
     private static int Initialize(string root, string mode, string sessionHash, string gatePath, string prompt)
     {
+        if (mode == "postmortem") RequirePostmortemAgentEntry(root);
         if (File.Exists(gatePath))
         {
             var existing = ReadGate(gatePath);
@@ -178,7 +188,7 @@ public static class OperationsHookCommands
             {
                 suppliedArguments = ParseArguments(prompt, mode, allowMissing: true);
             }
-            catch (InvalidOperationException ex) when (mode == "postmortem" && IsPostmortemContextDiagnostic(ex.Message))
+            catch (InvalidOperationException ex) when (mode == "postmortem")
             {
                 SuspendPostmortemContext(gatePath, ex.Message);
                 WritePostmortemContextRequired("initialize", ex.Message);
@@ -189,7 +199,12 @@ public static class OperationsHookCommands
                 WritePostmortemContextRequired("initialize", diagnostic);
                 return 0;
             }
-            Ensure(suppliedArguments is null || HashArguments(suppliedArguments) == existing.ArgumentsHash, "operations-hook-followup-arguments-changed");
+            if (suppliedArguments is not null && HashArguments(suppliedArguments) != existing.ArgumentsHash)
+            {
+                const string changed = "operations-hook-followup-arguments-changed";
+                if (mode == "postmortem") SuspendPostmortemContext(gatePath, changed);
+                throw new InvalidOperationException(changed);
+            }
             if (mode == "postmortem") ClearPostmortemContext(gatePath);
             WriteResult(true, systemMessage: $"OPERATIONS_LEARNING_SCOPE_ACTIVE mode={mode} gate={gatePath}");
             return 0;
@@ -217,6 +232,7 @@ public static class OperationsHookCommands
     private static int Guard(string root, string mode, string sessionHash, string gatePath, JsonElement input)
     {
         Ensure(mode == "postmortem", "operations-hook-guard-mode-invalid");
+        var toolName = ReadString(input, "tool_name", "toolName");
         var collectionPath = CollectionPath(root, sessionHash);
         if (File.Exists(collectionPath))
         {
@@ -224,15 +240,15 @@ public static class OperationsHookCommands
             {
                 var collection = ReadCollection(collectionPath);
                 ValidateCollection(root, collection);
-                var toolName = ReadString(input, "tool_name", "toolName");
+                Ensure(collection.SessionHash == sessionHash, "postmortem-route-collection-session-mismatch");
                 var allow = IsCollectionReadOrQuestionTool(toolName);
                 WritePostmortemCollectionDecision(allow, allow
-                    ? "Stage 21 context collection permits only read, search, and the exact confirmation question; PostToolUse owns binding."
-                    : "Stage 21 context collection is read-only. Provide one confirmation; ELK invokes its trusted binder internally.");
+                    ? "Stage 21 context collection permits read, search, and questions; PostToolUse owns binding. " + NavigationRecovery
+                    : "Stage 21 context collection is read-only. Provide one confirmation; ELK invokes its trusted binder internally. " + NavigationRecovery);
             }
             catch (Exception ex)
             {
-                WritePostmortemCollectionDecision(false, "Stage 21 collection state is invalid: " + IncidentDiagnosticCode(ex));
+                WritePostmortemScopeDecision(toolName, IncidentDiagnosticCode(ex), ex.Message);
             }
             return 0;
         }
@@ -240,9 +256,10 @@ public static class OperationsHookCommands
         {
             if (TryReadPostmortemContext(gatePath, out var diagnostic))
             {
-                WritePostmortemPreToolDenied(diagnostic, diagnostic);
+                WritePostmortemScopeDecision(toolName, diagnostic, diagnostic);
                 return 0;
             }
+            RequirePostmortemAgentEntry(root);
             Ensure(File.Exists(gatePath), "operations-hook-gate-missing");
             var gate = ReadGate(gatePath);
             Ensure(gate.SchemaVersion == "1.0" & gate.Mode == mode & gate.SessionHash == sessionHash & gate.Head == OperationsLearningPolicy.GitHead(root), "operations-hook-gate-identity-invalid");
@@ -252,7 +269,7 @@ public static class OperationsHookCommands
         }
         catch (Exception ex)
         {
-            WritePostmortemPreToolDenied(IncidentDiagnosticCode(ex), ex.Message);
+            WritePostmortemScopeDecision(toolName, IncidentDiagnosticCode(ex), ex.Message);
         }
         return 0;
     }
@@ -320,7 +337,9 @@ public static class OperationsHookCommands
         {
             var correlationId = Guid.NewGuid().ToString("N");
             WriteBindingFailure(root, sessionHash, proposal.Incidents, proposal.Postmortem, ex, correlationId);
-            WriteResult(true, systemMessage: $"POSTMORTEM_ROUTE_BIND_FAILED completionAccepted=false correlation={correlationId} diagnostic={IncidentDiagnosticCode(ex)} recovery=retry-confirmation-or-handoff:speckit.engloop.50-handoff-create");
+            WriteLifecycleDeferred("postmortem", "post-tool", IncidentDiagnosticCode(ex),
+                "Binding failed; retry confirmation after correcting the reported evidence. " + Bound(ex.Message),
+                "POSTMORTEM_ROUTE_BIND_FAILED", correlationId);
         }
         return 0;
     }
@@ -329,6 +348,8 @@ public static class OperationsHookCommands
         string collectionRelative, string token, string[] incidents, string postmortem,
         string confirmationRelative)
     {
+        RequirePostmortemAgentEntry(root);
+        _ = PostmortemPath(postmortem);
         var collectionPath = Path.Combine(root, collectionRelative.Replace('/', Path.DirectorySeparatorChar));
         Ensure(File.Exists(collectionPath), "postmortem-route-collection-missing");
         var collection = ReadCollection(collectionPath);
@@ -387,6 +408,7 @@ public static class OperationsHookCommands
 
     private static int Stop(string root, string mode, string sessionHash, string gatePath, bool subagent)
     {
+        var phase = subagent ? "subagent-stop" : "stop";
         if (mode == "postmortem" && File.Exists(CancelledCollectionPath(root, sessionHash)))
         {
             CompletePostmortemCancellation(root, sessionHash);
@@ -394,26 +416,17 @@ public static class OperationsHookCommands
         }
         if (mode == "postmortem" && File.Exists(CollectionPath(root, sessionHash)))
         {
-            if (subagent)
-                WriteSubagentStopBlocked("Stage 21 requires incident/path confirmation or explicit cancellation before delegated completion.");
-            else
-                WritePostmortemCollectionActive(root, sessionHash, "stop", "operations-hook-gate-missing");
+            WritePostmortemCollectionActive(root, sessionHash, phase, "operations-hook-gate-missing");
             return 0;
         }
         if (mode == "postmortem" && TryReadPostmortemContext(gatePath, out var recoveryDiagnostic))
         {
-            if (subagent)
-                WriteSubagentStopBlocked("Stage 21 context is incomplete: " + recoveryDiagnostic);
-            else
-                WritePostmortemContextRequired("stop", recoveryDiagnostic);
+            WritePostmortemContextRequired(phase, recoveryDiagnostic);
             return 0;
         }
         if (mode == "postmortem" && !File.Exists(gatePath))
         {
-            if (subagent)
-                WriteSubagentStopBlocked("Stage 21 has no validated postmortem scope.");
-            else
-                WritePostmortemContextRequired("stop", "operations-hook-gate-missing");
+            WritePostmortemContextRequired(phase, "operations-hook-gate-missing");
             return 0;
         }
         Ensure(File.Exists(gatePath), "operations-hook-gate-missing");
@@ -433,24 +446,14 @@ public static class OperationsHookCommands
         marker = mode == "incident" ? "INCIDENT_CONTEXT_OK" : mode == "postmortem" ? "POSTMORTEM_LEARNING_OK" : "REPAIR_LEARNING_OK";
         if (result != 0)
         {
-            if (mode == "incident") WriteIncidentContextDeferred("stop", "operations-hook-incident-context-validation-failed", diagnostic);
-            else if (mode == "postmortem" && subagent) WriteSubagentStopBlocked("Postmortem validation failed: " + Bound(diagnostic));
-            else WriteResult(false, $"Operations learning validation failed for mode={mode}: {Bound(diagnostic)}");
+            WriteLifecycleDeferred(mode, phase, $"operations-hook-{mode}-context-validation-failed",
+                $"Operations learning validation failed for mode={mode}: {Bound(diagnostic)}");
             return 0;
         }
         File.Delete(gatePath);
         WriteResult(true, systemMessage: marker);
         return 0;
     }
-
-    private static void WriteSubagentStopBlocked(string reason)
-        => Console.WriteLine(JsonSerializer.Serialize(new
-        {
-            @continue = true,
-            stopReason = (string?)null,
-            systemMessage = "OPERATIONS_POSTMORTEM_SUBAGENT_COMPLETION_BLOCKED",
-            hookSpecificOutput = new { hookEventName = "SubagentStop", decision = "block", reason = Bound(reason) },
-        }));
 
     private static (int ExitCode, string Diagnostic) CaptureValidation(Func<int> action)
     {
@@ -489,42 +492,48 @@ public static class OperationsHookCommands
             _ => "operations-hook-unexpected-failure",
         };
 
-    private static void WriteIncidentContextDeferred(string phase, string diagnosticCode, string diagnostic)
+    private static void WriteLifecycleDeferred(string mode, string phase, string diagnosticCode, string diagnostic, string? marker = null, string? correlation = null)
     {
-        var missingOption = MissingOption(diagnosticCode + ":" + diagnostic);
+        var missingOption = MissingOption(diagnosticCode + ":" + diagnostic, mode);
         var expectedSource = phase switch
         {
-            "start" => "SessionStart hook input fields cwd and session_id",
-            "initialize" => "UserPromptSubmit.prompt containing --incident <.engloop/incidents/INxxx_title.md>",
-            "stop" => "A validated incident gate created from UserPromptSubmit.prompt",
-            _ => "A recognized incident lifecycle action with documented hook input",
+            "start" or "subagent-start" => "Hook input fields cwd and session_id and the repository tool manifest",
+            "initialize" => $"UserPromptSubmit.prompt with concrete {mode} scope and repository evidence",
+            "stop" or "subagent-stop" => $"A validated {mode} gate and complete evidence for the completion claim",
+            _ => "Documented hook input and validated scope records",
         };
         var details = JsonSerializer.Serialize(new
         {
-            status = "learning-context-deferred",
-            mode = "incident",
+            status = mode == "postmortem" ? "postmortem-context-required" : "learning-context-deferred",
+            mode,
             phase,
-            command = $"operations-hook {phase} incident",
-            diagnosticCode,
+            command = $"operations-hook {phase} {mode}",
+            diagnosticCode = Bound(diagnosticCode),
             diagnostic = Bound(diagnostic),
             missingOption,
             expectedSource,
             elkVersion = typeof(OperationsHookCommands).Assembly.GetName().Version?.ToString(3) ?? "unknown",
-            remediation = "Continue incident mitigation. Resolve or create the incident artifact, then run validate incident-context before claiming stabilization; deferred context is not validated context.",
+            correlation = correlation ?? Guid.NewGuid().ToString("N"),
+            completionAccepted = false,
+            unresolvedState = "Existing gate, collection, and evidence are retained; missing or invalid scope is not accepted. No completion or stabilization is claimed.",
+            remediation = $"Continue discussion and local read/search/questions. Resolve the reported {mode} context or evidence before protected operations or completion claims. " + NavigationRecovery,
         });
-        WriteResult(true, systemMessage: "OPERATIONS_LEARNING_CONTEXT_DEFERRED " + details);
+        WriteResult(true, systemMessage: (marker ?? (mode == "postmortem" ? "OPERATIONS_LEARNING_CONTEXT_REQUIRED" : "OPERATIONS_LEARNING_CONTEXT_DEFERRED")) + " " + details);
     }
 
-    private static string? MissingOption(string diagnostic)
+    private static string? MissingOption(string diagnostic, string mode)
     {
         var match = Regex.Match(diagnostic, @"operations-hook-option-missing:(?<option>--[a-z-]+)", RegexOptions.CultureInvariant);
-        if (match.Success) return match.Groups["option"].Value;
-        return diagnostic.Contains("operations-hook-prompt-missing", StringComparison.Ordinal) ? "--incident" : null;
+        if (match.Success) return Bound(match.Groups["option"].Value);
+        return diagnostic.Contains("operations-hook-prompt-missing", StringComparison.Ordinal)
+            ? mode switch { "incident" => "--incident", "postmortem" => "--incidents,--postmortem", _ => "--phase,--postmortem,--rpi,--rules,--acceptance" }
+            : null;
     }
 
     private static bool IsPostmortemContextDiagnostic(string diagnostic)
         => diagnostic == "operations-hook-prompt-missing"
             || diagnostic is "operations-hook-path-invalid" or "operations-hook-incident-ids-invalid"
+            || diagnostic is "postmortem-route-filename-invalid" or "operations-hook-followup-arguments-changed"
             || diagnostic.StartsWith("operations-hook-option-missing:--postmortem", StringComparison.Ordinal)
             || diagnostic.StartsWith("operations-hook-option-missing:--incidents", StringComparison.Ordinal);
 
@@ -551,7 +560,6 @@ public static class OperationsHookCommands
 
     private static void BeginPostmortemCollection(string root, string sessionHash, string diagnostic)
     {
-        ClearPostmortemCollection(root, sessionHash);
         var identity = CurrentToolIdentity(root);
         var collection = new PostmortemCollectionRecord(
             "1.0",
@@ -563,6 +571,7 @@ public static class OperationsHookCommands
             identity.ManifestPath,
             identity.ManifestSha256,
             Convert.ToHexString(RandomNumberGenerator.GetBytes(16)).ToLowerInvariant());
+        ClearPostmortemCollection(root, sessionHash);
         var path = CollectionPath(root, sessionHash);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, JsonSerializer.Serialize(collection));
@@ -657,20 +666,10 @@ public static class OperationsHookCommands
         var path = CollectionPath(root, sessionHash);
         var collection = ReadCollection(path);
         ValidateCollection(root, collection);
-        var details = JsonSerializer.Serialize(new
-        {
-            status = "postmortem-context-required",
-            mode = "postmortem",
-            phase,
-            command = $"operations-hook {phase} postmortem",
-            diagnosticCode = diagnostic,
-            allowedTools = new[] { "read", "search", "vscode_askQuestions", "speckit.engloop.50-handoff-create" },
-            expectedSource = "A plain-language incident/postmortem request plus repository incident and numbering evidence",
-            elkVersion = typeof(OperationsHookCommands).Assembly.GetName().Version?.ToString(3) ?? "unknown",
-            remediation = "Collect candidate incident and next registry-backed PM path in chat and ask one concise confirmation. PostToolUse invokes the trusted binder itself. On correlated failure, retry confirmation or use Stage 50; never expose or request binder transport data.",
-            completionAccepted = false,
-        });
-        WriteResult(true, systemMessage: "OPERATIONS_POSTMORTEM_CONTEXT_COLLECTION_ACTIVE OPERATIONS_LEARNING_CONTEXT_REQUIRED " + details);
+        Ensure(collection.SessionHash == sessionHash, "postmortem-route-collection-session-mismatch");
+        WriteLifecycleDeferred("postmortem", phase, diagnostic,
+            "Stage 21 incident/path confirmation is incomplete. Collect candidates and ask one concise confirmation; PostToolUse invokes the trusted binder internally.",
+            "OPERATIONS_POSTMORTEM_CONTEXT_COLLECTION_ACTIVE OPERATIONS_LEARNING_CONTEXT_REQUIRED");
     }
 
     private static void WritePostmortemCollectionDecision(bool allow, string reason)
@@ -739,7 +738,7 @@ public static class OperationsHookCommands
         var questionText = ReadString(question, "question");
         var match = Regex.Match(questionText, @"^Use incidents (?<incidents>IN\d{3}(?:,IN\d{3})*) and create (?<postmortem>\.engloop/postmortems/PM\d{3}[_-][A-Za-z0-9][A-Za-z0-9._-]*\.md)\?$", RegexOptions.CultureInvariant);
         Ensure(match.Success, "postmortem-route-confirmation-question-invalid");
-        return (header, questionText, IdList(match.Groups["incidents"].Value, @"^IN\d{3}$", "incident"), GovernedPath(match.Groups["postmortem"].Value, ".engloop/postmortems/"));
+        return (header, questionText, IdList(match.Groups["incidents"].Value, @"^IN\d{3}$", "incident"), PostmortemPath(match.Groups["postmortem"].Value));
     }
 
     private static string ReadConfirmationDecision(JsonElement response, string header, string question)
@@ -782,39 +781,25 @@ public static class OperationsHookCommands
     }
 
     private static void WritePostmortemContextRequired(string phase, string diagnostic)
-    {
-        var missingOption = Regex.Match(diagnostic, @"operations-hook-option-missing:(?<option>--[a-z-]+)", RegexOptions.CultureInvariant) is { Success: true } match
-            ? match.Groups["option"].Value
-            : diagnostic == "operations-hook-prompt-missing" ? "--incidents,--postmortem" : null;
-        var details = JsonSerializer.Serialize(new
-        {
-            status = "postmortem-context-required",
-            mode = "postmortem",
-            phase,
-            command = $"operations-hook {phase} postmortem",
-            diagnosticCode = diagnostic,
-            missingOption,
-            expectedSource = "A plain-language incident/postmortem request plus repository incident and numbering evidence",
-            elkVersion = typeof(OperationsHookCommands).Assembly.GetName().Version?.ToString(3) ?? "unknown",
-            remediation = "No postmortem scope or completion was accepted. Collect and confirm valid incident/PM context in chat, then use the trusted internal binder; never ask the operator to type hook flags.",
-            completionAccepted = false,
-        });
-        WriteResult(true, systemMessage: "OPERATIONS_LEARNING_CONTEXT_REQUIRED " + details);
-    }
+        => WriteLifecycleDeferred("postmortem", phase, diagnostic,
+            "Stage 21 context is incomplete; no validated postmortem scope is available. Collect and confirm valid incident/PM context in chat. " + Bound(diagnostic));
 
-    private static void WritePostmortemPreToolDenied(string diagnosticCode, string diagnostic)
+    private static void WritePostmortemScopeDecision(string toolName, string diagnosticCode, string diagnostic)
     {
-        const string remediation = "Stage 21 has no valid postmortem scope. Resubmit with --incidents <INxxx,...> --postmortem <.engloop/postmortems/PMxxx_title.md> before using tools.";
+        var allow = IsCollectionReadOrQuestionTool(toolName);
+        const string remediation = "Stage 21 has no valid postmortem scope. Local read/search/questions remain available; writes, execution and arbitrary delegation are denied. Collect and confirm context in chat. " + NavigationRecovery;
         var details = JsonSerializer.Serialize(new
         {
             status = "postmortem-scope-denied",
             mode = "postmortem",
             phase = "pre-tool-use",
             command = "operations-hook guard postmortem",
-            diagnosticCode,
+            diagnosticCode = Bound(diagnosticCode),
             diagnostic = Bound(diagnostic),
             remediation,
             completionAccepted = false,
+            correlation = Guid.NewGuid().ToString("N"),
+            unresolvedState = "Existing gate, collection, and evidence are retained; no scope or completion is accepted.",
         });
         Console.WriteLine(JsonSerializer.Serialize(new
         {
@@ -824,8 +809,8 @@ public static class OperationsHookCommands
             hookSpecificOutput = new
             {
                 hookEventName = "PreToolUse",
-                permissionDecision = "deny",
-                permissionDecisionReason = $"{remediation} Diagnostic: {diagnosticCode}",
+                permissionDecision = allow ? "allow" : "deny",
+                permissionDecisionReason = $"{remediation} Diagnostic: {Bound(diagnosticCode)}",
             },
         }));
     }
@@ -840,7 +825,7 @@ public static class OperationsHookCommands
             var incident = GovernedPath(Get("--incident"), ".engloop/incidents/");
             return New(incident: incident);
         }
-        var postmortem = GovernedPath(Get("--postmortem"), ".engloop/postmortems/");
+        var postmortem = PostmortemPath(Get("--postmortem"));
         if (mode == "postmortem")
         {
             var incidents = IdList(Get("--incidents"), @"^IN\d{3}$", "incident");
@@ -936,6 +921,7 @@ public static class OperationsHookCommands
 
     private static void RequireCreateNewPostmortem(string root, string relative)
     {
+        _ = PostmortemPath(relative);
         var full = Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar));
         Ensure(!File.Exists(full), "postmortem-target-already-exists");
         var id = Regex.Match(Path.GetFileName(relative), @"^PM\d{3}").Value;
@@ -974,7 +960,11 @@ public static class OperationsHookCommands
         var manifestPath = Path.Combine(root, ".config", "dotnet-tools.json");
         Ensure(File.Exists(manifestPath), "operations-hook-tool-manifest-missing");
         using var manifest = JsonDocument.Parse(File.ReadAllText(manifestPath));
-        var version = manifest.RootElement.GetProperty("tools").GetProperty("engloopkit").GetProperty("version").GetString() ?? string.Empty;
+        Ensure(manifest.RootElement.ValueKind == JsonValueKind.Object, "operations-hook-tool-manifest-invalid");
+        Ensure(manifest.RootElement.TryGetProperty("tools", out var tools) && tools.ValueKind == JsonValueKind.Object, "operations-hook-tool-manifest-invalid");
+        Ensure(tools.TryGetProperty("engloopkit", out var tool) && tool.ValueKind == JsonValueKind.Object, "operations-hook-tool-manifest-invalid");
+        Ensure(tool.TryGetProperty("version", out var versionValue) && versionValue.ValueKind == JsonValueKind.String, "operations-hook-tool-version-missing");
+        var version = versionValue.GetString() ?? string.Empty;
         Ensure(version.Length > 0, "operations-hook-tool-version-missing");
         var assemblyVersion = typeof(OperationsHookCommands).Assembly.GetName().Version?.ToString(3) ?? string.Empty;
         Ensure(string.Equals(version, assemblyVersion, StringComparison.Ordinal), "operations-hook-manifest-assembly-version-mismatch");
@@ -992,7 +982,29 @@ public static class OperationsHookCommands
     {
         var match = Regex.Match(prompt, "(?:^|\\s)" + Regex.Escape(name) + "(?:=|\\s+)(?:\\\"(?<dq>[^\\\"]+)\\\"|'(?<sq>[^']+)'|(?<bare>[^\\s]+))");
         Ensure(match.Success, "operations-hook-option-missing:" + name);
+        // Prose grammar: only an unquoted --postmortem path token ending in .md.
+        // may carry one terminal sentence period. Quotes, CLI arguments and
+        // confirmation/receipt identities are exact and never use this rule.
+        if (name == "--postmortem" && match.Groups["bare"].Success
+            && match.Groups["bare"].Value.EndsWith(".md.", StringComparison.Ordinal))
+            return match.Groups["bare"].Value[..^1];
         return match.Groups["dq"].Value + match.Groups["sq"].Value + match.Groups["bare"].Value;
+    }
+
+    private static string PostmortemPath(string value)
+    {
+        const string prefix = ".engloop/postmortems/";
+        Ensure(value.StartsWith(prefix, StringComparison.Ordinal) && !Path.IsPathRooted(value)
+            && !value.Contains('\\') && !value.Split('/').Any(part => part is "." or ".."), "operations-hook-path-invalid");
+        Ensure(Regex.IsMatch(value, @"\A\.engloop/postmortems/PM[0-9]{3}(?:[_-][A-Za-z0-9][A-Za-z0-9._-]*)?\.md\z", RegexOptions.CultureInvariant), "postmortem-route-filename-invalid");
+        return value;
+    }
+
+    private static string ExactRoutePath(string value)
+    {
+        Ensure(value == GovernedPath(value, ".engloop/out/postmortem-context/")
+            && !value.Split('/').Any(part => part is "." or ".." or ""), "operations-hook-path-invalid");
+        return value;
     }
 
     private static string GovernedPath(string value, string prefix)
@@ -1013,6 +1025,7 @@ public static class OperationsHookCommands
     {
         Ensure(!string.IsNullOrWhiteSpace(cwd), "operations-hook-cwd-missing");
         var selected = Path.GetFullPath(cwd).TrimEnd(Path.DirectorySeparatorChar);
+        Ensure(Directory.Exists(selected), "operations-hook-git-root-unavailable");
         var result = RunGit(selected, "rev-parse", "--show-toplevel");
         Ensure(result.ExitCode == 0, "operations-hook-git-root-unavailable");
         var root = Path.GetFullPath(result.Output.Trim()).TrimEnd(Path.DirectorySeparatorChar);

@@ -52,14 +52,15 @@ public sealed class BundleConformanceTests
         using var catalog = JsonDocument.Parse(File.ReadAllText(Path.Combine(Root, "catalog.json")));
 
         Assert.Contains("id: \"engloop\"", extension);
-        Assert.Contains("version: \"1.18.0\"", extension);
+        Assert.Contains("version: \"1.19.0\"", extension);
         Assert.Contains("id: \"engloopkit\"", bundle);
-        Assert.Contains("version: \"1.18.0\"", bundle);
+        Assert.Contains("version: \"1.19.0\"", bundle);
         Assert.Equal("engloop", catalog.RootElement.GetProperty("extensions")[0].GetProperty("id").GetString());
-        Assert.Equal("1.18.0", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
+        Assert.Equal("1.19.0", catalog.RootElement.GetProperty("extensions")[0].GetProperty("version").GetString());
         Assert.Equal(29, catalog.RootElement.GetProperty("extensions")[0].GetProperty("provides").GetProperty("commands").GetInt32());
 
         var changelog = File.ReadAllText(Path.Combine(Root, "CHANGELOG.md"));
+        Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.19\.0\] - 2026-09-07\r?$").Cast<Match>());
         Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.18\.0\] - 2026-09-06\r?$").Cast<Match>());
         Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.17\.0\] - 2026-09-05\r?$").Cast<Match>());
         Assert.Single(Regex.Matches(changelog, @"(?m)^## \[1\.16\.0\] - 2026-09-03\r?$").Cast<Match>());
@@ -258,8 +259,15 @@ public sealed class BundleConformanceTests
         Assert.Contains("never ask the operator to type", postmortem, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("operations-hook guard postmortem", postmortem, StringComparison.Ordinal);
         Assert.Contains("OPERATIONS_LEARNING_CONTEXT_REQUIRED", postmortem, StringComparison.Ordinal);
-        Assert.Contains("no scope", postmortem, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("completion was accepted", postmortem, StringComparison.OrdinalIgnoreCase);
+        var postmortemContract = Regex.Replace(postmortem, @"\s+", " ");
+        Assert.Contains("no scope or completion was accepted", postmortemContract, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Local `read`, `search`, and `vscode_askQuestions` remain available with missing, invalid, or stale scope", postmortemContract, StringComparison.Ordinal);
+        Assert.Contains("The user may select Stage21 (`speckit.engloop.21-postmortem`), Stage22 (`speckit.engloop.22-repair`), or Stage50 (`speckit.engloop.50-handoff-create`) at any time", postmortemContract, StringComparison.Ordinal);
+        Assert.Contains("Missing readiness, active incidents, missing internal flags, or failed hooks do not block entering, leaving, discussing, or drafting analysis", postmortemContract, StringComparison.Ordinal);
+        Assert.Contains("Carry unresolved evidence and diagnostics forward; do not label them PASS or closed", postmortemContract, StringComparison.Ordinal);
+        Assert.Contains("The `PreToolUse` hook denies specific writes, execution, and arbitrary delegation until bound", postmortemContract, StringComparison.Ordinal);
+        Assert.Contains("Known valid lifecycle failures return `continue=true`, `completionAccepted=false`", postmortemContract, StringComparison.Ordinal);
+        Assert.Contains("Stop and SubagentStop never block navigation or manufacture PASS", postmortemContract, StringComparison.Ordinal);
         Assert.Contains("unrelated command-style options", postmortem, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("fill the missing value", postmortem, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Plain follow-up text cannot clear", postmortem, StringComparison.OrdinalIgnoreCase);

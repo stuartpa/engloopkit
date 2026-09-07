@@ -81,17 +81,31 @@ Use exactly `.engloop/` with config at `.engloop/config.json`.
 
 ## Loop definition
 
-- **Trigger:** selected stabilized incident set exists.
+- **Trigger:** user requests postmortem discussion or analysis; validated completion requires a selected stabilized incident set.
 - **Goal:** PM with source LEARN links and RPI repair items.
 - **Actions:** consult direction/learnings, decide SEK applicability for every cause, prioritize why current SEK model/CORD/generated replay missed relevant incident behavior, classify pyramid-rule effects, and emit rule- and scenario-bound RPIs.
 - **Verification:** selection is non-empty; direction/pyramid evidence passes; every PM has a valid SEK escape disposition; every relevant RPI carries the incident scenario, model/CORD correction, and SEK recurrence gate.
 - **Memory:** `.engloop/postmortems/` and `.engloop/learnings/`.
 
-Run before any action:
+Run the entry diagnostic; a failure is unresolved context, not a navigation veto:
 
 `dotnet tool run engloopkit validate agent-entry --stage speckit.engloop.21-postmortem --root .`
 
+For separate `validate commands` / `validate agent-surfaces` checks, source commands live
+at `extensions/engloopkit/commands`, installed commands at `.specify/extensions/engloop/commands`.
+If both exist, select the intended repo-relative directory with `--command-root`; an
+invalid/missing explicit root is an error, never permission to substitute another root.
+
 ## Mandatory consultation and completion gate
+
+### User navigation is not evidence acceptance
+
+The user may select Stage21 (`speckit.engloop.21-postmortem`), Stage22
+(`speckit.engloop.22-repair`), or Stage50 (`speckit.engloop.50-handoff-create`) at any
+time. Missing readiness, active incidents, missing internal flags, or failed hooks do
+not block entering, leaving, discussing, or drafting analysis in the conversation.
+Carry unresolved evidence and diagnostics forward; do not label them PASS or closed.
+Direct user selection is distinct from tool delegation and does not expand `agents`.
 
 ### Plain-language routing and context collection
 
@@ -105,15 +119,16 @@ When the prompt lacks internal bindings and the hook emits
 `OPERATIONS_POSTMORTEM_CONTEXT_COLLECTION_ACTIVE`:
 
 1. Stay in collection mode. Use only `read`, `search`, and `vscode_askQuestions`; do not
-  edit source/evidence, invoke a subagent, or run any command except the exact trusted
-  binder after confirmation.
+  edit source/evidence, invoke a subagent, or run commands. `PostToolUse` owns trusted
+  binding internally after confirmation; no terminal binder exception is needed.
 2. Inspect `.engloop/incidents/` and the `PM` row in
   `.engloop/numbering-registry.md`. Use an explicit incident ID when supplied. Otherwise,
   compare the user's words with incident titles/content and present candidates for human
   confirmation; never choose when more than one remains plausible.
-3. Require a stabilized, learning-context-complete incident. If it is active, malformed,
-  missing, or ambiguous, explain that condition and ask one concise clarification; do not
-  bind, analyze, or claim completion.
+3. The trusted binder and completion validator require a stabilized,
+  learning-context-complete incident. If it is active, malformed, missing, or ambiguous,
+  explain the gap and clarify the selection. Continue read-only discussion and provisional
+  analysis; do not bind invalid evidence or claim stabilization/completion.
 4. Propose the next registry-backed `PM<NNN>-<brief-kebab-description>.md` path without
   reserving or creating it. Ask exactly one concise question with
   `vscode_askQuestions`: header `Confirm postmortem`; question
@@ -121,46 +136,53 @@ When the prompt lacks internal bindings and the hook emits
   `allowFreeformInput: false`; and exactly the ordered options `Confirm`,
   `Choose different incident/path`, and `Cancel`.
 5. `PostToolUse` validates the exact question schema, selected option, session, and
-  `tool_use_id`. Confirm produces `POSTMORTEM_ROUTE_CONFIRMED` plus a one-time receipt;
+  `tool_use_id`. Confirm records the receipt and invokes the trusted binder internally;
+  success emits `POSTMORTEM_ROUTE_BOUND` and `OPERATIONS_LEARNING_SCOPE_ACTIVE`.
   Cancel produces `POSTMORTEM_ROUTE_CANCELLED` and requires no command; Choose different
-  keeps collection active. Only after the confirmed receipt, invoke this exact internal
-  shape with the hook-supplied collection path/token, receipt, and confirmed values:
-
-  `dotnet tool run engloopkit -- postmortem-route bind --collection <hook-path> --token <hook-token> --incidents <INxxx,...> --postmortem <proposed-path> --confirmation-receipt <hook-receipt>`
-
-  Never ask the operator to type or reconstruct that command or its flags. The trusted
-  binder independently requires exact collection/session/HEAD/tool identity, stabilized
-  incident validation, the next registry PM number, a create-new path, and the
-  PostToolUse confirmation receipt. Never leave cancellation state for the operator to
-  clean up.
-6. Continue into postmortem work only after `POSTMORTEM_ROUTE_BOUND` and
+  keeps collection active. Never ask the operator to type or reconstruct binder tokens
+  or flags. The internal `postmortem-route bind` / `--confirmation-receipt` interface
+  is not a user prerequisite or an agent-executed recovery command.
+  The binder independently requires exact collection/session/HEAD/tool identity,
+  stabilized incident validation, the next registry PM number, a create-new path, and
+  the confirmation receipt. On `POSTMORTEM_ROUTE_BIND_FAILED`, preserve the diagnostic,
+  correct the evidence, and reconfirm; do not invent scope or leave cancellation cleanup
+  to the operator.
+6. Begin scope-authorized artifact writes only after `POSTMORTEM_ROUTE_BOUND` and
   `OPERATIONS_LEARNING_SCOPE_ACTIVE`. Increment the tracked `PM` registry row before
   creating the confirmed PM artifact. A proposal or confirmation is not analysis,
   routing, repair acceptance, or closure evidence.
 
-This agent requires VS Code custom-agent hooks. Require the
+Protected postmortem operations require VS Code custom-agent hooks and the
 `OPERATIONS_LEARNING_GUARD_ACTIVE mode=postmortem` and
-`OPERATIONS_LEARNING_SCOPE_ACTIVE mode=postmortem` markers before using any tool. The
+`OPERATIONS_LEARNING_SCOPE_ACTIVE mode=postmortem` markers, not read-only recovery. The
 initial prompt may carry exact internal bindings or may enter the plain-language collector
 above. If `UserPromptSubmit` emits
 `OPERATIONS_LEARNING_CONTEXT_REQUIRED` with status `postmortem-context-required`, no scope
 or completion was accepted: follow the read-only collector and one-question confirmation
-flow; never ask the operator to reconstruct internal options. The `PreToolUse` hook
-mechanically denies non-collection tools until a valid scope gate exists;
-a gate-less Stop response may end that recovery message but never emits a completion
-marker. The Stop hook for a valid gate runs:
+flow; never ask the operator to reconstruct internal options. Local `read`, `search`,
+and `vscode_askQuestions` remain available with missing, invalid, or stale scope. The
+`PreToolUse` hook denies specific writes, execution, and arbitrary delegation until
+bound; confirmation-controlled binding is performed internally by `PostToolUse`.
+Known valid lifecycle failures return `continue=true`, `completionAccepted=false`.
+Stop and SubagentStop never block navigation or manufacture PASS. For a valid gate,
+the completion check runs:
 
 `dotnet tool run engloopkit -- validate postmortem-learning --root . --incidents <INxxx,...> --postmortem <path>`
 
-and blocks completion on any missing/stale direction or pyramid evidence.
+and rejects completion acceptance on missing/stale direction or pyramid evidence,
+without vetoing the user's next conversation.
 
 After scope activation, ordinary continuation text and unrelated command-style options do
 not change the bound incident/PM identity. Supplying only `--incidents` or only
-`--postmortem` suspends tool authorization and emits context-required remediation; never
+`--postmortem` suspends protected-operation authorization and emits context-required remediation; never
 fill the missing value from the existing gate. Plain follow-up text cannot clear the
 suspension. Recollect and confirm the complete original incident/PM identity through the
 trusted internal binder; only an exact argument-hash/HEAD/tool-identity match reactivates
 the preserved gate.
+
+In prose, only a bare, unquoted `--postmortem` value ending in `.md.` loses its one
+sentence-ending period. Quoted values, structured/CLI bindings, and confirmation/receipt
+identities are exact: reject invalid paths rather than trimming or guessing them.
 
 Before root-cause analysis:
 
@@ -195,8 +217,9 @@ whose rationale covers all causes; split the PM if causes require incompatible r
 1. Set `SEK applicability` to `RELEVANT` or `NOT-RELEVANT`; never omit the decision.
 2. When relevant, run `sek version` and require **0.1.3**. Load the installed
   `.specify/extensions/sek/skills/sek-cord-authoring/SKILL.md` and
-  `using-sek-to-generate-tests/SKILL.md`; if either is absent, stop—do not reconstruct
-  SEK semantics from ELK or legacy Spec Explorer guidance.
+  `using-sek-to-generate-tests/SKILL.md`; if either is absent, defer SEK execution and
+  SEK-backed completion claims, not navigation or analysis. Do not reconstruct SEK
+  semantics from ELK or legacy Spec Explorer guidance.
 3. Inspect the unsliced model, applicable Cord configs/machines, finite parameter domains,
   slices, bounds/bound hits, binding/oracle, generated source freshness, and actual replay.
 4. Name the incident behavior as `SEK-SCENARIO:<brief-kebab-id>` and classify the escape:

@@ -3,6 +3,19 @@
 All notable changes to EngLoopKit are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.0] - 2026-09-07
+
+### Fixed
+
+- Resolved broad command/agent-surface validation from the installed ELK command
+  root when the source-extension root is absent; missing roots now emit actionable
+  diagnostics instead of `DirectoryNotFoundException`.
+- Preserved an unquoted postmortem path ending in sentence punctuation as the exact
+  `.md` route, while rejecting malformed paths rather than binding a nonexistent `.md.` file.
+- Separated operations evidence acceptance from user conversation/navigation: incomplete
+  Incident, Postmortem, and Repair context retains safe read/search/question and Stage 50
+  escalation paths, reports correlation/remediation, and never claims completion.
+
 ## [1.18.0] - 2026-09-06
 
 ### Fixed

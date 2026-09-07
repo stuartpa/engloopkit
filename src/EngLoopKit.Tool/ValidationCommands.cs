@@ -420,15 +420,118 @@ public static class ValidationCommands
     }
 
     public static int ValidateCommands(string[] args)
+        => ValidateCommandSurface(args, (_, commandsDirectory) => ValidateCommandsCore(commandsDirectory));
+
+    private const string SourceCommandRoot = "extensions/engloopkit/commands";
+    private const string InstalledCommandRoot = ".specify/extensions/engloop/commands";
+
+    private static int ValidateCommandSurface(string[] args, Func<string, string, int> validate)
     {
-        var root = Path.GetFullPath(GetOption(args, "--root"));
-        var commandsDirectory = Path.Combine(root, "extensions", "engloopkit", "commands");
-        if (!Directory.Exists(commandsDirectory))
+        var root = GetOption(args, "--root");
+        try
         {
-            Console.Error.WriteLine("missing-command-directory");
+            if (args.Contains("--root", StringComparer.Ordinal)) root = RequireOption(args, "--root");
+            root = Path.GetFullPath(root);
+            var commandsDirectory = ResolveCommandDirectory(root, args);
+            return commandsDirectory is null ? 1 : validate(root, commandsDirectory);
+        }
+        catch (Exception ex) when (IsExpectedSurfaceFailure(ex))
+        {
+            Console.Error.WriteLine($"command-surface-path-error:root={SurfaceDiagnostic(root)}: {ex.GetType().Name}: {SurfaceDiagnostic(ex.Message)}. Check --root/--command-root, file access and frontmatter; no alternate command root was used.");
             return 1;
         }
+    }
 
+    private static bool IsExpectedSurfaceFailure(Exception ex)
+        => ex is IOException or UnauthorizedAccessException or System.Security.SecurityException
+            or ArgumentException or NotSupportedException or InvalidOperationException
+            or FormatException or JsonException or YamlDotNet.Core.YamlException;
+
+    private static string SurfaceDiagnostic(string value)
+        => new(value.Take(512).Select(character => char.IsControl(character) ? ' ' : character).ToArray());
+
+    private static string? ResolveCommandDirectory(string root, string[] args)
+    {
+        var overrideCount = args.Count(value => value == "--command-root");
+        string relative;
+        if (overrideCount != 0)
+        {
+            relative = GetOption(args, "--command-root", string.Empty).Replace('\\', '/');
+            var parts = relative.Split('/');
+            if (overrideCount != 1 || string.IsNullOrWhiteSpace(relative)
+                || relative.StartsWith("--", StringComparison.Ordinal) || Path.IsPathRooted(relative)
+                || relative.Any(character => char.IsControl(character) || "<>:\"|?*".Contains(character))
+                || parts.Any(part => part.Length == 0 || part == ".."
+                    || part != "." && (part.EndsWith('.') || part != part.Trim()))
+                || parts.All(part => part == "."))
+            {
+                Console.Error.WriteLine("invalid-command-root: --command-root requires one safe repo-relative directory, without rooted paths, traversal, or invalid path characters.");
+                return null;
+            }
+        }
+        else
+        {
+            var sourceExists = CommandDirectoryExists(root, SourceCommandRoot);
+            var installedExists = CommandDirectoryExists(root, InstalledCommandRoot);
+            if (sourceExists && installedExists)
+            {
+                Console.Error.WriteLine($"ambiguous-command-directory: both {SourceCommandRoot} and {InstalledCommandRoot} exist under {SurfaceDiagnostic(root)}. Select one explicitly with --command-root <repo-relative-path>.");
+                return null;
+            }
+            if (!sourceExists && !installedExists)
+            {
+                Console.Error.WriteLine($"missing-command-directory: expected {SourceCommandRoot} or {InstalledCommandRoot} under {SurfaceDiagnostic(root)}. Restore the complete command directory or select it with --command-root <repo-relative-path>.");
+                return null;
+            }
+            relative = sourceExists ? SourceCommandRoot : InstalledCommandRoot;
+        }
+
+        var directory = Path.GetFullPath(Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar)));
+        var normalized = Path.GetRelativePath(root, directory).Replace('\\', '/');
+        if (Path.IsPathRooted(normalized) || normalized is "." or ".." || normalized.StartsWith("../", StringComparison.Ordinal))
+        {
+            Console.Error.WriteLine("invalid-command-root: select a command directory strictly inside --root.");
+            return null;
+        }
+        if (!CommandDirectoryExists(root, normalized))
+        {
+            Console.Error.WriteLine($"missing-command-directory: selected {SurfaceDiagnostic(directory)}. Restore this complete directory or correct --command-root; no alternate command root was used.");
+            return null;
+        }
+        return directory;
+    }
+
+    private static bool CommandDirectoryExists(string root, string relative)
+    {
+        // Inspect every component: Directory.Exists hides access errors, and lexical
+        // containment alone permits a junction/symlink to redirect the selected root.
+        var current = root;
+        foreach (var part in new[] { string.Empty }.Concat(relative.Split('/')))
+        {
+            current = Path.Combine(current, part);
+            FileAttributes attributes;
+            try { attributes = File.GetAttributes(current); }
+            catch (FileNotFoundException) { return false; }
+            catch (DirectoryNotFoundException) { return false; }
+            if ((attributes & FileAttributes.ReparsePoint) != 0)
+                throw new InvalidOperationException($"invalid-command-root: reparse-point-forbidden:{current}");
+            if ((attributes & FileAttributes.Directory) == 0)
+                throw new InvalidOperationException($"invalid-command-root: not-a-directory:{current}");
+        }
+        return true;
+    }
+
+    private static object? ReadSurfaceFrontmatter(string path)
+    {
+        try { return SemanticProjection.ParseFrontmatter(File.ReadAllText(path)); }
+        catch (Exception ex) when (IsExpectedSurfaceFailure(ex))
+        {
+            throw new InvalidOperationException($"surface-file-error:{path}: {ex.Message}", ex);
+        }
+    }
+
+    private static bool ValidateCommandSet(string commandsDirectory)
+    {
         var files = Directory.GetFiles(commandsDirectory, "speckit.engloop.*.md", SearchOption.TopDirectoryOnly)
             .Select(path => Path.GetFileNameWithoutExtension(path)!)
             .OrderBy(v => v, StringComparer.Ordinal)
@@ -439,7 +542,7 @@ public static class ValidationCommands
         {
             foreach (var missing in compare.Missing)
             {
-                Console.Error.WriteLine($"missing-command:{missing}");
+                Console.Error.WriteLine($"missing-command:{missing}: restore {SurfaceDiagnostic(Path.Combine(commandsDirectory, missing + ".md"))}");
             }
 
             foreach (var extra in compare.Extra)
@@ -447,23 +550,27 @@ public static class ValidationCommands
                 Console.Error.WriteLine($"extra-command:{extra}");
             }
 
-            return 1;
+            return false;
         }
 
         if (Directory.GetFiles(commandsDirectory, "speckit.engloopkit.*.md", SearchOption.TopDirectoryOnly).Length != 0)
         {
             Console.Error.WriteLine("legacy-command-surface-present");
-            return 1;
+            return false;
         }
+        return true;
+    }
 
+    private static int ValidateCommandsCore(string commandsDirectory)
+    {
+        if (!ValidateCommandSet(commandsDirectory)) return 1;
         foreach (var commandId in ExpectedIds)
         {
             var path = Path.Combine(commandsDirectory, commandId + ".md");
-            var text = File.ReadAllText(path);
-            var projection = SemanticProjection.ParseFrontmatter(text);
+            var projection = ReadSurfaceFrontmatter(path);
             if (projection is not IDictionary<object, object> map)
             {
-                Console.Error.WriteLine($"missing-frontmatter:{commandId}");
+                Console.Error.WriteLine($"missing-frontmatter:{commandId}: correct YAML frontmatter in {SurfaceDiagnostic(path)}");
                 return 1;
             }
 
@@ -795,7 +902,7 @@ public static class ValidationCommands
                 return (false, "missing-proven-runway");
             }
 
-            if (stage is "speckit.engloop.10-codereview-prepare" or "speckit.engloop.20-incident")
+            if (stage is "speckit.engloop.10-codereview-prepare")
             {
                 if (!HasCurrentReadinessPass(rootResult.RepositoryRoot))
                 {
@@ -813,8 +920,10 @@ public static class ValidationCommands
     }
 
     public static int ValidateAgentSurfaces(string[] args)
+        => ValidateCommandSurface(args, ValidateAgentSurfacesCore);
+
+    private static int ValidateAgentSurfacesCore(string root, string commandsDirectory)
     {
-        var root = Path.GetFullPath(GetOption(args, "--root"));
         var agentsDirectory = Path.Combine(root, ".github", "agents");
         var promptsDirectory = Path.Combine(root, ".github", "prompts");
         if (!Directory.Exists(agentsDirectory))
@@ -841,6 +950,7 @@ public static class ValidationCommands
             return 1;
         }
 
+        if (!ValidateCommandSet(commandsDirectory)) return 1;
         foreach (var id in ExpectedIds)
         {
             var promptPath = Path.Combine(promptsDirectory, id + ".prompt.md");
@@ -850,10 +960,10 @@ public static class ValidationCommands
                 return 1;
             }
 
-            var frontmatter = SemanticProjection.ParseFrontmatter(File.ReadAllText(promptPath));
+            var frontmatter = ReadSurfaceFrontmatter(promptPath);
             if (frontmatter is not IDictionary<object, object> map)
             {
-                Console.Error.WriteLine($"missing-prompt-frontmatter:{id}");
+                Console.Error.WriteLine($"missing-prompt-frontmatter:{id}: correct YAML frontmatter in {SurfaceDiagnostic(promptPath)}");
                 return 1;
             }
 
@@ -870,15 +980,14 @@ public static class ValidationCommands
             }
         }
 
-        var commandsDirectory = Path.Combine(root, "extensions", "engloopkit", "commands");
         var totalHandoffs = 0;
         foreach (var id in ExpectedIds)
         {
             var path = Path.Combine(commandsDirectory, id + ".md");
-            var frontmatter = SemanticProjection.ParseFrontmatter(File.ReadAllText(path));
+            var frontmatter = ReadSurfaceFrontmatter(path);
             if (frontmatter is not IDictionary<object, object> map)
             {
-                Console.Error.WriteLine($"missing-frontmatter:{id}");
+                Console.Error.WriteLine($"missing-frontmatter:{id}: correct YAML frontmatter in {SurfaceDiagnostic(path)}");
                 return 1;
             }
 
@@ -888,10 +997,10 @@ public static class ValidationCommands
                 Console.Error.WriteLine($"missing-agent:{id}");
                 return 1;
             }
-            var agentFrontmatter = SemanticProjection.ParseFrontmatter(File.ReadAllText(agentPath));
+            var agentFrontmatter = ReadSurfaceFrontmatter(agentPath);
             if (agentFrontmatter is not IDictionary<object, object> agentMap)
             {
-                Console.Error.WriteLine($"missing-agent-frontmatter:{id}");
+                Console.Error.WriteLine($"missing-agent-frontmatter:{id}: correct YAML frontmatter in {SurfaceDiagnostic(agentPath)}");
                 return 1;
             }
             foreach (var field in new[] { "name", "description", "argument-hint", "target", "user-invocable", "disable-model-invocation", "tools", "agents", "hooks", "handoffs" })
