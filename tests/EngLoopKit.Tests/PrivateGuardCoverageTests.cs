@@ -177,9 +177,10 @@ public sealed class PrivateGuardCoverageTests : IDisposable
         Assert.Equal("operations-hook-known", Invoke<string>(typeof(OperationsHookCommands), "IncidentDiagnosticCode", new InvalidOperationException("operations-hook-known")));
         Assert.Equal("operations-hook-invalid-state", Invoke<string>(typeof(OperationsHookCommands), "IncidentDiagnosticCode", new InvalidOperationException("uncoded")));
         Assert.Equal("operations-hook-unexpected-failure", Invoke<string>(typeof(OperationsHookCommands), "IncidentDiagnosticCode", new Exception("unexpected")));
-        Assert.Equal("--incident", Invoke<string?>(typeof(OperationsHookCommands), "MissingOption", "operations-hook-option-missing:--incident"));
-        Assert.Equal("--incident", Invoke<string?>(typeof(OperationsHookCommands), "MissingOption", "operations-hook-prompt-missing"));
-        Assert.Null(Invoke<string?>(typeof(OperationsHookCommands), "MissingOption", "operations-hook-json-invalid"));
+        Assert.Equal("--incident", Invoke<string?>(typeof(OperationsHookCommands), "MissingOption", "operations-hook-option-missing:--incident", "incident"));
+        Assert.Equal("--incident", Invoke<string?>(typeof(OperationsHookCommands), "MissingOption", "operations-hook-prompt-missing", "incident"));
+        Assert.Equal("--incidents,--postmortem", Invoke<string?>(typeof(OperationsHookCommands), "MissingOption", "operations-hook-prompt-missing", "postmortem"));
+        Assert.Null(Invoke<string?>(typeof(OperationsHookCommands), "MissingOption", "operations-hook-json-invalid", "incident"));
     }
 
     [Fact]
@@ -227,7 +228,8 @@ public sealed class PrivateGuardCoverageTests : IDisposable
             Console.SetIn(input);
             Console.SetOut(hookOutput);
             foreach (var phase in new[] { "start", "initialize", "stop", "unknown" })
-                Invoke<object?>(typeof(OperationsHookCommands), "WriteIncidentContextDeferred", phase, "operations-hook-unexpected-failure", "unexpected");
+                Invoke<object?>(typeof(OperationsHookCommands), "WriteLifecycleDeferred", "incident", phase,
+                    "operations-hook-unexpected-failure", "unexpected", null, null);
             Assert.Equal(0, Program.Main(["operations-hook", "start", "incident"]));
         }
         finally

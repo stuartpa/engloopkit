@@ -11,9 +11,7 @@ tools:
 - search
 - edit
 - execute
-- agent
-agents:
-- speckit.engloop.21-postmortem
+agents: []
 hooks:
   SessionStart:
   - type: command
@@ -32,12 +30,9 @@ hooks:
     command: dotnet tool run engloopkit -- operations-hook stop incident
     timeout: 30
 handoffs:
-- label: Analyze stabilized incidents
+- label: Analyze incidents for postmortem
   agent: speckit.engloop.21-postmortem
-  prompt: Analyze the selected stabilized incident set above with --incidents <INxxx,...>
-    --postmortem <.engloop/postmortems/PMxxx_title.md>; replace both placeholders with
-    exact values, consult current NORTHSTAR.md and the relevant LEARNINGS.md card/source
-    path, classify rule effects, and produce validated learning-bound repair items.
+  prompt: Analyze the selected incident set above, including unresolved stabilization evidence, with --incidents <INxxx,...> --postmortem <.engloop/postmortems/PMxxx_title.md>; replace both placeholders with exact values, consult current NORTHSTAR.md and the relevant LEARNINGS.md card/source path, classify rule effects, and produce validated learning-bound repair items. Analysis does not claim stabilization or authorize completion while stabilization evidence remains open.
   send: false
 ---
 
@@ -88,11 +83,14 @@ and stabilization claims strict; deferred context is not permission for arbitrar
 or execution.
 
 If the operator explicitly asks in plain language to start, continue, complete, or
-analyze a postmortem, delegate only to `speckit.engloop.21-postmortem`. Do not synthesize
-internal flags first: Stage 21 owns read-only incident/registry collection, one concise
-confirmation, and trusted binding. This explicit operator request is not automatic
-scheduling and does not itself prove stabilization, postmortem completion, or repair
-closure.
+analyze a postmortem, use the existing user-visible Stage 21 handoff; do not invoke
+Stage 21 through the `agent` tool. VS Code Local subagents cannot use the interactive
+question flow required to obtain a human selection, so delegated Stage 21 runs cannot
+produce the selected-option `PostToolUse` receipt. Run Stage 21 as a user-invoked
+top-level agent. Do not synthesize internal flags or treat an empty selection as a
+decline or confirmation. This preserves user-owned navigation under
+`RULE:readiness-is-a-gate` (PM001/LEARN001–003; 2026-09-06 owner directive); it does not
+prove stabilization, postmortem completion, or repair closure.
 
 The declared handoff is a validated-evidence workflow, not the user's only exit. If a
 requested destination is not an allowed subagent, honor direct user selection instead

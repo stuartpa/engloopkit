@@ -3,7 +3,7 @@
 - **Date:** <date>
 - **Duration:** <HH:MM total across incidents>
 - **Covers incidents:** IN<..>, IN<..>
-- **Status:** COMPLETE
+- **Status:** IN PROGRESS
 
 ## Timeline
 
@@ -11,7 +11,9 @@
 |---|---|
 | | |
 
-## Selected stabilized incidents
+## Selected incidents
+
+Selection for analysis does not imply stabilization. Record each source incident's current status and unresolved stability checks in the timeline and analysis; completion validation remains strict.
 
 | Incident ID | Path | SHA-256 |
 |---|---|---|

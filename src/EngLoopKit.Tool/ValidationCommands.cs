@@ -39,7 +39,7 @@ public static class ValidationCommands
         ["speckit.engloop.11-codereview-campaign"] = ["read", "execute", "vscode_askQuestions"],
         ["speckit.engloop.12-codereview-address"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.13-codereview-reply-resolve"] = ["read", "execute", "vscode_askQuestions"],
-        ["speckit.engloop.20-incident"] = ["read", "search", "edit", "execute", "agent"],
+        ["speckit.engloop.20-incident"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.21-postmortem"] = ["read", "search", "edit", "execute", "agent", "vscode_askQuestions"],
         ["speckit.engloop.22-repair"] = ["read", "search", "edit", "execute"],
         ["speckit.engloop.23-happy-minute"] = ["read", "search", "edit", "execute"],
@@ -66,7 +66,7 @@ public static class ValidationCommands
         ["speckit.engloop.09-debugger-walk-thru"] = [], ["speckit.engloop.10-codereview-prepare"] = [],
         ["speckit.engloop.11-codereview-campaign"] = [], ["speckit.engloop.12-codereview-address"] = [],
         ["speckit.engloop.13-codereview-reply-resolve"] = [],
-        ["speckit.engloop.20-incident"] = ["speckit.engloop.21-postmortem"], ["speckit.engloop.21-postmortem"] = ["Explore"],
+        ["speckit.engloop.20-incident"] = [], ["speckit.engloop.21-postmortem"] = ["Explore"],
         ["speckit.engloop.22-repair"] = [], ["speckit.engloop.23-happy-minute"] = [], ["speckit.engloop.30-token-efficiency-analyze"] = ["Explore"],
         ["speckit.engloop.31-token-efficiency-implement"] = ["Explore"], ["speckit.engloop.40-refactor-plan"] = ["Explore"],
         ["speckit.engloop.41-deadcode"] = ["Explore"], ["speckit.engloop.42-learnings-pyramid"] = ["Explore"],
@@ -239,7 +239,7 @@ public static class ValidationCommands
             var routePath = RequireOption(args, "--route").Replace('\\', '/');
             var receiptPath = RequireOption(args, "--receipt").Replace('\\', '/');
             EnsureValidation(int.TryParse(GetOption(args, "--timeout-seconds", "900"), out var timeoutSeconds) & timeoutSeconds is >= 1 and <= 3600, "repair-gate-timeout-invalid");
-            var pm = OperationsLearningPolicy.ValidatePostmortem(root, postmortemPath);
+            var pm = OperationsLearningPolicy.ValidatePostmortem(root, postmortemPath, forRepairRouting: true);
             EnsureValidation(pm.Passed & pm.Contract is not null, "repair-gate-postmortem-invalid:" + string.Join(',', pm.Failures));
             if (!pm.Contract!.Repairs.TryGetValue(rpi, out var repair) || repair is null)
                 throw new InvalidOperationException("repair-gate-rpi-missing");
@@ -586,7 +586,7 @@ public static class ValidationCommands
                 return 1;
             }
 
-            var expectedModelInvocationDisabled = commandId != "speckit.engloop.21-postmortem";
+            const bool expectedModelInvocationDisabled = true;
             if (!map.TryGetValue("disable-model-invocation", out var disabledValue)
                 || !bool.TryParse(disabledValue?.ToString(), out var disabled)
                 || disabled != expectedModelInvocationDisabled)
@@ -673,13 +673,28 @@ public static class ValidationCommands
             var root = Path.GetFullPath(GetOption(args, "--root"));
             var postmortem = RequireOption(args, "--postmortem");
             var incidents = RequireOption(args, "--incidents").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            var result = OperationsLearningPolicy.ValidatePostmortem(root, postmortem, incidents);
+            var forRepairRouting = args.Contains("--for-repair-routing", StringComparer.Ordinal);
+            var result = OperationsLearningPolicy.ValidatePostmortem(root, postmortem, incidents, forRepairRouting);
+            if (args.Contains("--show-current-hashes", StringComparer.Ordinal))
+            {
+                if (result.Contract is null) throw new InvalidOperationException("postmortem-context-unavailable:" + string.Join(',', result.Failures));
+                Console.WriteLine(JsonSerializer.Serialize(new
+                {
+                    postmortem = result.Contract.RelativePath,
+                    northstarSha256 = result.Contract.NorthstarSha256,
+                    learningsSha256 = result.Contract.LearningsSha256,
+                    pyramidDigest = result.Contract.PyramidDigest,
+                    incidents = result.Contract.Incidents.Select(item => new { id = item.IncidentId, path = item.RelativePath, sha256 = item.Sha256 }),
+                    completionAccepted = false,
+                }));
+                return 0;
+            }
             if (!result.Passed)
             {
                 foreach (var failure in result.Failures) Console.Error.WriteLine(failure);
                 return 1;
             }
-            Console.WriteLine($"POSTMORTEM_LEARNING_OK postmortem={result.Contract!.PostmortemId} rules={string.Join(',', result.Contract.RuleDispositions.Select(item => item.RuleId))}");
+            Console.WriteLine($"{(forRepairRouting ? "POSTMORTEM_REPAIR_CONTEXT_OK" : "POSTMORTEM_LEARNING_OK")} postmortem={result.Contract!.PostmortemId} rules={string.Join(',', result.Contract.RuleDispositions.Select(item => item.RuleId))}");
             return 0;
         }
         catch (Exception ex)
@@ -1042,7 +1057,10 @@ public static class ValidationCommands
                 }
                 totalHandoffs++;
                 actualTargets.Add(target!.ToString()!);
-                if (!handoff.TryGetValue("send", out var send) || !string.Equals(send?.ToString(), "false", StringComparison.OrdinalIgnoreCase))
+                var trustedRepairContinuation = id == "speckit.engloop.21-postmortem"
+                    && string.Equals(target.ToString(), "speckit.engloop.22-repair", StringComparison.Ordinal);
+                var expectedSend = trustedRepairContinuation ? "true" : "false";
+                if (!handoff.TryGetValue("send", out var send) || !string.Equals(send?.ToString(), expectedSend, StringComparison.OrdinalIgnoreCase))
                 {
                     Console.Error.WriteLine($"invalid-handoff-send:{id}");
                     return 1;

@@ -53,7 +53,9 @@ public sealed class CommandSurfaceTests
 
                 if (inHandoffs && line.TrimStart().StartsWith("send:"))
                 {
-                    Assert.Equal("send: false", line.Trim());
+                    var trustedRepairContinuation = id == "speckit.engloop.21-postmortem"
+                        && localEdges.LastOrDefault() == "speckit.engloop.22-repair";
+                    Assert.Equal(trustedRepairContinuation ? "send: true" : "send: false", line.Trim());
                 }
 
                 if (inHandoffs)
@@ -94,6 +96,12 @@ public sealed class CommandSurfaceTests
             if (id == "speckit.engloop.23-happy-minute")
             {
                 Assert.Equal(["speckit.engloop.42-learnings-pyramid"], localEdges);
+            }
+
+            if (id == "speckit.engloop.21-postmortem")
+            {
+                Assert.Contains("ELK_TRUSTED_AUTOPILOT_REPAIR_CONTINUATION", File.ReadAllText(file), StringComparison.Ordinal);
+                Assert.Equal(["speckit.engloop.22-repair", "speckit.engloop.42-learnings-pyramid"], localEdges);
             }
 
         }

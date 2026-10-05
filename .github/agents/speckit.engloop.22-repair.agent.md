@@ -40,9 +40,9 @@ handoffs:
   send: false
 ---
 
-
 <!-- Extension: engloop -->
 <!-- Config: .specify/extensions/engloop/ -->
+
 ## User Input
 
 ```text
@@ -67,6 +67,22 @@ Run the entry diagnostic; a failure is unresolved context, not a navigation veto
 
 ## Rule-bound repair acceptance
 
+An explicit operator request to implement repair items is authorization to begin
+the named repair, not a demand to pretend the incident is healthy first. Native
+Stage 22 accepts `Implement all repair items for PM060` (or a named RPI/PM path),
+resolves the exact contracts, and binds one immutable route per selected item.
+Do not ask for internal flags, binder tokens, or repeated authorization. If the
+PM or selected items are genuinely ambiguous, ask one focused question and keep
+working on the known context. Never stop or send the operator back to Stage 21
+merely because incident stabilization, a watch window, or PM completion is open.
+
+Routing and implementation require a structurally valid, hash-bound PM repair
+contract, not a COMPLETE PM or STABILIZED incident. Closure still requires full
+completion, measured recurrence-gate evidence, and current readiness. Obtain
+canonical hashes using the read-only validator option `--show-current-hashes`;
+correct only derived consultation fields without inventing health/PASS evidence.
+Use `--for-repair-routing` to validate authorization separately from completion.
+
 The user may select Stage21 (`speckit.engloop.21-postmortem`), Stage22
 (`speckit.engloop.22-repair`), or Stage50 (`speckit.engloop.50-handoff-create`) at any
 time. Missing flags, readiness, PM/RPI evidence, or failed hooks never veto navigation
@@ -87,12 +103,21 @@ do not invent rule IDs, acceptance paths, or PASS evidence.
   SEK v0.1.3, load its
   installed Cord/downstream skills, inspect the named model/Cord/generated paths, and keep
   the exact `SEK-SCENARIO:*` identity. If `NOT-RELEVANT`, preserve that explicit rationale.
-3. Create immutable `.engloop/repairs/PMxxx-RPIxxx.route.json` from the route template with
+3. The native hook creates immutable `.engloop/repairs/PMxxx-RPIxxx.route.json` for
+  every explicitly selected item; validate and retain those records. For the
+  explicit argument route, create the record from the route template with
   `phase: route`, `status: ROUTED`, current hashes, exact Rule IDs, executable gate, and
   all SEK applicability/scenario/repair fields.
 4. The Stop hook validates route acceptance, not permission to show or select the
   Stage 04 handoff. Carry any unaccepted route and missing evidence to the destination;
   navigation alone does not authorize implementation.
+5. When implementation is requested and exact route scope is active, continue the
+  implementation, tests, and applicable Stage 05-08 work under each bound item in
+  this session; do not finish with only routing or require another user request.
+  The Stage 04 handoff is available for user navigation, not a reason to stop.
+  Preserve unrelated work, and honor authorized commit/push/deployment using the
+  target repository's deployment procedure. Never substitute source changes for
+  recurrence or live-readiness proof.
 
 ### Close phase
 

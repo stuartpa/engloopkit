@@ -243,10 +243,18 @@ public sealed class BundleConformanceTests
         Assert.DoesNotContain(".specify/scripts/", File.ReadAllText(Path.Combine(Root, ".github", "agents", "speckit.engloop.31-token-efficiency-implement.agent.md")), StringComparison.OrdinalIgnoreCase);
 
         var incident = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.20-incident.md"));
+        var incidentContract = Regex.Replace(incident, @"\s+", " ");
         Assert.Contains("--incidents <INxxx,...> --postmortem", incident, StringComparison.Ordinal);
+        Assert.Contains("tools: [read, search, edit, execute]", incident, StringComparison.Ordinal);
+        Assert.Contains("agents: []", incident, StringComparison.Ordinal);
+        Assert.Contains("existing user-visible Stage 21 handoff", incidentContract, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("VS Code Local subagents cannot use the interactive question flow", incidentContract, StringComparison.Ordinal);
+        Assert.Contains("Stage 21 as a user-invoked top-level agent", incidentContract, StringComparison.Ordinal);
 
         var postmortem = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.21-postmortem.md"));
-        Assert.Contains("disable-model-invocation: false", postmortem, StringComparison.Ordinal);
+        Assert.Contains("disable-model-invocation: true", postmortem, StringComparison.Ordinal);
+        var postmortemAgent = File.ReadAllText(Path.Combine(Root, ".github", "agents", "speckit.engloop.21-postmortem.agent.md"));
+        Assert.Contains("disable-model-invocation: true", postmortemAgent, StringComparison.Ordinal);
         Assert.Contains("vscode_askQuestions", postmortem, StringComparison.Ordinal);
         Assert.Contains("SubagentStart:", postmortem, StringComparison.Ordinal);
         Assert.Contains("SubagentStop:", postmortem, StringComparison.Ordinal);

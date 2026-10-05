@@ -78,14 +78,14 @@ public static class OperationsLearningPolicy
     private static readonly Regex RuleIdRegex = new(@"^RULE:(?<slug>[a-z0-9]+(?:-[a-z0-9]+)*)$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex RpiRegex = new(@"^RPI\d{3}$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-    public static OperationsLearningValidationResult ValidatePostmortem(string repositoryRoot, string postmortemPath)
+    public static OperationsLearningValidationResult ValidatePostmortem(string repositoryRoot, string postmortemPath, bool forRepairRouting = false)
     {
         try
         {
             var root = NormalizeRoot(repositoryRoot);
             var (_, full) = ResolveGovernedPath(root, postmortemPath, ".engloop/postmortems/", true);
             var incidentIds = ParseSelectedIncidentTable(File.ReadAllText(full)).Keys.ToArray();
-            return ValidatePostmortem(root, postmortemPath, incidentIds);
+            return ValidatePostmortem(root, postmortemPath, incidentIds, forRepairRouting);
         }
         catch (Exception ex)
         {
@@ -96,7 +96,8 @@ public static class OperationsLearningPolicy
     public static OperationsLearningValidationResult ValidatePostmortem(
         string repositoryRoot,
         string postmortemPath,
-        IReadOnlyCollection<string> selectedIncidentIds)
+        IReadOnlyCollection<string> selectedIncidentIds,
+        bool forRepairRouting = false)
     {
         var failures = new List<string>();
         string root;
@@ -120,11 +121,14 @@ public static class OperationsLearningPolicy
         RecordFailure(failures, sameNumber.Length != 1, $"duplicate-postmortem-number:{postmortemId}");
 
         var text = NormalizeText(File.ReadAllText(full));
-        foreach (var heading in new[] { "## Selected stabilized incidents", "## Root causes", "## SEK Test-Escape Analysis", "## Direction and Learning-Pyramid Consultation", "### Rule dispositions", "## Learnings", "## Repair Items" })
+        foreach (var heading in new[] { "## Root causes", "## SEK Test-Escape Analysis", "## Direction and Learning-Pyramid Consultation", "### Rule dispositions", "## Learnings", "## Repair Items" })
             RequireUniqueHeading(text, heading, failures);
+        var selectedIncidentHeadingCount = Regex.Matches(text, @"(?m)^## (?:Selected incidents|Selected stabilized incidents)\s*$", RegexOptions.CultureInvariant).Count;
+        if (selectedIncidentHeadingCount != 1) failures.Add($"heading-count-invalid:selected-incidents:{selectedIncidentHeadingCount}");
         var firstHeading = Regex.Match(text, @"(?m)^## ").Index;
         var prologue = firstHeading > 0 ? text[..firstHeading] : text;
-        RecordFailure(failures, ReadField(prologue, "Status").ToUpperInvariant() != "COMPLETE", "postmortem-status-not-complete");
+        if (!forRepairRouting)
+            RecordFailure(failures, ReadField(prologue, "Status").ToUpperInvariant() != "COMPLETE", "postmortem-status-not-complete");
 
         var northstarPath = ResolveFixedRegularFile(root, "NORTHSTAR.md", failures, "northstar");
         var learningsPath = ResolveFixedRegularFile(root, "LEARNINGS.md", failures, "learnings-index");
@@ -138,7 +142,7 @@ public static class OperationsLearningPolicy
         var pyramidDigest = ComputePyramidDigest(root, postmortemId, failures);
         RequireHash(consultation, "Pyramid digest", pyramidDigest, failures);
 
-        var incidents = ValidateSelectedIncidents(root, text, selectedIncidentIds, failures);
+        var incidents = ValidateSelectedIncidents(root, text, selectedIncidentIds, failures, forRepairRouting);
         var directionAlignment = RequireEnumField(consultation, "Direction alignment", ["ALIGNED", "TENSION", "GAP"], failures);
         RequireSubstantiveField(consultation, "Direction decision", failures);
         var pyramidDecision = RequireEnumField(consultation, "Pyramid decision", ["UPDATED", "NO-CHANGE"], failures);
@@ -268,6 +272,16 @@ public static class OperationsLearningPolicy
         }
     }
 
+    public static IncidentContextValidationResult ValidateIncidentContextForPostmortemAnalysis(string repositoryRoot, string incidentPath)
+    {
+        var result = ValidateIncidentContext(repositoryRoot, incidentPath, requireConsulted: true);
+        var failures = result.Failures
+            .Where(failure => failure != "incident-not-stabilized"
+                && !failure.StartsWith("incident-stability-check-invalid:", StringComparison.Ordinal))
+            .ToArray();
+        return new IncidentContextValidationResult(failures.Length == 0, Sorted(failures), result.Contract);
+    }
+
     public static OperationsLearningValidationResult ValidateRepairAcceptance(
         string repositoryRoot,
         string postmortemPath,
@@ -277,7 +291,7 @@ public static class OperationsLearningPolicy
         string phase,
         bool currentReadinessPass)
     {
-        var pmResult = ValidatePostmortem(repositoryRoot, postmortemPath);
+        var pmResult = ValidatePostmortem(repositoryRoot, postmortemPath, forRepairRouting: phase == "route");
         var failures = new List<string>(pmResult.Failures);
         if (pmResult.Contract is null) return Result(failures);
         if (!pmResult.Contract.Repairs.TryGetValue(rpiId, out var repair))
@@ -426,7 +440,7 @@ public static class OperationsLearningPolicy
         catch (Exception ex) { failures.Add("config-invalid:" + ex.Message); }
     }
 
-    private static IReadOnlyList<IncidentContextContract> ValidateSelectedIncidents(string root, string text, IReadOnlyCollection<string> selectedIncidentIds, List<string> failures)
+    private static IReadOnlyList<IncidentContextContract> ValidateSelectedIncidents(string root, string text, IReadOnlyCollection<string> selectedIncidentIds, List<string> failures, bool forRepairRouting = false)
     {
         var requested = selectedIncidentIds.Select(value => value.Trim().ToUpperInvariant()).Where(value => value.Length > 0).ToArray();
         RecordFailure(failures, requested.Length == 0, "selected-incident-set-empty");
@@ -444,7 +458,9 @@ public static class OperationsLearningPolicy
                 var (relative, full) = ResolveGovernedPath(root, row.Path, ".engloop/incidents/", true);
                 RecordFailure(failures, !Path.GetFileName(full).StartsWith(id, StringComparison.Ordinal), $"incident-filename-id-mismatch:{id}");
                 RecordFailure(failures, !string.Equals(Sha256(full), row.Hash, StringComparison.Ordinal), $"incident-hash-mismatch:{id}");
-                var result = ValidateIncidentContext(root, relative, true);
+                var result = forRepairRouting
+                    ? ValidateIncidentContextForPostmortemAnalysis(root, relative)
+                    : ValidateIncidentContext(root, relative, true);
                 failures.AddRange(result.Failures.Select(failure => $"incident-{id}:{failure}"));
                 if (result.Contract is not null) contracts.Add(result.Contract);
             }
@@ -456,7 +472,9 @@ public static class OperationsLearningPolicy
     private static Dictionary<string, (string Path, string Hash)> ParseSelectedIncidentTable(string text, List<string>? failures = null)
     {
         var rows = new Dictionary<string, (string Path, string Hash)>(StringComparer.Ordinal);
-        var section = ExtractSection(NormalizeText(text), "## Selected stabilized incidents", ["## "]);
+        var normalized = NormalizeText(text);
+        var section = ExtractSection(normalized, "## Selected incidents", ["## "]);
+        if (section.Length == 0) section = ExtractSection(normalized, "## Selected stabilized incidents", ["## "]);
         foreach (var line in section.Split('\n'))
         {
             if (!line.TrimStart().StartsWith('|') || line.Contains("---", StringComparison.Ordinal)) continue;

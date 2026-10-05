@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading;
 using EngLoopKit.Core;
 
 namespace EngLoopKit.Tool;
@@ -10,10 +11,17 @@ namespace EngLoopKit.Tool;
 public static class OperationsHookCommands
 {
     private const string NavigationRecovery = "The user may select Stage 22 (speckit.engloop.22-repair) or Stage 50 (speckit.engloop.50-handoff-create) any time without binder tokens. Stop does not veto navigation. Selection does not authorize mutations or claim completion.";
+    private const string RepairContinuationMarker = "ELK_TRUSTED_AUTOPILOT_REPAIR_CONTINUATION";
+    private static readonly TimeSpan HookInputTimeout = TimeSpan.FromSeconds(3);
 
     private static readonly HashSet<string> CollectionReadOrQuestionTools = new(StringComparer.OrdinalIgnoreCase)
     {
         "read", "search", "read_file", "file_search", "grep_search", "semantic_search", "list_dir", "vscode_askQuestions",
+    };
+
+    private static readonly HashSet<string> PostmortemRetryTools = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "read", "search", "read_file", "file_search", "grep_search", "semantic_search", "list_dir",
     };
 
     private sealed record GateRecord(
@@ -33,7 +41,8 @@ public static class OperationsHookCommands
         string? Phase,
         string? Rpi,
         string[]? Rules,
-        string? Acceptance);
+        string? Acceptance,
+        string[]? RequestedRpis = null);
 
     private sealed record PostmortemCollectionRecord(
         string SchemaVersion,
@@ -69,7 +78,21 @@ public static class OperationsHookCommands
         string GateSha256,
         string ConfirmationSha256,
         string ToolUseId,
-        string CorrelationId);
+        string CorrelationId,
+        string Authorization = "confirmation",
+        string? Intent = null,
+        string? IntentSha256 = null);
+
+    private sealed record PostmortemOperatorIntentRecord(
+        string SchemaVersion, string SessionHash, string Head, string HostSha256,
+        string Prompt, string PromptSha256, string Incident, string Postmortem,
+        string IncidentSha256, string NorthstarSha256, string LearningsSha256,
+        string RegistrySha256);
+
+    private sealed record PostmortemReauthorizationRecord(
+        string SchemaVersion, string NativeSessionHash, string PreviousSessionHash, string SessionHash,
+        string Prompt, string PromptSha256, string HistoricalPostmortem, string Postmortem,
+        Dictionary<string, string> PreservedArtifacts, string BindingSha256);
 
     private sealed record PostmortemBindingFailureRecord(
         string SchemaVersion,
@@ -82,8 +105,23 @@ public static class OperationsHookCommands
         string CorrelationId,
         DateTimeOffset CapturedAtUtc);
 
+    private sealed record RepairIntentRecord(
+        string SchemaVersion,
+        string SessionHash,
+        string Head,
+        string PromptSha256,
+        bool AllRepairs,
+        string[] Rpis,
+        string AssemblyPath,
+        string AssemblySha256,
+        string ToolVersion,
+        string ManifestPath,
+        string ManifestSha256);
+
     public static int Execute(string[] args)
     {
+        if (args.Length >= 2 && args[0] == "authorize" && args[1] == "repair")
+            return AuthorizeRepair(args);
         var action = args.Length > 0 ? args[0] : "unknown";
         var mode = args.Length > 1 ? args[1] : "unknown";
         var validDispatch = false;
@@ -95,21 +133,95 @@ public static class OperationsHookCommands
             Ensure(action is "start" or "subagent-start" or "initialize" or "guard" or "post-tool" or "stop" or "subagent-stop", "operations-hook-action-invalid");
             Ensure(action is not ("guard" or "post-tool") || mode == "postmortem", "operations-hook-action-mode-invalid");
             validDispatch = true;
-            using var input = JsonDocument.Parse(Console.In.ReadToEnd());
+            string? payload = null;
+            JsonDocument? parsedInput = null;
+            Exception? inputFailure = null;
+            var inputReader = new Thread(() =>
+            {
+                try
+                {
+                    var buffer = new StringBuilder();
+                    var started = false;
+                    var insideString = false;
+                    var escaped = false;
+                    var depth = 0;
+                    while (true)
+                    {
+                        var next = Console.In.Read();
+                        if (next < 0)
+                        {
+                            payload = buffer.ToString();
+                            return;
+                        }
+
+                        var character = (char)next;
+                        if (!started)
+                        {
+                            if (char.IsWhiteSpace(character)) continue;
+                            started = true;
+                            depth = 0;
+                            if (character != '{')
+                            {
+                                payload = character.ToString();
+                                return;
+                            }
+                        }
+
+                        buffer.Append(character);
+                        if (buffer.Length > 1_048_576) throw new InvalidOperationException("operations-hook-input-too-large");
+                        if (insideString)
+                        {
+                            if (escaped) escaped = false;
+                            else if (character == '\\') escaped = true;
+                            else if (character == '"') insideString = false;
+                            continue;
+                        }
+
+                        if (character == '"') insideString = true;
+                        else if (character is '{' or '[') depth++;
+                        else if (character is '}' or ']') depth--;
+                        if (depth <= 0)
+                        {
+                            payload = buffer.ToString();
+                            try { parsedInput = JsonDocument.Parse(payload); }
+                            catch (JsonException) { }
+                            return;
+                        }
+                    }
+                }
+                catch (Exception ex) { inputFailure = ex; }
+            }) { IsBackground = true };
+            inputReader.Start();
+            if (!inputReader.Join(HookInputTimeout))
+            {
+                WriteLifecycleDeferred(mode, action, "operations-hook-stdin-timeout",
+                    $"The JSON hook payload did not reach end-of-input within {HookInputTimeout.TotalSeconds:0} seconds. Retry through the supported VS Code host.");
+                return 0;
+            }
+            if (inputFailure is JsonException or InvalidOperationException) throw inputFailure;
+            if (inputFailure is not null) throw new InvalidOperationException("operations-hook-stdin-read-failed", inputFailure);
+            using var input = parsedInput ?? JsonDocument.Parse(payload ?? string.Empty);
             Ensure(input.RootElement.ValueKind == JsonValueKind.Object, "operations-hook-input-invalid");
             toolName = ReadString(input.RootElement, "tool_name", "toolName");
             var root = ExactGitRoot(ReadString(input.RootElement, "cwd"));
             var sessionId = ReadString(input.RootElement, "session_id", "sessionId");
             Ensure(!string.IsNullOrWhiteSpace(sessionId), "operations-hook-session-id-missing");
-            var sessionHash = Sha256(Encoding.UTF8.GetBytes(sessionId));
+            var nativeSessionHash = Sha256(Encoding.UTF8.GetBytes(sessionId));
+            var sessionHash = mode is "postmortem" or "repair"
+                ? ResolvePostmortemSession(root, nativeSessionHash) : nativeSessionHash;
+            if (mode == "postmortem" && action == "initialize"
+                && ReadString(input.RootElement, "hookEventName", "hook_event_name") == "UserPromptSubmit"
+                && ReadExplicitPostmortemIntent(ReadString(input.RootElement, "prompt"), root) is { } freshIntent
+                && RequiresFreshPostmortemIdentity(root, sessionHash))
+                return ReauthorizePostmortem(root, nativeSessionHash, sessionHash, input.RootElement, freshIntent);
             var gatePath = GatePath(root, sessionHash, mode);
             if (action is "start" or "subagent-start") _ = CurrentToolIdentity(root);
 
             return action switch
             {
-                "start" => Start(mode, sessionHash),
+                "start" => Start(root, mode, sessionHash, input.RootElement),
                 "subagent-start" => SubagentStart(mode, sessionHash),
-                "initialize" => Initialize(root, mode, sessionHash, gatePath, ReadString(input.RootElement, "prompt")),
+                "initialize" => Initialize(root, mode, sessionHash, gatePath, ReadString(input.RootElement, "prompt"), input.RootElement),
                 "guard" => Guard(root, mode, sessionHash, gatePath, input.RootElement),
                 "post-tool" => PostTool(root, mode, sessionHash, input.RootElement),
                 "stop" => Stop(root, mode, sessionHash, gatePath, subagent: false),
@@ -122,7 +234,7 @@ public static class OperationsHookCommands
             if (!validDispatch) WriteResult(false, "Operations learning hook failed closed: " + Bound(ex.Message));
             else if (action == "guard") WritePostmortemScopeDecision(toolName, IncidentDiagnosticCode(ex), ex.Message);
             else WriteLifecycleDeferred(mode, action, IncidentDiagnosticCode(ex), ex.Message,
-                action == "post-tool" ? "OPERATIONS_POSTMORTEM_CONFIRMATION_REJECTED" : null);
+                action == "post-tool" ? "OPERATIONS_POSTMORTEM_CONFIRMATION_UNVERIFIED" : null);
             return 0;
         }
     }
@@ -155,9 +267,25 @@ public static class OperationsHookCommands
         }
     }
 
-    private static int Start(string mode, string sessionHash)
+    private static int Start(string root, string mode, string sessionHash, JsonElement input)
     {
-        WriteResult(true, systemMessage: $"OPERATIONS_LEARNING_GUARD_ACTIVE mode={mode} session={sessionHash[..12]} " + NavigationRecovery);
+        if (mode == "repair" && ReadString(input, "hookEventName", "hook_event_name") == "SessionStart")
+        {
+            var hostPath = GatePath(root, sessionHash, "repair-host");
+            if (!File.Exists(hostPath)) WriteGate(root, "repair-host", sessionHash, hostPath, NewArguments());
+        }
+        if (mode == "postmortem" && ReadString(input, "hookEventName", "hook_event_name") == "SessionStart")
+        {
+            var hostPath = PostmortemHostPath(root, sessionHash);
+            if (!File.Exists(hostPath)) WriteGate(root, "postmortem-host", sessionHash, hostPath, NewArguments());
+        }
+        var context = $"OPERATIONS_LEARNING_GUARD_ACTIVE mode={mode} session={sessionHash[..12]} " + NavigationRecovery;
+        Console.WriteLine(JsonSerializer.Serialize(new
+        {
+            @continue = true,
+            stopReason = (string?)null,
+            hookSpecificOutput = new { hookEventName = "SessionStart", additionalContext = context },
+        }));
         return 0;
     }
 
@@ -174,9 +302,29 @@ public static class OperationsHookCommands
         return 0;
     }
 
-    private static int Initialize(string root, string mode, string sessionHash, string gatePath, string prompt)
+    private static int Initialize(string root, string mode, string sessionHash, string gatePath, string prompt, JsonElement input)
     {
         if (mode == "postmortem") RequirePostmortemAgentEntry(root);
+        if (mode == "postmortem" && ReadExplicitPostmortemIntent(prompt, root) is { } intent)
+            return InitializeExplicitPostmortem(root, sessionHash, gatePath, prompt, input, intent.Incident, intent.Postmortem);
+        if (mode == "repair" && ReadExplicitRepairPostmortem(root, prompt) is { } repairPostmortem)
+        {
+            Ensure(ReadString(input, "hookEventName", "hook_event_name") == "UserPromptSubmit", "repair-route-host-prompt-event-missing");
+            var hostPath = GatePath(root, sessionHash, "repair-host");
+            if (!File.Exists(hostPath)) WriteGate(root, "repair-host", sessionHash, hostPath, NewArguments());
+            var host = ReadGate(hostPath);
+            Ensure(host.Mode == "repair-host" && host.SchemaVersion == "1.0" && host.SessionHash == sessionHash
+                && host.Head == OperationsLearningPolicy.GitHead(root) && host.ArgumentsHash == HashArguments(NewArguments()),
+                "repair-route-host-session-identity-invalid");
+            ValidateToolIdentity(root, host);
+            CaptureRepairIntent(root, sessionHash, prompt);
+            var repairIntent = ReadRepairIntent(root, sessionHash)
+                ?? throw new InvalidOperationException("repair-continuation-intent-missing");
+            return BindRequestedRepairs(root, sessionHash, gatePath, repairPostmortem, repairIntent);
+        }
+        if (mode is "incident" or "postmortem") CaptureRepairIntent(root, sessionHash, prompt);
+        if (mode == "repair" && prompt.Contains(RepairContinuationMarker, StringComparison.Ordinal))
+            return InitializeTrustedRepairContinuation(root, sessionHash, gatePath);
         if (File.Exists(gatePath))
         {
             var existing = ReadGate(gatePath);
@@ -194,6 +342,11 @@ public static class OperationsHookCommands
                 WritePostmortemContextRequired("initialize", ex.Message);
                 return 0;
             }
+            catch (InvalidOperationException ex) when (IsMissingScopeInput(mode, ex.Message))
+            {
+                WriteQuietResult();
+                return 0;
+            }
             if (mode == "postmortem" && suppliedArguments is null && TryReadPostmortemContext(gatePath, out var diagnostic))
             {
                 WritePostmortemContextRequired("initialize", diagnostic);
@@ -206,7 +359,7 @@ public static class OperationsHookCommands
                 throw new InvalidOperationException(changed);
             }
             if (mode == "postmortem") ClearPostmortemContext(gatePath);
-            WriteResult(true, systemMessage: $"OPERATIONS_LEARNING_SCOPE_ACTIVE mode={mode} gate={gatePath}");
+            WriteHookContext("UserPromptSubmit", $"OPERATIONS_LEARNING_SCOPE_ACTIVE mode={mode} gate={gatePath}");
             return 0;
         }
 
@@ -218,6 +371,11 @@ public static class OperationsHookCommands
         catch (InvalidOperationException ex) when (mode == "postmortem" && IsPostmortemContextDiagnostic(ex.Message))
         {
             BeginPostmortemCollection(root, sessionHash, ex.Message);
+            return 0;
+        }
+        catch (InvalidOperationException ex) when (IsMissingScopeInput(mode, ex.Message))
+        {
+            WriteQuietResult();
             return 0;
         }
         if (mode == "postmortem") RequireCreateNewPostmortem(root, arguments.Postmortem!);
@@ -243,8 +401,8 @@ public static class OperationsHookCommands
                 Ensure(collection.SessionHash == sessionHash, "postmortem-route-collection-session-mismatch");
                 var allow = IsCollectionReadOrQuestionTool(toolName);
                 WritePostmortemCollectionDecision(allow, allow
-                    ? "Stage 21 context collection permits read, search, and questions; PostToolUse owns binding. " + NavigationRecovery
-                    : "Stage 21 context collection is read-only. Provide one confirmation; ELK invokes its trusted binder internally. " + NavigationRecovery);
+                    ? "Stage 21 context collection permits read, search, and questions."
+                    : "This Stage 21 context-collection tool call was blocked; no action ran. Continue with read, search, or vscode_askQuestions. Do not retry terminal commands or request privileged actions.");
             }
             catch (Exception ex)
             {
@@ -265,7 +423,16 @@ public static class OperationsHookCommands
             Ensure(gate.SchemaVersion == "1.0" & gate.Mode == mode & gate.SessionHash == sessionHash & gate.Head == OperationsLearningPolicy.GitHead(root), "operations-hook-gate-identity-invalid");
             ValidateToolIdentity(root, gate);
             Ensure(HashArguments(gate) == gate.ArgumentsHash, "operations-hook-gate-arguments-tampered");
-            WriteResult(true, systemMessage: $"OPERATIONS_LEARNING_SCOPE_ACTIVE mode={mode} gate={gatePath}");
+            if (File.Exists(Path.Combine(root, BindingRelativePath(sessionHash).Replace('/', Path.DirectorySeparatorChar))))
+                ValidatePostmortemBinding(root, sessionHash, gatePath, gate);
+            if (!IsPostmortemScopeOperationAllowed(root, gate, toolName, input))
+            {
+                WritePostmortemOperationDenied(toolName);
+                return 0;
+            }
+            WriteHookContext("PreToolUse", File.Exists(Path.Combine(root, BindingRelativePath(sessionHash).Replace('/', Path.DirectorySeparatorChar)))
+                ? PostmortemActivationContext(root, sessionHash, gatePath, gate)
+                : $"OPERATIONS_LEARNING_SCOPE_ACTIVE mode={mode} gate={gatePath}");
         }
         catch (Exception ex)
         {
@@ -277,8 +444,10 @@ public static class OperationsHookCommands
     private static int PostTool(string root, string mode, string sessionHash, JsonElement input)
     {
         Ensure(mode == "postmortem", "operations-hook-post-tool-mode-invalid");
+        if (TryRestorePostmortemActivation(root, sessionHash, input)) return 0;
         if (ReadString(input, "tool_name", "toolName") != "vscode_askQuestions")
         {
+            if (TryRetryPostmortemBinding(root, sessionHash, input)) return 0;
             WriteResult(true);
             return 0;
         }
@@ -331,67 +500,134 @@ public static class OperationsHookCommands
         {
             var bound = BindPostmortemRoute(root, CollectionRelativePath(sessionHash), collection.Token,
                 proposal.Incidents, proposal.Postmortem, ConfirmationRelativePath(sessionHash));
-            WriteResult(true, systemMessage: $"POSTMORTEM_ROUTE_BOUND OPERATIONS_LEARNING_SCOPE_ACTIVE mode=postmortem gate={bound.Gate} bindingReceipt={bound.Receipt} incidents={string.Join(',', proposal.Incidents)} postmortem={proposal.Postmortem}");
+            WritePostToolContext($"POSTMORTEM_ROUTE_BOUND OPERATIONS_LEARNING_SCOPE_ACTIVE mode=postmortem gate={bound.Gate} bindingReceipt={bound.Receipt} incidents={string.Join(',', proposal.Incidents)} postmortem={proposal.Postmortem}");
         }
         catch (Exception ex)
         {
             var correlationId = Guid.NewGuid().ToString("N");
             WriteBindingFailure(root, sessionHash, proposal.Incidents, proposal.Postmortem, ex, correlationId);
-            WriteLifecycleDeferred("postmortem", "post-tool", IncidentDiagnosticCode(ex),
-                "Binding failed; retry confirmation after correcting the reported evidence. " + Bound(ex.Message),
-                "POSTMORTEM_ROUTE_BIND_FAILED", correlationId);
+            WritePostToolContext($"POSTMORTEM_ROUTE_BIND_FAILED completionAccepted=false correlation={correlationId} diagnostic={Bound(IncidentDiagnosticCode(ex))}: {Bound(ex.Message)}. Preserve the confirmed request; continue with the supported read/search/question workflow and retry internal binding after correcting only the reported prerequisite. Do not ask the operator to repeat an already delivered confirmation or construct binder tokens.");
         }
         return 0;
     }
 
+    private static bool TryRetryPostmortemBinding(string root, string sessionHash, JsonElement input)
+    {
+        var toolName = ReadString(input, "tool_name", "toolName");
+        if (!PostmortemRetryTools.Contains(toolName)
+            || !TryReadToolElement(input, "tool_response", "toolResponse", out var toolResponse)
+            || toolResponse.ValueKind == JsonValueKind.Object
+                && (toolResponse.TryGetProperty("isError", out var isError) && isError.ValueKind == JsonValueKind.True
+                    || toolResponse.TryGetProperty("error", out var error) && error.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined))
+            return false;
+
+        var collectionPath = CollectionPath(root, sessionHash);
+        var confirmationPath = ConfirmationPath(root, sessionHash);
+        var failurePath = Path.Combine(root, BindingFailureRelativePath(sessionHash).Replace('/', Path.DirectorySeparatorChar));
+        if (!File.Exists(collectionPath) || !File.Exists(confirmationPath) || !File.Exists(failurePath)) return false;
+
+        try
+        {
+            var collection = ReadCollection(collectionPath);
+            var failure = JsonSerializer.Deserialize<PostmortemBindingFailureRecord>(File.ReadAllText(failurePath))
+                ?? throw new InvalidOperationException("postmortem-route-binding-failure-json-invalid");
+            ValidateCollection(root, collection, allowToolIdentityUpgrade: true);
+            Ensure(collection.SessionHash == sessionHash && failure.SessionHash == sessionHash
+                && failure.Head == collection.Head && failure.SchemaVersion == "1.0"
+                && !string.IsNullOrWhiteSpace(failure.DiagnosticCode) && !string.IsNullOrWhiteSpace(failure.Diagnostic)
+                && Regex.IsMatch(failure.CorrelationId, "^[a-f0-9]{32}$", RegexOptions.CultureInvariant),
+                "postmortem-route-binding-failure-identity-invalid");
+            var confirmation = ReadConfirmation(confirmationPath);
+            Ensure(failure.Incidents.SequenceEqual(confirmation.Incidents, StringComparer.Ordinal)
+                && failure.Postmortem == confirmation.Postmortem,
+                "postmortem-route-binding-failure-confirmation-mismatch");
+            var bound = BindPostmortemRoute(root, CollectionRelativePath(sessionHash), collection.Token,
+                confirmation.Incidents, confirmation.Postmortem, ConfirmationRelativePath(sessionHash),
+                allowToolIdentityUpgrade: true);
+            WritePostToolContext($"POSTMORTEM_ROUTE_BOUND OPERATIONS_LEARNING_SCOPE_ACTIVE mode=postmortem gate={bound.Gate} bindingReceipt={bound.Receipt} incidents={string.Join(',', confirmation.Incidents)} postmortem={confirmation.Postmortem} confirmationReused=true");
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                var failure = JsonSerializer.Deserialize<PostmortemBindingFailureRecord>(File.ReadAllText(failurePath));
+                var correlationId = failure is not null && failure.SessionHash == sessionHash
+                    ? failure.CorrelationId
+                    : Guid.NewGuid().ToString("N");
+                var confirmation = ReadConfirmation(confirmationPath);
+                WriteBindingFailure(root, sessionHash, confirmation.Incidents, confirmation.Postmortem, ex, correlationId);
+                WritePostToolContext($"POSTMORTEM_ROUTE_BIND_FAILED completionAccepted=false correlation={correlationId} diagnostic={Bound(IncidentDiagnosticCode(ex))}: {Bound(ex.Message)}. The original confirmation is retained; continue with read/search/questions after correcting only this prerequisite.");
+            }
+            catch
+            {
+                WriteResult(true);
+            }
+        }
+        return true;
+    }
+
     private static (string Gate, string Receipt) BindPostmortemRoute(string root,
         string collectionRelative, string token, string[] incidents, string postmortem,
-        string confirmationRelative)
+        string confirmationRelative, bool allowToolIdentityUpgrade = false)
     {
         RequirePostmortemAgentEntry(root);
         _ = PostmortemPath(postmortem);
         var collectionPath = Path.Combine(root, collectionRelative.Replace('/', Path.DirectorySeparatorChar));
         Ensure(File.Exists(collectionPath), "postmortem-route-collection-missing");
         var collection = ReadCollection(collectionPath);
-        ValidateCollection(root, collection);
+        ValidateCollection(root, collection, allowToolIdentityUpgrade);
         Ensure(collectionRelative == CollectionRelativePath(collection.SessionHash), "postmortem-route-collection-path-mismatch");
         Ensure(string.Equals(token, collection.Token, StringComparison.Ordinal), "postmortem-route-token-mismatch");
-        foreach (var incident in incidents)
-        {
-            var matches = Directory.GetFiles(Path.Combine(root, ".engloop", "incidents"), incident + "*.md")
-                .Where(path => Regex.IsMatch(Path.GetFileName(path), "^" + Regex.Escape(incident) + @"(?:[_-].+)?\.md$", RegexOptions.CultureInvariant))
-                .ToArray();
-            Ensure(matches.Length == 1, "postmortem-route-incident-not-unique:" + incident);
-            var relative = Path.GetRelativePath(root, matches[0]).Replace('\\', '/');
-            var validation = OperationsLearningPolicy.ValidateIncidentContext(root, relative, requireConsulted: true);
-            Ensure(validation.Passed, "postmortem-route-incident-not-ready:" + incident + ":" + string.Join(',', validation.Failures));
-        }
+        ValidatePostmortemRouteScope(root, incidents, postmortem);
         var confirmationPath = Path.Combine(root, confirmationRelative.Replace('/', Path.DirectorySeparatorChar));
         Ensure(confirmationRelative == ConfirmationRelativePath(collection.SessionHash), "postmortem-route-confirmation-path-mismatch");
         Ensure(File.Exists(confirmationPath), "postmortem-route-confirmation-missing");
         var confirmation = ReadConfirmation(confirmationPath);
         ValidateConfirmation(root, collection, confirmation, incidents, postmortem);
+        var bound = WritePostmortemBinding(root, collection.SessionHash, collection.Head, incidents, postmortem,
+            FileSha256(confirmationPath), confirmation.ToolUseId);
+        File.Delete(collectionPath);
+        File.Delete(confirmationPath);
+        ClearBindingFailure(root, collection.SessionHash);
+        return bound;
+    }
+
+    private static void ValidatePostmortemRouteScope(string root, string[] incidents, string postmortem)
+    {
+        foreach (var incident in incidents)
+        {
+            var relative = Path.GetRelativePath(root, UniqueIncidentPath(root, incident)).Replace('\\', '/');
+            var validation = OperationsLearningPolicy.ValidateIncidentContextForPostmortemAnalysis(root, relative);
+            Ensure(validation.Passed, "postmortem-route-analysis-context-invalid:" + incident + ":" + string.Join(',', validation.Failures));
+        }
         var nextPm = NextRegistryId(root, "PM");
         var proposedId = Regex.Match(Path.GetFileName(postmortem), @"^PM\d{3}", RegexOptions.CultureInvariant).Value;
         Ensure(proposedId == nextPm, $"postmortem-route-next-id-mismatch:expected={nextPm}:actual={proposedId}");
         Ensure(Regex.IsMatch(Path.GetFileName(postmortem), @"^PM\d{3}[_-][A-Za-z0-9][A-Za-z0-9._-]*\.md$", RegexOptions.CultureInvariant), "postmortem-route-filename-invalid");
         RequireCreateNewPostmortem(root, postmortem);
-        var gatePath = GatePath(root, collection.SessionHash, "postmortem");
+    }
+
+    private static (string Gate, string Receipt) WritePostmortemBinding(string root, string sessionHash, string head,
+        string[] incidents, string postmortem, string confirmationSha256, string toolUseId,
+        string authorization = "confirmation", string? intent = null, string? intentSha256 = null)
+    {
+        var gatePath = GatePath(root, sessionHash, "postmortem");
         Ensure(!File.Exists(gatePath), "postmortem-route-gate-already-exists");
-        var bindingRelative = BindingRelativePath(collection.SessionHash);
+        var bindingRelative = BindingRelativePath(sessionHash);
         var bindingPath = Path.Combine(root, bindingRelative.Replace('/', Path.DirectorySeparatorChar));
         Ensure(!File.Exists(bindingPath), "postmortem-route-binding-receipt-exists");
         var gateRelative = Path.GetRelativePath(root, gatePath).Replace('\\', '/');
         try
         {
-            WriteGate(root, "postmortem", collection.SessionHash, gatePath,
+            WriteGate(root, "postmortem", sessionHash, gatePath,
                 NewArguments(postmortem: postmortem, incidents: incidents));
+            Ensure(head == OperationsLearningPolicy.GitHead(root), "postmortem-route-head-changed");
             var correlationId = Guid.NewGuid().ToString("N");
             using var stream = new FileStream(bindingPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
             JsonSerializer.Serialize(stream, new PostmortemBindingRecord(
-                "1.0", collection.SessionHash, collection.Head, incidents, postmortem,
-                gateRelative, FileSha256(gatePath), FileSha256(confirmationPath),
-                confirmation.ToolUseId, correlationId));
+                "1.0", sessionHash, head, incidents, postmortem,
+                gateRelative, FileSha256(gatePath), confirmationSha256,
+                toolUseId, correlationId, authorization, intent, intentSha256));
             stream.Flush(flushToDisk: true);
         }
         catch
@@ -400,15 +636,293 @@ public static class OperationsHookCommands
             if (File.Exists(gatePath)) File.Delete(gatePath);
             throw;
         }
-        File.Delete(collectionPath);
-        File.Delete(confirmationPath);
-        ClearBindingFailure(root, collection.SessionHash);
         return (gateRelative, bindingRelative);
+    }
+
+    private static string UniqueIncidentPath(string root, string incident)
+    {
+        var matches = Directory.GetFiles(Path.Combine(root, ".engloop", "incidents"), incident + "*.md")
+            .Where(path => Regex.IsMatch(Path.GetFileName(path), "^" + Regex.Escape(incident) + @"(?:[_-].+)?\.md$", RegexOptions.CultureInvariant))
+            .ToArray();
+        Ensure(matches.Length == 1, "postmortem-route-incident-not-unique:" + incident);
+        return matches[0];
+    }
+
+    private static bool IsAffirmativePlanCompletion(string prompt)
+        => Regex.IsMatch(prompt,
+            @"\A\s*(?:please\s+)?complete\s+the\s+plan(?:\.{3}|,|\.)?\s*today\s+(?:FB|Facebook)\s+first(?:,)?\s+then\s+fix\s+live[.!]?\s*\z",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    private static (string Incident, string? Postmortem)? ReadExplicitPostmortemIntent(string prompt, string? root = null)
+    {
+        var match = Regex.Match(prompt,
+            @"\A\s*(?:(?:please|go ahead and)\s+)?(?:complete|create|start|continue|write)\s+(?:the\s+)?post[ -]?mortem\s+for\s+(?:incident\s+)?(?<incident>IN\d{3})(?:\s+at\s+(?<postmortem>\.engloop/postmortems/PM\d{3}[-_][A-Za-z0-9][A-Za-z0-9._-]*\.md))?(?:(?:\s+and|,?\s+then)\s+(?:implement|complete|execute)\s+(?:all\s+)?(?:the\s+)?repair\s+items)?[.!]?\s*\z",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (match.Success) return (match.Groups["incident"].Value.ToUpperInvariant(),
+            match.Groups["postmortem"].Success ? match.Groups["postmortem"].Value : null);
+        if (root is null || !IsAffirmativePlanCompletion(prompt)) return null;
+        var incidents = Directory.GetFiles(Path.Combine(root, ".engloop", "incidents"), "IN*.md")
+            .Where(path => Regex.IsMatch(Path.GetFileName(path), @"^IN\d{3}[-_].*\bfacebook\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+            .Select(path => Path.GetFileName(path)[..5]).Distinct(StringComparer.Ordinal).ToArray();
+        return incidents.Length == 1 ? (incidents[0], null) : null;
+    }
+
+    private static string ResolvePostmortemSession(string root, string nativeSessionHash)
+    {
+        var directory = Path.Combine(root, ".engloop", "out", "postmortem-context");
+        if (!Directory.Exists(directory)) return nativeSessionHash;
+        var records = Directory.GetFiles(directory, nativeSessionHash + ".reauthorization.*.json")
+            .Select(path => JsonSerializer.Deserialize<PostmortemReauthorizationRecord>(File.ReadAllText(path))
+                ?? throw new InvalidOperationException("postmortem-route-reauthorization-json-invalid")).ToArray();
+        var current = nativeSessionHash;
+        var visited = new HashSet<string>(StringComparer.Ordinal) { current };
+        while (records.Any(record => record.PreviousSessionHash == current))
+        {
+            var children = records.Where(record => record.PreviousSessionHash == current).ToArray();
+            Ensure(children.Length == 1, "postmortem-route-reauthorization-lineage-ambiguous");
+            var record = children[0];
+            Ensure(record.SchemaVersion == "1.0" && record.NativeSessionHash == nativeSessionHash
+                && Regex.IsMatch(record.PreviousSessionHash, "^[a-f0-9]{64}$", RegexOptions.CultureInvariant)
+                && Regex.IsMatch(record.SessionHash, "^[a-f0-9]{64}$", RegexOptions.CultureInvariant)
+                && visited.Add(record.SessionHash)
+                && record.PromptSha256 == Sha256(Encoding.UTF8.GetBytes(record.Prompt))
+                && ReadExplicitPostmortemIntent(record.Prompt, root) is not null,
+                "postmortem-route-reauthorization-identity-invalid");
+            var requiredPaths = new[] { GatePath(root, record.PreviousSessionHash, "postmortem"),
+                PostmortemHostPath(root, record.PreviousSessionHash),
+                Path.Combine(root, BindingRelativePath(record.PreviousSessionHash).Replace('/', Path.DirectorySeparatorChar)),
+                Path.Combine(root, PostmortemIntentRelativePath(record.PreviousSessionHash).Replace('/', Path.DirectorySeparatorChar)) }
+                .Select(path => Path.GetRelativePath(root, path).Replace('\\', '/')).ToArray();
+            var preservedArtifacts = record.PreservedArtifacts
+                ?? throw new InvalidOperationException("postmortem-route-reauthorization-history-missing");
+            Ensure(requiredPaths.All(preservedArtifacts.ContainsKey),
+                "postmortem-route-reauthorization-history-missing");
+            foreach (var artifact in preservedArtifacts)
+            {
+                var relative = artifact.Key;
+                var expectedPaths = new[] { GatePath(root, record.PreviousSessionHash, "postmortem"),
+                    PostmortemHostPath(root, record.PreviousSessionHash), RepairIntentPath(root, record.PreviousSessionHash),
+                    Path.Combine(root, BindingRelativePath(record.PreviousSessionHash).Replace('/', Path.DirectorySeparatorChar)),
+                    Path.Combine(root, PostmortemIntentRelativePath(record.PreviousSessionHash).Replace('/', Path.DirectorySeparatorChar)) }
+                    .Select(path => Path.GetRelativePath(root, path).Replace('\\', '/'));
+                Ensure(expectedPaths.Contains(relative, StringComparer.Ordinal)
+                    && FileSha256(Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar))) == artifact.Value,
+                    "postmortem-route-reauthorization-history-changed");
+            }
+            var bindingPath = Path.Combine(root, BindingRelativePath(record.SessionHash).Replace('/', Path.DirectorySeparatorChar));
+            Ensure(FileSha256(bindingPath) == record.BindingSha256, "postmortem-route-reauthorization-binding-changed");
+            var binding = JsonSerializer.Deserialize<PostmortemBindingRecord>(File.ReadAllText(bindingPath))!;
+            var intentPath = Path.Combine(root, PostmortemIntentRelativePath(record.SessionHash).Replace('/', Path.DirectorySeparatorChar));
+            var intent = JsonSerializer.Deserialize<PostmortemOperatorIntentRecord>(File.ReadAllText(intentPath))!;
+            var previousBinding = JsonSerializer.Deserialize<PostmortemBindingRecord>(File.ReadAllText(
+                Path.Combine(root, BindingRelativePath(record.PreviousSessionHash).Replace('/', Path.DirectorySeparatorChar))))!;
+            Ensure(binding.Postmortem == record.Postmortem && binding.SessionHash == record.SessionHash
+                && binding.IntentSha256 == FileSha256(intentPath) && intent.Prompt == record.Prompt
+                && intent.PromptSha256 == record.PromptSha256 && intent.Postmortem == record.Postmortem
+                && previousBinding.Postmortem == record.HistoricalPostmortem
+                && previousBinding.Incidents.SequenceEqual(binding.Incidents, StringComparer.Ordinal),
+                "postmortem-route-reauthorization-scope-changed");
+            current = record.SessionHash;
+        }
+        Ensure(visited.Count == records.Length + 1, "postmortem-route-reauthorization-lineage-disconnected");
+        return current;
+    }
+
+    private static bool RequiresFreshPostmortemIdentity(string root, string sessionHash)
+    {
+        var hostPath = PostmortemHostPath(root, sessionHash);
+        if (!File.Exists(hostPath) || !File.Exists(GatePath(root, sessionHash, "postmortem"))) return false;
+        var host = ReadGate(hostPath);
+        var identity = CurrentToolIdentity(root);
+        return host.AssemblyPath != identity.AssemblyPath || host.AssemblySha256 != identity.AssemblySha256
+            || host.ToolVersion != identity.ToolVersion || host.ManifestPath != identity.ManifestPath
+            || host.ManifestSha256 != identity.ManifestSha256;
+    }
+
+    private static int ReauthorizePostmortem(string root, string nativeSessionHash, string previousSessionHash,
+        JsonElement input, (string Incident, string? Postmortem) request)
+    {
+        RequirePostmortemAgentEntry(root);
+        var oldGatePath = GatePath(root, previousSessionHash, "postmortem");
+        var oldBindingPath = Path.Combine(root, BindingRelativePath(previousSessionHash).Replace('/', Path.DirectorySeparatorChar));
+        var oldIntentPath = Path.Combine(root, PostmortemIntentRelativePath(previousSessionHash).Replace('/', Path.DirectorySeparatorChar));
+        var oldHostPath = PostmortemHostPath(root, previousSessionHash);
+        var oldGate = ReadGate(oldGatePath);
+        var oldHost = ReadGate(oldHostPath);
+        var oldBinding = JsonSerializer.Deserialize<PostmortemBindingRecord>(File.ReadAllText(oldBindingPath))!;
+        var oldIntent = JsonSerializer.Deserialize<PostmortemOperatorIntentRecord>(File.ReadAllText(oldIntentPath))!;
+        var historicalRequest = ReadExplicitPostmortemIntent(oldIntent.Prompt, root);
+        Ensure(oldGate.SchemaVersion == "1.0" && oldGate.Mode == "postmortem" && oldGate.SessionHash == previousSessionHash
+            && oldGate.Head == OperationsLearningPolicy.GitHead(root) && oldGate.ArgumentsHash == HashArguments(oldGate)
+            && oldHost.SchemaVersion == "1.0" && oldHost.Mode is "postmortem-host" or "postmortem-reauthorization-host" && oldHost.SessionHash == previousSessionHash
+            && oldHost.Head == oldGate.Head && oldHost.ArgumentsHash == HashArguments(NewArguments())
+            && oldGate.AssemblyPath == oldHost.AssemblyPath && oldGate.AssemblySha256 == oldHost.AssemblySha256
+            && oldGate.ToolVersion == oldHost.ToolVersion && oldGate.ManifestPath == oldHost.ManifestPath
+            && oldGate.ManifestSha256 == oldHost.ManifestSha256
+            && oldBinding.SchemaVersion == "1.0" && oldBinding.Authorization == "explicit-operator-intent"
+            && oldBinding.SessionHash == previousSessionHash && oldBinding.Head == oldGate.Head
+            && oldBinding.Gate == Path.GetRelativePath(root, oldGatePath).Replace('\\', '/')
+            && oldBinding.GateSha256 == FileSha256(oldGatePath) && oldBinding.Intent == PostmortemIntentRelativePath(previousSessionHash)
+            && oldBinding.IntentSha256 == FileSha256(oldIntentPath) && oldBinding.Postmortem == oldGate.Postmortem
+            && oldBinding.Incidents.SequenceEqual(oldGate.Incidents!, StringComparer.Ordinal)
+            && oldIntent.SchemaVersion == "1.0" && oldIntent.SessionHash == previousSessionHash && oldIntent.Head == oldGate.Head
+            && oldIntent.HostSha256 == FileSha256(oldHostPath) && oldIntent.PromptSha256 == Sha256(Encoding.UTF8.GetBytes(oldIntent.Prompt))
+            && historicalRequest is not null && historicalRequest.Value.Incident == oldIntent.Incident
+            && (historicalRequest.Value.Postmortem is null || historicalRequest.Value.Postmortem == oldIntent.Postmortem)
+            && oldGate.Incidents is { Length: 1 } && oldGate.Incidents[0] == request.Incident && oldIntent.Incident == request.Incident
+            && oldIntent.Postmortem == oldGate.Postmortem
+            && oldIntent.IncidentSha256 == FileSha256(UniqueIncidentPath(root, request.Incident))
+            && oldIntent.NorthstarSha256 == FileSha256(Path.Combine(root, "NORTHSTAR.md"))
+            && !TryReadPostmortemContext(oldGatePath, out _), "postmortem-route-reauthorization-history-invalid");
+        var incidentPath = UniqueIncidentPath(root, request.Incident);
+        var suffix = Path.GetFileNameWithoutExtension(incidentPath)[request.Incident.Length..].TrimStart('-', '_').Replace('_', '-');
+        var postmortem = PostmortemPath(request.Postmortem ?? $".engloop/postmortems/{NextRegistryId(root, "PM")}-{suffix}.md");
+        ValidatePostmortemRouteScope(root, [request.Incident], postmortem);
+        var prompt = ReadString(input, "prompt");
+        var generation = Sha256(Encoding.UTF8.GetBytes(nativeSessionHash + Guid.NewGuid().ToString("N")));
+        var preserved = new[] { oldGatePath, oldBindingPath, oldIntentPath, oldHostPath, RepairIntentPath(root, previousSessionHash) }
+            .Where(File.Exists).ToDictionary(path => Path.GetRelativePath(root, path).Replace('\\', '/'), FileSha256);
+        WriteGate(root, "postmortem-reauthorization-host", generation, PostmortemHostPath(root, generation), NewArguments());
+        InitializeExplicitPostmortem(root, generation, GatePath(root, generation, "postmortem"), prompt, input, request.Incident, postmortem, emitContext: false);
+        var record = new PostmortemReauthorizationRecord("1.0", nativeSessionHash, previousSessionHash, generation,
+            prompt, Sha256(Encoding.UTF8.GetBytes(prompt)), oldGate.Postmortem!, postmortem, preserved,
+            FileSha256(Path.Combine(root, BindingRelativePath(generation).Replace('/', Path.DirectorySeparatorChar))));
+        var lineagePath = Path.Combine(root, ".engloop", "out", "postmortem-context", nativeSessionHash + ".reauthorization." + generation + ".json");
+        using (var stream = new FileStream(lineagePath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+        {
+            JsonSerializer.Serialize(stream, record);
+            stream.Flush(flushToDisk: true);
+        }
+        Ensure(ResolvePostmortemSession(root, nativeSessionHash) == generation, "postmortem-route-reauthorization-not-active");
+        WriteHookContext("UserPromptSubmit", PostmortemActivationContext(root, generation,
+            GatePath(root, generation, "postmortem"), ReadGate(GatePath(root, generation, "postmortem"))));
+        return 0;
+    }
+
+    private static string PostmortemHostPath(string root, string sessionHash)
+        => Path.Combine(root, ".engloop", "out", "postmortem-context", sessionHash + ".host.json");
+
+    private static string PostmortemIntentRelativePath(string sessionHash)
+        => $".engloop/out/postmortem-context/{sessionHash}.operator-intent.json";
+
+    private static GateRecord ReadPostmortemHost(string root, string sessionHash, bool nativeReauthorization = false)
+    {
+        var path = PostmortemHostPath(root, sessionHash);
+        Ensure(File.Exists(path), "postmortem-route-host-session-missing");
+        var host = ReadGate(path);
+        var authorizedPromptIdentity = host.Mode == "postmortem-reauthorization-host"
+            && (nativeReauthorization || Directory.GetFiles(Path.GetDirectoryName(path)!, "*.reauthorization." + sessionHash + ".json").Length == 1);
+        Ensure(host.SchemaVersion == "1.0" && (host.Mode == "postmortem-host" || authorizedPromptIdentity) && host.SessionHash == sessionHash
+            && host.Head == OperationsLearningPolicy.GitHead(root) && host.ArgumentsHash == HashArguments(NewArguments()),
+            "postmortem-route-host-session-identity-invalid");
+        ValidateToolIdentity(root, host);
+        return host;
+    }
+
+    private static int InitializeExplicitPostmortem(string root, string sessionHash, string gatePath,
+        string prompt, JsonElement input, string incident, string? requestedPostmortem, bool emitContext = true)
+    {
+        Ensure(ReadString(input, "hookEventName", "hook_event_name") == "UserPromptSubmit", "postmortem-route-host-prompt-event-missing");
+        var host = ReadPostmortemHost(root, sessionHash, nativeReauthorization: !emitContext);
+        if (File.Exists(gatePath))
+        {
+            var gate = ReadGate(gatePath);
+            Ensure(gate.SchemaVersion == "1.0" && gate.Mode == "postmortem" && gate.SessionHash == sessionHash
+                && gate.Head == host.Head && HashArguments(gate) == gate.ArgumentsHash, "operations-hook-gate-identity-invalid");
+            if (gate.Incidents is not { Length: 1 } || gate.Incidents[0] != incident
+                || requestedPostmortem is not null && gate.Postmortem != requestedPostmortem)
+            {
+                SuspendPostmortemContext(gatePath, "operations-hook-followup-arguments-changed");
+                throw new InvalidOperationException("operations-hook-followup-arguments-changed");
+            }
+            ValidateToolIdentity(root, gate);
+            ValidatePostmortemBinding(root, sessionHash, gatePath, gate);
+            Ensure(!TryReadPostmortemContext(gatePath, out _), "postmortem-route-scope-suspended");
+            WriteHookContext("UserPromptSubmit", PostmortemActivationContext(root, sessionHash, gatePath, gate));
+            return 0;
+        }
+        var incidentPath = UniqueIncidentPath(root, incident);
+        var suffix = Path.GetFileNameWithoutExtension(incidentPath)[incident.Length..].TrimStart('-', '_').Replace('_', '-');
+        var postmortem = PostmortemPath(requestedPostmortem ?? $".engloop/postmortems/{NextRegistryId(root, "PM")}-{suffix}.md");
+        ValidatePostmortemRouteScope(root, [incident], postmortem);
+        CaptureRepairIntent(root, sessionHash, prompt);
+        var intentRelative = PostmortemIntentRelativePath(sessionHash);
+        var intentPath = Path.Combine(root, intentRelative.Replace('/', Path.DirectorySeparatorChar));
+        var record = new PostmortemOperatorIntentRecord("1.0", sessionHash, host.Head,
+            FileSha256(PostmortemHostPath(root, sessionHash)), prompt, Sha256(Encoding.UTF8.GetBytes(prompt)), incident, postmortem,
+            FileSha256(incidentPath), FileSha256(Path.Combine(root, "NORTHSTAR.md")), FileSha256(Path.Combine(root, "LEARNINGS.md")),
+            FileSha256(Path.Combine(root, ".engloop", "numbering-registry.md")));
+        using (var stream = new FileStream(intentPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+        {
+            JsonSerializer.Serialize(stream, record);
+            stream.Flush(flushToDisk: true);
+        }
+        (string Gate, string Receipt) bound;
+        try
+        {
+            bound = WritePostmortemBinding(root, sessionHash, host.Head, [incident], postmortem,
+                string.Empty, string.Empty, "explicit-operator-intent", intentRelative, FileSha256(intentPath));
+        }
+        catch
+        {
+            File.Delete(intentPath);
+            throw;
+        }
+        ClearPostmortemCollection(root, sessionHash);
+        if (emitContext) WriteHookContext("UserPromptSubmit", PostmortemActivationContext(root, sessionHash, gatePath, ReadGate(gatePath)));
+        return 0;
+    }
+
+    private static string PostmortemActivationContext(string root, string sessionHash, string gatePath, GateRecord gate)
+    {
+        ValidatePostmortemBinding(root, sessionHash, gatePath, gate);
+        var receipt = BindingRelativePath(sessionHash);
+        var binding = JsonSerializer.Deserialize<PostmortemBindingRecord>(File.ReadAllText(Path.Combine(root, receipt.Replace('/', Path.DirectorySeparatorChar))))!;
+        var directory = Path.Combine(root, ".engloop", "out", "postmortem-context");
+        var lineage = Directory.GetFiles(directory, "*.reauthorization." + sessionHash + ".json")
+            .Select(path => JsonSerializer.Deserialize<PostmortemReauthorizationRecord>(File.ReadAllText(path))!).SingleOrDefault();
+        var history = lineage is null ? string.Empty
+            : $" historicalPostmortem={lineage.HistoricalPostmortem} historicalScopeAccepted=false reauthorized=true";
+        return $"POSTMORTEM_ROUTE_BOUND OPERATIONS_LEARNING_SCOPE_ACTIVE mode=postmortem gate={binding.Gate} bindingReceipt={receipt} incidents={string.Join(',', gate.Incidents!)} postmortem={gate.Postmortem} authorization={binding.Authorization} correlation={binding.CorrelationId}" + history;
+    }
+
+    private static bool TryRestorePostmortemActivation(string root, string sessionHash, JsonElement input)
+    {
+        if (ReadString(input, "hookEventName", "hook_event_name") != "PostToolUse"
+            || !PostmortemRetryTools.Contains(ReadString(input, "tool_name", "toolName"))
+            || !TryReadToolElement(input, "tool_response", "toolResponse", out var response)
+            || response.ValueKind == JsonValueKind.Object
+                && (response.TryGetProperty("isError", out var isError) && isError.ValueKind == JsonValueKind.True
+                    || response.TryGetProperty("error", out var error) && error.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined)
+            || !File.Exists(Path.Combine(root, BindingRelativePath(sessionHash).Replace('/', Path.DirectorySeparatorChar))))
+            return false;
+        try
+        {
+            RequirePostmortemAgentEntry(root);
+            var gatePath = GatePath(root, sessionHash, "postmortem");
+            Ensure(!TryReadPostmortemContext(gatePath, out _), "postmortem-route-scope-suspended");
+            var gate = ReadGate(gatePath);
+            Ensure(gate.SchemaVersion == "1.0" && gate.Mode == "postmortem" && gate.SessionHash == sessionHash
+                && gate.Head == OperationsLearningPolicy.GitHead(root), "operations-hook-gate-identity-invalid");
+            ValidateToolIdentity(root, gate);
+            Ensure(HashArguments(gate) == gate.ArgumentsHash, "operations-hook-gate-arguments-tampered");
+            WritePostToolContext(PostmortemActivationContext(root, sessionHash, gatePath, gate));
+        }
+        catch (Exception ex)
+        {
+            WritePostToolContext($"OPERATIONS_LEARNING_CONTEXT_REQUIRED activationRestored=false diagnostic={Bound(IncidentDiagnosticCode(ex))}: {Bound(ex.Message)}");
+        }
+        return true;
     }
 
     private static int Stop(string root, string mode, string sessionHash, string gatePath, bool subagent)
     {
         var phase = subagent ? "subagent-stop" : "stop";
+        if ((mode is "incident" or "repair") && !File.Exists(gatePath))
+        {
+            WriteQuietResult();
+            return 0;
+        }
         if (mode == "postmortem" && File.Exists(CancelledCollectionPath(root, sessionHash)))
         {
             CompletePostmortemCancellation(root, sessionHash);
@@ -426,7 +940,8 @@ public static class OperationsHookCommands
         }
         if (mode == "postmortem" && !File.Exists(gatePath))
         {
-            WritePostmortemContextRequired(phase, "operations-hook-gate-missing");
+            if (phase == "stop") WriteQuietResult();
+            else WritePostmortemContextRequired(phase, "operations-hook-gate-missing");
             return 0;
         }
         Ensure(File.Exists(gatePath), "operations-hook-gate-missing");
@@ -441,7 +956,7 @@ public static class OperationsHookCommands
         {
             "incident" => ValidationCommands.ValidateIncidentContext(["--root", root, "--incident", gate.Incident!, "--allow-deferred", "true"]),
             "postmortem" => ValidationCommands.ValidatePostmortemLearning(["--root", root, "--incidents", string.Join(',', gate.Incidents!), "--postmortem", gate.Postmortem!]),
-            _ => ValidationCommands.ValidateRepairLearning(["--root", root, "--phase", gate.Phase!, "--postmortem", gate.Postmortem!, "--rpi", gate.Rpi!, "--rules", string.Join(',', gate.Rules!), "--acceptance", gate.Acceptance!]),
+            _ => ValidateBoundRepairs(root, gate),
         });
         marker = mode == "incident" ? "INCIDENT_CONTEXT_OK" : mode == "postmortem" ? "POSTMORTEM_LEARNING_OK" : "REPAIR_LEARNING_OK";
         if (result != 0)
@@ -450,7 +965,9 @@ public static class OperationsHookCommands
                 $"Operations learning validation failed for mode={mode}: {Bound(diagnostic)}");
             return 0;
         }
-        File.Delete(gatePath);
+        if (mode == "postmortem" && ReadRepairIntent(root, sessionHash) is not null)
+            ValidatePostmortemBinding(root, sessionHash, gatePath, gate);
+        else File.Delete(gatePath);
         WriteResult(true, systemMessage: marker);
         return 0;
     }
@@ -487,7 +1004,8 @@ public static class OperationsHookCommands
             JsonException => "operations-hook-json-invalid",
             IOException or UnauthorizedAccessException => "operations-hook-storage-unavailable",
             InvalidOperationException when exception.Message.StartsWith("operations-hook-", StringComparison.Ordinal)
-                || exception.Message.StartsWith("postmortem-route-", StringComparison.Ordinal) => Bound(exception.Message),
+                || exception.Message.StartsWith("postmortem-route-", StringComparison.Ordinal)
+                || exception.Message.StartsWith("repair-continuation-", StringComparison.Ordinal) => Bound(exception.Message),
             InvalidOperationException => "operations-hook-invalid-state",
             _ => "operations-hook-unexpected-failure",
         };
@@ -516,7 +1034,9 @@ public static class OperationsHookCommands
             correlation = correlation ?? Guid.NewGuid().ToString("N"),
             completionAccepted = false,
             unresolvedState = "Existing gate, collection, and evidence are retained; missing or invalid scope is not accepted. No completion or stabilization is claimed.",
-            remediation = $"Continue discussion and local read/search/questions. Resolve the reported {mode} context or evidence before protected operations or completion claims. " + NavigationRecovery,
+            remediation = mode == "postmortem" && marker == "OPERATIONS_POSTMORTEM_CONFIRMATION_UNVERIFIED"
+                ? "The confirmation prompt response was missing, empty, malformed, or unavailable. This is not an operator decline and does not authorize binding. Retry the prompt once; if the UI or transport still fails, tell the operator confirmation delivery failed and offer a supported host or retry path. Do not ask them to select an unseen dialog or repeat the same blocking claim."
+                : $"Continue discussion and local read/search/questions. Resolve the reported {mode} context or evidence before protected operations or completion claims. " + NavigationRecovery,
         });
         WriteResult(true, systemMessage: (marker ?? (mode == "postmortem" ? "OPERATIONS_LEARNING_CONTEXT_REQUIRED" : "OPERATIONS_LEARNING_CONTEXT_DEFERRED")) + " " + details);
     }
@@ -537,6 +1057,16 @@ public static class OperationsHookCommands
             || diagnostic.StartsWith("operations-hook-option-missing:--postmortem", StringComparison.Ordinal)
             || diagnostic.StartsWith("operations-hook-option-missing:--incidents", StringComparison.Ordinal);
 
+    private static bool IsMissingScopeInput(string mode, string diagnostic)
+    {
+        if (mode is not ("incident" or "repair")) return false;
+        if (diagnostic == "operations-hook-prompt-missing") return true;
+        var options = mode == "incident"
+            ? new[] { "--incident" }
+            : new[] { "--phase", "--postmortem", "--rpi", "--rules", "--acceptance" };
+        return options.Any(option => diagnostic.Equals("operations-hook-option-missing:" + option, StringComparison.Ordinal));
+    }
+
     private static string CollectionRelativePath(string sessionHash)
         => $".engloop/out/postmortem-context/{sessionHash}.json";
 
@@ -554,6 +1084,71 @@ public static class OperationsHookCommands
 
     private static string BindingFailureRelativePath(string sessionHash)
         => $".engloop/out/postmortem-context/{sessionHash}.binding-failure.json";
+
+    private static string RepairIntentPath(string root, string sessionHash)
+        => Path.Combine(root, ".engloop", "out", "operations-learning-gates", sessionHash + ".repair-intent.json");
+
+    private static void CaptureRepairIntent(string root, string sessionHash, string prompt)
+    {
+        if (!HasAffirmativeRepairRequest(prompt) && !IsAffirmativePlanCompletion(prompt)) return;
+        var path = RepairIntentPath(root, sessionHash);
+        if (File.Exists(path))
+        {
+            _ = ReadRepairIntent(root, sessionHash);
+            return;
+        }
+
+        var identity = CurrentToolIdentity(root);
+        var rpis = Regex.Matches(prompt, @"\bRPI\d{3}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
+            .Select(match => match.Value.ToUpperInvariant())
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(value => value, StringComparer.Ordinal)
+            .ToArray();
+        var record = new RepairIntentRecord(
+            "1.0", sessionHash, OperationsLearningPolicy.GitHead(root) ?? throw new InvalidOperationException("operations-hook-git-head-unavailable"),
+            Sha256(Encoding.UTF8.GetBytes(prompt)), rpis.Length == 0, rpis,
+            identity.AssemblyPath, identity.AssemblySha256, identity.ToolVersion, identity.ManifestPath, identity.ManifestSha256);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+        JsonSerializer.Serialize(stream, record);
+        stream.Flush(flushToDisk: true);
+    }
+
+    private static bool HasAffirmativeRepairRequest(string prompt)
+    {
+        var request = Regex.Match(prompt,
+            @"\b(?:implement|apply|execute|complete)\b(?!\s+(?:not|never))[^\r\n.]{0,120}(?:\brepair\s+items?\b|\bRPI(?:\d{3}|s\b))",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (!request.Success) return false;
+        var prefix = prompt[..request.Index];
+        if (prefix.IndexOfAny(['"', '`']) >= 0
+            || Regex.IsMatch(prefix, @"\b(?:operator\s+said|quoted|example|plan\s+to|planning\s+to|could\s+we|should\s+we)\b",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)) return false;
+        if (Regex.IsMatch(request.Value, @"\b(?:not|never|don't|do\s+not|mustn't|cannot|can't|if|might|whether)\b",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)) return false;
+        var sentenceStart = Math.Max(prompt.LastIndexOf('.', Math.Max(0, request.Index - 1)), prompt.LastIndexOf('\n', Math.Max(0, request.Index - 1))) + 1;
+        return !Regex.IsMatch(prompt[sentenceStart..request.Index], @"\b(?:not|never|don't|do\s+not|mustn't|cannot|can't|if|might|whether)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    }
+
+    private static RepairIntentRecord? ReadRepairIntent(string root, string sessionHash)
+    {
+        var path = RepairIntentPath(root, sessionHash);
+        if (!File.Exists(path)) return null;
+        var intent = JsonSerializer.Deserialize<RepairIntentRecord>(File.ReadAllText(path))
+            ?? throw new InvalidOperationException("repair-continuation-intent-json-invalid");
+        var identity = CurrentToolIdentity(root);
+        Ensure(intent.SchemaVersion == "1.0" && intent.SessionHash == sessionHash
+            && intent.Head == OperationsLearningPolicy.GitHead(root)
+            && Regex.IsMatch(intent.PromptSha256, "^[a-f0-9]{64}$", RegexOptions.CultureInvariant)
+            && intent.AllRepairs == (intent.Rpis.Length == 0)
+            && intent.Rpis.All(rpi => Regex.IsMatch(rpi, @"^RPI\d{3}$", RegexOptions.CultureInvariant))
+            && intent.Rpis.Distinct(StringComparer.Ordinal).Count() == intent.Rpis.Length
+            && intent.AssemblyPath == identity.AssemblyPath && intent.AssemblySha256 == identity.AssemblySha256
+            && intent.ToolVersion == identity.ToolVersion && intent.ManifestPath == identity.ManifestPath
+            && intent.ManifestSha256 == identity.ManifestSha256,
+            "repair-continuation-intent-identity-invalid");
+        return intent;
+    }
 
     private static string CancelledCollectionPath(string root, string sessionHash)
         => CollectionPath(root, sessionHash) + ".cancelled";
@@ -586,18 +1181,27 @@ public static class OperationsHookCommands
         => JsonSerializer.Deserialize<PostmortemConfirmationRecord>(File.ReadAllText(path))
             ?? throw new InvalidOperationException("postmortem-route-confirmation-json-invalid");
 
-    private static void ValidateCollection(string root, PostmortemCollectionRecord collection)
+    private static void ValidateCollection(string root, PostmortemCollectionRecord collection, bool allowToolIdentityUpgrade = false)
     {
         Ensure(collection.SchemaVersion == "1.0", "postmortem-route-collection-schema-invalid");
         Ensure(Regex.IsMatch(collection.SessionHash, "^[a-f0-9]{64}$", RegexOptions.CultureInvariant), "postmortem-route-session-invalid");
         Ensure(Regex.IsMatch(collection.Token, "^[a-f0-9]{32}$", RegexOptions.CultureInvariant), "postmortem-route-token-invalid");
+        Ensure(!string.IsNullOrWhiteSpace(collection.AssemblyPath)
+            && Regex.IsMatch(collection.AssemblySha256, "^[a-f0-9]{64}$", RegexOptions.CultureInvariant)
+            && Regex.IsMatch(collection.ToolVersion, @"^\d+\.\d+\.\d+$", RegexOptions.CultureInvariant)
+            && string.Equals(Path.GetFullPath(collection.ManifestPath), Path.GetFullPath(Path.Combine(root, ".config", "dotnet-tools.json")), StringComparison.OrdinalIgnoreCase)
+            && Regex.IsMatch(collection.ManifestSha256, "^[a-f0-9]{64}$", RegexOptions.CultureInvariant),
+            "postmortem-route-collection-tool-identity-invalid");
         Ensure(collection.Head == OperationsLearningPolicy.GitHead(root), "postmortem-route-head-changed");
-        var current = CurrentToolIdentity(root);
-        Ensure(collection.AssemblyPath == current.AssemblyPath, "postmortem-route-tool-identity-changed:assembly-path");
-        Ensure(collection.AssemblySha256 == current.AssemblySha256, "postmortem-route-tool-identity-changed:assembly-hash");
-        Ensure(collection.ToolVersion == current.ToolVersion, "postmortem-route-tool-identity-changed:tool-version");
-        Ensure(collection.ManifestPath == current.ManifestPath, "postmortem-route-tool-identity-changed:manifest-path");
-        Ensure(collection.ManifestSha256 == current.ManifestSha256, "postmortem-route-tool-identity-changed:manifest-hash");
+        if (!allowToolIdentityUpgrade)
+        {
+            var current = CurrentToolIdentity(root);
+            Ensure(collection.AssemblyPath == current.AssemblyPath, "postmortem-route-tool-identity-changed:assembly-path");
+            Ensure(collection.AssemblySha256 == current.AssemblySha256, "postmortem-route-tool-identity-changed:assembly-hash");
+            Ensure(collection.ToolVersion == current.ToolVersion, "postmortem-route-tool-identity-changed:tool-version");
+            Ensure(collection.ManifestPath == current.ManifestPath, "postmortem-route-tool-identity-changed:manifest-path");
+            Ensure(collection.ManifestSha256 == current.ManifestSha256, "postmortem-route-tool-identity-changed:manifest-hash");
+        }
     }
 
     private static void ValidateConfirmation(string root, PostmortemCollectionRecord collection, PostmortemConfirmationRecord confirmation, string[] incidents, string postmortem)
@@ -667,8 +1271,17 @@ public static class OperationsHookCommands
         var collection = ReadCollection(path);
         ValidateCollection(root, collection);
         Ensure(collection.SessionHash == sessionHash, "postmortem-route-collection-session-mismatch");
+        if (phase == "stop"
+            || diagnostic == "operations-hook-prompt-missing"
+            || diagnostic.StartsWith("operations-hook-option-missing:--incidents", StringComparison.Ordinal)
+            || diagnostic.StartsWith("operations-hook-option-missing:--postmortem", StringComparison.Ordinal))
+        {
+            WriteQuietResult();
+            return;
+        }
+
         WriteLifecycleDeferred("postmortem", phase, diagnostic,
-            "Stage 21 incident/path confirmation is incomplete. Collect candidates and ask one concise confirmation; PostToolUse invokes the trusted binder internally.",
+            "Stage 21 context is incomplete. Continue collecting incident and PM context with read, search, and the confirmation question; no protected operation or completion is authorized.",
             "OPERATIONS_POSTMORTEM_CONTEXT_COLLECTION_ACTIVE OPERATIONS_LEARNING_CONTEXT_REQUIRED");
     }
 
@@ -677,7 +1290,6 @@ public static class OperationsHookCommands
         {
             @continue = true,
             stopReason = (string?)null,
-            systemMessage = allow ? "OPERATIONS_POSTMORTEM_CONTEXT_COLLECTION_ACTIVE" : "OPERATIONS_POSTMORTEM_CONTEXT_COLLECTION_DENIED",
             hookSpecificOutput = new
             {
                 hookEventName = "PreToolUse",
@@ -688,6 +1300,353 @@ public static class OperationsHookCommands
 
     private static bool IsCollectionReadOrQuestionTool(string toolName)
         => CollectionReadOrQuestionTools.Contains(toolName);
+
+    private static bool IsPostmortemScopeOperationAllowed(string root, GateRecord gate, string toolName, JsonElement input)
+    {
+        if (IsCollectionReadOrQuestionTool(toolName)
+            || toolName is "view" or "grep" or "glob" or "web_search" or "web_fetch" or "get_errors") return true;
+        if (!TryReadToolElement(input, "tool_input", "toolInput", out var toolInput)) return false;
+
+        if (toolName == "apply_patch")
+        {
+            var patch = ReadString(toolInput, "input", "patch", "text");
+            if (string.IsNullOrWhiteSpace(patch) || Regex.IsMatch(patch, @"(?m)^\*\*\* Delete File:")) return false;
+            var paths = Regex.Matches(patch, @"(?m)^\*\*\* (?:Add|Update) File: (?<path>.+?)\s*$")
+                .Select(match => match.Groups["path"].Value.Trim())
+                .ToArray();
+            return paths.Length > 0 && paths.All(path => IsPostmortemWritablePath(root, gate, path));
+        }
+
+        if (toolName is "create_file" or "write_file" or "edit_file" or "insert_edit_into_file" or "edit" or "create")
+        {
+            var path = ReadString(toolInput, "filePath", "file_path", "path", "targetPath", "target_path", "filename");
+            return path.Length > 0 && IsPostmortemWritablePath(root, gate, path);
+        }
+
+        if (toolName is "run_in_terminal" or "powershell" or "bash")
+        {
+            var command = Regex.Replace(ReadString(toolInput, "command", "commandLine", "script"), @"\s+", " ").Trim();
+            if (command.IndexOfAny([';', '|', '&', '<', '>', '`', '\r', '\n']) >= 0) return false;
+            return Regex.IsMatch(command,
+                @"^dotnet tool run engloopkit (?:-- )?validate postmortem-learning --root \. --incidents IN\d{3}(?:,IN\d{3})* --postmortem \.engloop/postmortems/PM\d{3}[-_][A-Za-z0-9._-]+\.md(?: --(?:show-current-hashes|for-repair-routing))?$",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
+                || Regex.IsMatch(command, @"^dotnet tool run sek (?:-- )?version$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        }
+
+        return false;
+    }
+
+    private static int InitializeTrustedRepairContinuation(string root, string sessionHash, string repairGatePath)
+    {
+        string? postmortem = null;
+        string[] requestedRpis = [];
+        string? createdRoute = null;
+        try
+        {
+            var postmortemGatePath = GatePath(root, sessionHash, "postmortem");
+            Ensure(File.Exists(postmortemGatePath), "repair-continuation-postmortem-gate-missing");
+            var postmortemGate = ReadGate(postmortemGatePath);
+            postmortem = postmortemGate.Postmortem;
+            Ensure(postmortemGate.SchemaVersion == "1.0" && postmortemGate.Mode == "postmortem"
+                && postmortemGate.SessionHash == sessionHash
+                && postmortemGate.Head == OperationsLearningPolicy.GitHead(root)
+                && postmortemGate.Incidents is { Length: > 0 }
+                && !string.IsNullOrWhiteSpace(postmortemGate.Postmortem),
+                "repair-continuation-postmortem-gate-identity-invalid");
+            ValidateToolIdentity(root, postmortemGate);
+            Ensure(HashArguments(postmortemGate) == postmortemGate.ArgumentsHash, "repair-continuation-postmortem-gate-tampered");
+            Ensure(!TryReadPostmortemContext(postmortemGatePath, out _), "repair-continuation-postmortem-scope-suspended");
+            ValidatePostmortemBinding(root, sessionHash, postmortemGatePath, postmortemGate);
+
+            var intent = ReadRepairIntent(root, sessionHash)
+                ?? throw new InvalidOperationException("repair-continuation-intent-missing");
+            return BindRequestedRepairs(root, sessionHash, repairGatePath, postmortem!, intent);
+        }
+        catch (Exception ex)
+        {
+            WriteRepairContinuationBlocker(postmortem, requestedRpis,
+                IncidentDiagnosticCode(ex), [ex.Message], createdRoute);
+            return 0;
+        }
+    }
+
+    private static string? ReadExplicitRepairPostmortem(string root, string prompt)
+    {
+        if (!HasAffirmativeRepairRequest(prompt)) return null;
+        var ids = Regex.Matches(prompt, @"\bPM\d{3}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
+            .Select(match => match.Value.ToUpperInvariant()).Distinct(StringComparer.Ordinal).ToArray();
+        if (ids.Length == 0) return null;
+        Ensure(ids.Length == 1, "repair-route-postmortem-ambiguous");
+        var paths = Directory.GetFiles(Path.Combine(root, ".engloop", "postmortems"), ids[0] + "*.md")
+            .Where(path => Regex.IsMatch(Path.GetFileName(path), "^" + ids[0] + @"(?:[-_].+)?\.md$", RegexOptions.CultureInvariant)).ToArray();
+        Ensure(paths.Length == 1, "repair-route-postmortem-not-unique:" + ids[0]);
+        var relative = Path.GetRelativePath(root, paths[0]).Replace('\\', '/');
+        var namedPaths = Regex.Matches(prompt, @"\.engloop/postmortems/PM\d{3}[-_][A-Za-z0-9][A-Za-z0-9._-]*\.md", RegexOptions.CultureInvariant);
+        Ensure(namedPaths.All(match => match.Value == relative), "repair-route-postmortem-path-mismatch");
+        return relative;
+    }
+
+    private static int AuthorizeRepair(string[] args)
+    {
+        try
+        {
+            var root = ExactGitRoot(Path.GetFullPath(CliOption(args, "--root")));
+            var request = CliOption(args, "--request");
+            var postmortem = ReadExplicitRepairPostmortem(root, request)
+                ?? throw new InvalidOperationException("repair-route-explicit-request-required");
+            var authorizationId = Guid.NewGuid().ToString("N");
+            var authorizationHash = Sha256(Encoding.UTF8.GetBytes("operator-command:" + authorizationId));
+            CaptureRepairIntent(root, authorizationHash, request);
+            var intent = ReadRepairIntent(root, authorizationHash)
+                ?? throw new InvalidOperationException("repair-route-explicit-request-required");
+            var gatePath = GatePath(root, authorizationHash, "repair");
+            BindRequestedRepairs(root, authorizationHash, gatePath, postmortem, intent, nativeContext: false);
+            Ensure(File.Exists(gatePath), "repair-route-authorization-failed");
+            Ensure(ValidateBoundRepairs(root, ReadGate(gatePath)) == 0, "repair-route-validation-failed");
+            File.WriteAllText(GatePath(root, authorizationHash, "operator-authorization"), JsonSerializer.Serialize(new
+            {
+                authorization = "explicit-operator-command", authorizationId, request,
+                capturedAtUtc = DateTimeOffset.UtcNow, postmortem, gate = gatePath,
+                completionAccepted = false,
+            }));
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(ex.Message);
+            return 1;
+        }
+    }
+
+    private static int BindRequestedRepairs(string root, string sessionHash, string repairGatePath,
+        string postmortem, RepairIntentRecord intent, bool nativeContext = true)
+    {
+        string[] requestedRpis = [];
+        var createdRoutes = new List<string>();
+        try
+        {
+            var validation = OperationsLearningPolicy.ValidatePostmortem(root, postmortem, forRepairRouting: true);
+            if (!validation.Passed || validation.Contract is null)
+            {
+                WriteRepairContinuationBlocker(postmortem, intent.Rpis,
+                    "repair-continuation-postmortem-validation-failed", validation.Failures);
+                return 0;
+            }
+
+            var contract = validation.Contract;
+            requestedRpis = intent.AllRepairs
+                ? contract.Repairs.Keys.OrderBy(value => value, StringComparer.Ordinal).ToArray()
+                : intent.Rpis;
+            Ensure(requestedRpis.Length > 0, "repair-continuation-no-rpi-requested");
+            var missing = requestedRpis.Where(rpi => !contract.Repairs.ContainsKey(rpi)).ToArray();
+            Ensure(missing.Length == 0, "repair-continuation-rpi-not-in-postmortem:" + string.Join(',', missing));
+            foreach (var selectedRpi in requestedRpis)
+            {
+                var selectedRepair = contract.Repairs[selectedRpi];
+                var selectedAcceptance = $".engloop/repairs/{contract.PostmortemId}-{selectedRpi}.route.json";
+                var selectedFullPath = Path.Combine(root, selectedAcceptance.Replace('/', Path.DirectorySeparatorChar));
+                if (!File.Exists(selectedFullPath))
+                {
+                    RequireCreateNewAcceptance(root, selectedAcceptance, "route");
+                    WriteRepairRouteRecord(selectedFullPath, contract, selectedRepair);
+                    createdRoutes.Add(selectedFullPath);
+                }
+                var routeValidation = OperationsLearningPolicy.ValidateRepairAcceptance(root, postmortem, selectedRpi,
+                    selectedRepair.RuleIds, selectedAcceptance, "route", currentReadinessPass: false);
+                Ensure(routeValidation.Passed, "repair-continuation-route-validation-failed:" + string.Join(',', routeValidation.Failures));
+            }
+            var rpi = requestedRpis[0];
+            var repair = contract.Repairs[rpi];
+            var acceptance = $".engloop/repairs/{contract.PostmortemId}-{rpi}.route.json";
+            var arguments = NewArguments(postmortem: postmortem, phase: "route", rpi: rpi,
+                rules: repair.RuleIds.ToArray(), acceptance: acceptance, requestedRpis: requestedRpis.Length > 1 ? requestedRpis : null);
+            if (File.Exists(repairGatePath))
+            {
+                var existing = ReadGate(repairGatePath);
+                Ensure(existing.SchemaVersion == "1.0" && existing.Mode == "repair"
+                    && existing.SessionHash == sessionHash && existing.Head == OperationsLearningPolicy.GitHead(root)
+                    && HashArguments(existing) == existing.ArgumentsHash
+                    && HashArguments(existing) == HashArguments(arguments),
+                    "repair-continuation-existing-gate-mismatch");
+                ValidateToolIdentity(root, existing);
+            }
+            else WriteGate(root, "repair", sessionHash, repairGatePath, arguments);
+
+            var completion = OperationsLearningPolicy.ValidatePostmortem(root, postmortem);
+            var context = $"OPERATIONS_LEARNING_SCOPE_ACTIVE mode=repair gate={repairGatePath} continuation=true postmortem={postmortem} rpi={rpi} route={acceptance} requestedRpis={string.Join(',', requestedRpis)}. Implement every selected item under its own exact immutable route; unresolved completion evidence: {string.Join(',', completion.Failures)}. Repair authorization is not incident, PM, deployment or readiness completion. Do not stop or send the operator back for open stabilization; collect remaining evidence during the repair.";
+            if (nativeContext) WriteHookContext("UserPromptSubmit", context);
+            else Console.WriteLine("OPERATIONS_LEARNING_GUARD_ACTIVE mode=repair authorization=explicit-operator-command " + context);
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            foreach (var path in createdRoutes) if (File.Exists(path)) File.Delete(path);
+            WriteRepairContinuationBlocker(postmortem, requestedRpis,
+                IncidentDiagnosticCode(ex), [ex.Message]);
+            return 0;
+        }
+    }
+
+    private static int ValidateBoundRepairs(string root, GateRecord gate)
+    {
+        if (gate.Phase != "route" || gate.RequestedRpis is null)
+            return ValidationCommands.ValidateRepairLearning(["--root", root, "--phase", gate.Phase!, "--postmortem", gate.Postmortem!, "--rpi", gate.Rpi!, "--rules", string.Join(',', gate.Rules!), "--acceptance", gate.Acceptance!]);
+        var pm = OperationsLearningPolicy.ValidatePostmortem(root, gate.Postmortem!, forRepairRouting: true);
+        Ensure(pm.Passed && pm.Contract is not null, "repair-route-contract-invalid:" + string.Join(',', pm.Failures));
+        foreach (var rpi in gate.RequestedRpis)
+        {
+            Ensure(pm.Contract!.Repairs.ContainsKey(rpi), "repair-contract-missing:" + rpi);
+            var repair = pm.Contract.Repairs[rpi];
+            var result = ValidationCommands.ValidateRepairLearning(["--root", root, "--phase", "route", "--postmortem", gate.Postmortem!, "--rpi", rpi,
+                "--rules", string.Join(',', repair.RuleIds), "--acceptance", $".engloop/repairs/{pm.Contract.PostmortemId}-{rpi}.route.json"]);
+            if (result != 0) return result;
+        }
+        return 0;
+    }
+
+    private static void ValidatePostmortemBinding(string root, string sessionHash, string gatePath, GateRecord gate)
+    {
+        var bindingPath = Path.Combine(root, BindingRelativePath(sessionHash).Replace('/', Path.DirectorySeparatorChar));
+        Ensure(File.Exists(bindingPath), "repair-continuation-postmortem-binding-receipt-missing");
+        var binding = JsonSerializer.Deserialize<PostmortemBindingRecord>(File.ReadAllText(bindingPath))
+            ?? throw new InvalidOperationException("repair-continuation-postmortem-binding-receipt-invalid");
+        var gateRelative = Path.GetRelativePath(root, gatePath).Replace('\\', '/');
+        Ensure(binding.SchemaVersion == "1.0" && binding.SessionHash == sessionHash
+            && binding.Head == OperationsLearningPolicy.GitHead(root)
+            && binding.Postmortem == gate.Postmortem && binding.Incidents.SequenceEqual(gate.Incidents!, StringComparer.Ordinal)
+            && binding.Gate == gateRelative && binding.GateSha256 == FileSha256(gatePath)
+            && Regex.IsMatch(binding.CorrelationId, "^[a-f0-9]{32}$", RegexOptions.CultureInvariant),
+            "repair-continuation-postmortem-binding-receipt-identity-invalid");
+        if (binding.Authorization == "explicit-operator-intent")
+        {
+            _ = ReadPostmortemHost(root, sessionHash);
+            Ensure(binding.Intent == PostmortemIntentRelativePath(sessionHash), "postmortem-route-intent-path-invalid");
+            var intentPath = Path.Combine(root, PostmortemIntentRelativePath(sessionHash).Replace('/', Path.DirectorySeparatorChar));
+            Ensure(File.Exists(intentPath) && binding.IntentSha256 == FileSha256(intentPath), "postmortem-route-intent-hash-invalid");
+            var intent = JsonSerializer.Deserialize<PostmortemOperatorIntentRecord>(File.ReadAllText(intentPath))
+                ?? throw new InvalidOperationException("postmortem-route-intent-json-invalid");
+            var request = ReadExplicitPostmortemIntent(intent.Prompt, root);
+            Ensure(intent.SchemaVersion == "1.0" && intent.SessionHash == sessionHash && intent.Head == gate.Head
+                && intent.HostSha256 == FileSha256(PostmortemHostPath(root, sessionHash))
+                && intent.PromptSha256 == Sha256(Encoding.UTF8.GetBytes(intent.Prompt))
+                && request is not null && request.Value.Incident == intent.Incident
+                && (request.Value.Postmortem is null || request.Value.Postmortem == intent.Postmortem)
+                && gate.Incidents is { Length: 1 } && gate.Incidents[0] == intent.Incident && gate.Postmortem == intent.Postmortem
+                && intent.IncidentSha256 == FileSha256(UniqueIncidentPath(root, intent.Incident))
+                && intent.NorthstarSha256 == FileSha256(Path.Combine(root, "NORTHSTAR.md"))
+                && Regex.IsMatch(intent.LearningsSha256, "^[a-f0-9]{64}$", RegexOptions.CultureInvariant)
+                && Regex.IsMatch(intent.RegistrySha256, "^[a-f0-9]{64}$", RegexOptions.CultureInvariant)
+                && binding.ConfirmationSha256 == string.Empty && binding.ToolUseId == string.Empty,
+                "postmortem-route-intent-identity-invalid");
+        }
+        else Ensure(binding.Authorization == "confirmation"
+            && Regex.IsMatch(binding.ConfirmationSha256, "^[a-f0-9]{64}$", RegexOptions.CultureInvariant)
+            && !string.IsNullOrWhiteSpace(binding.ToolUseId) && binding.Intent is null && binding.IntentSha256 is null,
+            "repair-continuation-postmortem-binding-receipt-identity-invalid");
+    }
+
+    private static void WriteRepairRouteRecord(string path, PostmortemLearningContract postmortem, RepairLearningContract repair)
+    {
+        var payload = new
+        {
+            schemaVersion = "1.0",
+            artifactType = "repair-learning-route",
+            phase = "route",
+            postmortemPath = postmortem.RelativePath,
+            postmortemSha256 = postmortem.Sha256,
+            rpiId = repair.RpiId,
+            ruleIds = repair.RuleIds,
+            northstarSha256 = postmortem.NorthstarSha256,
+            learningsSha256 = postmortem.LearningsSha256,
+            pyramidDigest = postmortem.PyramidDigest,
+            executableGate = repair.ExecutableGate,
+            executableGateDigest = repair.ExecutableGateDigest,
+            gateProves = repair.GateProves,
+            sekApplicability = repair.SekApplicability,
+            sekVersion = postmortem.SekEscape.Version,
+            sekEscapeClass = postmortem.SekEscape.EscapeClass,
+            sekScenarioId = repair.SekScenarioId,
+            sekModelPaths = postmortem.SekEscape.ModelPaths,
+            sekCordPaths = postmortem.SekEscape.CordPaths,
+            sekGeneratedSuitePath = postmortem.SekEscape.GeneratedSuitePath,
+            sekRepairRequirement = repair.SekRepairRequirement,
+            status = "ROUTED",
+        };
+        using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+        JsonSerializer.Serialize(stream, payload);
+        stream.Flush(flushToDisk: true);
+    }
+
+    private static void WriteRepairContinuationBlocker(string? postmortem, string[] rpis,
+        string diagnosticCode, IReadOnlyList<string> failures, string? routeCreated = null)
+    {
+        var details = JsonSerializer.Serialize(new
+        {
+            status = "repair-continuation-blocked",
+            mode = "repair",
+            postmortem,
+            requestedRpis = rpis,
+            diagnosticCode = Bound(diagnosticCode),
+            missingEvidence = failures.Select(Bound).ToArray(),
+            routeCreated,
+            repairScopeCreated = false,
+            completionAccepted = false,
+            unresolvedState = "The requested repair intent and validated artifacts are retained; no repair scope or completion is accepted.",
+            resumableAction = "Continue in Stage 22: correct the listed contract evidence and resume the trusted Stage 22 continuation, or ask one focused question if the PM/item is ambiguous. Do not return the operator to an earlier stage or stop because stabilization is open. Do not create readiness or gate PASS evidence manually.",
+        });
+        WriteResult(true, systemMessage: "OPERATIONS_REPAIR_CONTINUATION_BLOCKED " + details);
+    }
+
+    private static bool IsPostmortemWritablePath(string root, GateRecord gate, string path)
+    {
+        try
+        {
+            var full = Path.GetFullPath(Path.IsPathRooted(path) ? path : Path.Combine(root, path));
+            var relative = Path.GetRelativePath(root, full).Replace('\\', '/');
+            if (relative == ".." || relative.StartsWith("../", StringComparison.Ordinal) || Path.IsPathRooted(relative)) return false;
+            if (HasReparsePointBetweenRootAndPath(root, full)) return false;
+            var normalizedGatePath = gate.Postmortem!.Replace('\\', '/').TrimStart('.', '/');
+            var normalizedRelative = relative.TrimStart('.', '/');
+            return string.Equals(normalizedRelative, normalizedGatePath, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizedRelative, "engloop/numbering-registry.md", StringComparison.OrdinalIgnoreCase)
+                || normalizedRelative.StartsWith("engloop/learnings/", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or NotSupportedException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    private static bool HasReparsePointBetweenRootAndPath(string root, string fullPath)
+    {
+        var current = fullPath;
+        while (current.Length >= root.Length)
+        {
+            if ((File.Exists(current) || Directory.Exists(current))
+                && File.GetAttributes(current).HasFlag(FileAttributes.ReparsePoint)) return true;
+            if (string.Equals(current, root, StringComparison.OrdinalIgnoreCase)) return false;
+            var parent = Path.GetDirectoryName(current);
+            if (parent is null) return true;
+            current = parent;
+        }
+        return true;
+    }
+
+    private static void WritePostmortemOperationDenied(string toolName)
+    {
+        const string reason = "The confirmed postmortem scope does not authorize production/source mutations, unrelated repair work, or arbitrary execution/delegation. No action ran. Limit writes to the confirmed PM, numbering registry, and learning-pyramid records; use read/search/questions or the exact postmortem validation commands.";
+        Console.WriteLine(JsonSerializer.Serialize(new
+        {
+            @continue = true,
+            stopReason = (string?)null,
+            hookSpecificOutput = new
+            {
+                hookEventName = "PreToolUse",
+                permissionDecision = "deny",
+                permissionDecisionReason = reason + " Tool: " + Bound(toolName),
+            },
+        }));
+    }
 
     private static bool TryReadToolElement(JsonElement input, string snakeName, string camelName, out JsonElement value)
     {
@@ -843,8 +1802,8 @@ public static class OperationsHookCommands
             => new("", "", "", "", "", "", "", "", "", "", incident, postmortem, incidents, phase, rpi, rules, acceptance);
     }
 
-    private static GateRecord NewArguments(string? incident = null, string? postmortem = null, string[]? incidents = null, string? phase = null, string? rpi = null, string[]? rules = null, string? acceptance = null)
-        => new("", "", "", "", "", "", "", "", "", "", incident, postmortem, incidents, phase, rpi, rules, acceptance);
+    private static GateRecord NewArguments(string? incident = null, string? postmortem = null, string[]? incidents = null, string? phase = null, string? rpi = null, string[]? rules = null, string? acceptance = null, string[]? requestedRpis = null)
+        => new("", "", "", "", "", "", "", "", "", "", incident, postmortem, incidents, phase, rpi, rules, acceptance, requestedRpis);
 
     private static void WriteGate(string root, string mode, string sessionHash, string gatePath, GateRecord arguments)
     {
@@ -888,21 +1847,32 @@ public static class OperationsHookCommands
         Ensure(File.Exists(registryPath), "postmortem-route-numbering-registry-missing");
         var lines = File.ReadAllLines(registryPath);
         var headers = lines.Select(MarkdownCells)
-            .Where(cells => cells.Length > 1 && cells[0].Equals("Prefix", StringComparison.OrdinalIgnoreCase)
-                && cells.Any(cell => cell.Equals("Last used", StringComparison.OrdinalIgnoreCase)))
+            .Where(cells => cells.Length > 1
+                && (cells[0].Equals("Type", StringComparison.OrdinalIgnoreCase)
+                    && cells.Any(cell => cell.Equals("Next number", StringComparison.OrdinalIgnoreCase))
+                    || cells[0].Equals("Prefix", StringComparison.OrdinalIgnoreCase)
+                    && cells.Any(cell => cell.Equals("Last used", StringComparison.OrdinalIgnoreCase))))
             .ToArray();
-        Ensure(headers.Length == 1, "postmortem-route-numbering-header-invalid");
-        var lastUsedIndex = Array.FindIndex(headers[0], cell => cell.Equals("Last used", StringComparison.OrdinalIgnoreCase));
+        var observedHeader = lines.FirstOrDefault(line => line.TrimStart().StartsWith('|')) ?? "<no markdown table header>";
+        Ensure(headers.Length == 1,
+            $"postmortem-route-numbering-header-invalid:expected='| Type | Next number |' or legacy '| Prefix | ... | Last used |';actual='{Bound(observedHeader)}'");
+        var nextNumberSchema = headers[0][0].Equals("Type", StringComparison.OrdinalIgnoreCase);
+        var counterIndex = Array.FindIndex(headers[0], cell => cell.Equals(nextNumberSchema ? "Next number" : "Last used", StringComparison.OrdinalIgnoreCase));
         var rows = lines.Select(MarkdownCells)
             .Where(cells => cells[0].Trim('`').Equals(prefix, StringComparison.Ordinal))
             .ToArray();
         Ensure(rows.Length == 1, "postmortem-route-numbering-row-invalid:" + prefix);
-        Ensure(rows[0].Length > lastUsedIndex, "postmortem-route-numbering-row-invalid:" + prefix);
-        var value = rows[0][lastUsedIndex].Trim('`');
-        Ensure(Regex.IsMatch(value, "^" + Regex.Escape(prefix) + @"\d{3}$", RegexOptions.CultureInvariant), "postmortem-route-numbering-value-invalid:" + prefix);
-        Ensure(int.TryParse(value[prefix.Length..], out var last), "postmortem-route-numbering-value-invalid:" + prefix);
-        Ensure(last < 999, "postmortem-route-numbering-value-invalid:" + prefix);
-        return NumberingRegistry.Format(prefix, last + 1);
+        Ensure(rows[0].Length > counterIndex, "postmortem-route-numbering-row-invalid:" + prefix);
+        var value = rows[0][counterIndex].Trim('`');
+        var validValue = nextNumberSchema
+            ? Regex.IsMatch(value, @"^\d{3}$", RegexOptions.CultureInvariant)
+            : Regex.IsMatch(value, "^" + Regex.Escape(prefix) + @"\d{3}$", RegexOptions.CultureInvariant);
+        Ensure(validValue, $"postmortem-route-numbering-value-invalid:{prefix}:expected={(nextNumberSchema ? "NNN" : prefix + "NNN")}:actual={Bound(value)}");
+        var numericText = nextNumberSchema ? value : value[prefix.Length..];
+        Ensure(int.TryParse(numericText, out var number) && number > 0
+            && (nextNumberSchema ? number <= 999 : number < 999),
+            "postmortem-route-numbering-value-invalid:" + prefix);
+        return NumberingRegistry.Format(prefix, nextNumberSchema ? number : number + 1);
     }
 
     private static string[] MarkdownCells(string line)
@@ -952,7 +1922,9 @@ public static class OperationsHookCommands
         => JsonSerializer.Deserialize<GateRecord>(File.ReadAllText(path)) ?? throw new InvalidOperationException("operations-hook-gate-json-invalid");
 
     private static string HashArguments(GateRecord value)
-        => Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { value.Incident, value.Postmortem, value.Incidents, value.Phase, value.Rpi, value.Rules, value.Acceptance })));
+        => Sha256(Encoding.UTF8.GetBytes(value.RequestedRpis is null
+            ? JsonSerializer.Serialize(new { value.Incident, value.Postmortem, value.Incidents, value.Phase, value.Rpi, value.Rules, value.Acceptance })
+            : JsonSerializer.Serialize(new { value.Incident, value.Postmortem, value.Incidents, value.Phase, value.Rpi, value.Rules, value.Acceptance, value.RequestedRpis })));
 
     private static (string AssemblyPath, string AssemblySha256, string ToolVersion, string ManifestPath, string ManifestSha256) CurrentToolIdentity(string root)
     {
@@ -1043,6 +2015,25 @@ public static class OperationsHookCommands
     {
         Console.WriteLine(JsonSerializer.Serialize(new { @continue = continueValue, stopReason = reason.Length == 0 ? null : reason, systemMessage = systemMessage.Length == 0 ? null : systemMessage }));
     }
+
+    private static void WriteQuietResult()
+        => Console.WriteLine(JsonSerializer.Serialize(new { @continue = true }));
+
+    private static void WriteHookContext(string hookEvent, string context)
+        => Console.WriteLine(JsonSerializer.Serialize(new
+        {
+            @continue = true,
+            systemMessage = context,
+            hookSpecificOutput = new { hookEventName = hookEvent, additionalContext = context },
+        }));
+
+    private static void WritePostToolContext(string context)
+        => Console.WriteLine(JsonSerializer.Serialize(new
+        {
+            @continue = true,
+            additionalContext = context,
+            hookSpecificOutput = new { hookEventName = "PostToolUse", additionalContext = context },
+        }));
 
     private static string Sha256(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
     private static string FileSha256(string path) => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant();

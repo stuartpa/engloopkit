@@ -200,9 +200,7 @@ public sealed class OperationsLearningPolicyTests : IDisposable
         var pm = OperationsLearningPolicy.ValidatePostmortem(_root, pmPath, ["IN005"]);
         Assert.True(pm.Passed, string.Join(Environment.NewLine, pm.Failures));
         WriteRoute(pm.Contract!);
-        Assert.Equal(0, ValidationCommands.ValidateRepairLearning(["--root", _root, "--phase", "route", "--postmortem", pmPath, "--rpi", "RPI001", "--rules", "RULE:reliability", "--acceptance", RoutePath]));
         WriteReadiness();
-
         Assert.Equal(0, Program.Main(["repair-gate", "execute", "--root", _root, "--postmortem", pmPath, "--rpi", "RPI001", "--rules", "RULE:reliability", "--route", RoutePath, "--receipt", ReceiptPath]));
         WriteClose(pm.Contract!);
         Assert.Equal(0, ValidationCommands.ValidateRepairLearning(["--root", _root, "--phase", "close", "--postmortem", pmPath, "--rpi", "RPI001", "--rules", "RULE:reliability", "--acceptance", ClosePath]));
@@ -295,6 +293,54 @@ public sealed class OperationsLearningPolicyTests : IDisposable
         var result = OperationsLearningPolicy.ValidateIncidentContext(_root, IncidentPath, requireConsulted: true);
         Assert.Contains("incident-not-stabilized", result.Failures);
         Assert.Contains(result.Failures, failure => failure.StartsWith("incident-stability-check-invalid:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void PostmortemAnalysisEligibility_allowsOpenStabilizationButStillRequiresConsultedContext()
+    {
+        var path = Full(IncidentPath);
+        var text = File.ReadAllText(path)
+            .Replace("**Status:** STABILIZED", "**Status:** ACTIVE", StringComparison.Ordinal)
+            .Replace("- [x] Health checks passing:", "- [ ] Health checks passing:", StringComparison.Ordinal)
+            .Replace("- [x] User workflows unblocked:", "- [ ] User workflows unblocked:", StringComparison.Ordinal)
+            .Replace("- [x] No fresh errors in the watch window:", "- [ ] No fresh errors in the watch window:", StringComparison.Ordinal);
+        File.WriteAllText(path, text);
+
+        var strict = OperationsLearningPolicy.ValidateIncidentContext(_root, IncidentPath, requireConsulted: true);
+        var analysis = OperationsLearningPolicy.ValidateIncidentContextForPostmortemAnalysis(_root, IncidentPath);
+
+        Assert.False(strict.Passed);
+        Assert.Contains("incident-not-stabilized", strict.Failures);
+        Assert.Contains(strict.Failures, failure => failure.StartsWith("incident-stability-check-invalid:", StringComparison.Ordinal));
+        Assert.True(analysis.Passed, string.Join(',', analysis.Failures));
+        Assert.Equal("IN005", analysis.Contract!.IncidentId);
+
+        WriteIncident(consulted: false);
+        var deferred = OperationsLearningPolicy.ValidateIncidentContextForPostmortemAnalysis(_root, IncidentPath);
+        Assert.False(deferred.Passed);
+        Assert.Contains("incident-learning-consultation-still-deferred", deferred.Failures);
+    }
+
+    [Fact]
+    public void CompletePostmortemWithSelectedIncidents_stillRejectsOpenStabilizationEvidence()
+    {
+        var incidentPath = Full(IncidentPath);
+        File.WriteAllText(incidentPath, File.ReadAllText(incidentPath)
+            .Replace("**Status:** STABILIZED", "**Status:** ACTIVE", StringComparison.Ordinal)
+            .Replace("- [x] Health checks passing:", "- [ ] Health checks passing:", StringComparison.Ordinal)
+            .Replace("- [x] User workflows unblocked:", "- [ ] User workflows unblocked:", StringComparison.Ordinal)
+            .Replace("- [x] No fresh errors in the watch window:", "- [ ] No fresh errors in the watch window:", StringComparison.Ordinal));
+        var path = WritePostmortem(PyramidMode.NoChange);
+        var fullPostmortemPath = Full(path);
+        var text = File.ReadAllText(fullPostmortemPath)
+            .Replace("## Selected stabilized incidents", "## Selected incidents", StringComparison.Ordinal);
+        File.WriteAllText(fullPostmortemPath, text);
+
+        var result = OperationsLearningPolicy.ValidatePostmortem(_root, path, ["IN005"]);
+
+        Assert.False(result.Passed);
+        Assert.Contains(result.Failures, failure => failure.Contains("incident-not-stabilized", StringComparison.Ordinal));
+        Assert.Contains(result.Failures, failure => failure.Contains("incident-stability-check-invalid", StringComparison.Ordinal));
     }
 
     [Fact]

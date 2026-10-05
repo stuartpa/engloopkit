@@ -4,7 +4,7 @@ description: "Use when a user asks in plain language to start, complete, continu
 argument-hint: "Describe the incident postmortem to start or continue; exact incident IDs and PM path are optional internal bindings."
 target: vscode
 user-invocable: true
-disable-model-invocation: false
+disable-model-invocation: true
 tools:
 - read
 - search
@@ -54,11 +54,14 @@ hooks:
 handoffs:
 - label: Repair selected item
   agent: speckit.engloop.22-repair
-  prompt: Invoke Stage 22 with --phase route, the exact --postmortem path, selected
-    --rpi, concrete --rules from its RPI learning contract, and --acceptance path.
-    Carry those rule IDs and the exact executable gate through Stage 04 and applicable
-    Stage 05–08 gates; closure requires gate PASS plus current readiness.
-  send: false
+  prompt: After producing or updating the requested postmortem, automatically continue
+    to Stage 22 with the exact marker ELK_TRUSTED_AUTOPILOT_REPAIR_CONTINUATION when
+    same-session repair intent was explicitly captured. Do not construct or substitute
+    phase, postmortem, RPI, rule, or acceptance arguments; Stage 22 derives scope only
+    from the confirmed binding and validated postmortem contract. Carry any resumable
+    evidence blocker unchanged, without claiming PASS or closure or asking the user to
+    reconstruct internal flags.
+  send: true
 - label: Condense learnings when capacity exists
   agent: speckit.engloop.42-learnings-pyramid
   prompt: When spare stewardship capacity exists, condense the accepted learning backlog
@@ -109,28 +112,83 @@ Direct user selection is distinct from tool delegation and does not expand `agen
 
 ### Plain-language routing and context collection
 
-This agent is eligible for model delegation when a user asks to start, complete,
-continue, or analyze an incident postmortem in ordinary language. Delegation is a nested
-Stage 21 run, not a visible agent-mode switch. Direct runs use `SessionStart`/`Stop`;
-delegated runs use equivalent `SubagentStart`/`SubagentStop` hooks. In both cases,
-`UserPromptSubmit`, `PreToolUse`, and the same trusted completion validator remain active.
+This agent must run as a user-invoked top-level agent for route collection and
+binding. VS Code Local subagents cannot supply the top-level operator prompt or interactive
+selection required for route authorization. Stage 20 exposes this agent through a user-visible handoff; use that handoff or
+select Stage 21 directly. Do not invoke this agent as a subagent or reuse a parent
+session's selection.
 
-When the prompt lacks internal bindings and the hook emits
+### Explicit operator intent without repeated confirmation
+
+Ordinary unambiguous affirmative directives authorize routing without another question.
+The recognizer accepts `postmortem`, `post mortem`, and `post-mortem`, polite prefixes,
+start/create/write/continue/complete requests, and `and` or `then` implement/complete/execute
+all repair items. An exact incident ID binds directly; an optional PM path remains exact.
+The operator's affirmative `complete the plan...today FB first then fix live` continuation
+also resolves a unique Facebook incident from current incident filenames. Multiple matching
+incidents require a choice, not inference. Quoted, negated, planning, hypothetical, or
+question forms do not authorize routing. Only the native current operator prompt is input;
+history, unavailable-user text, and model-generated handoffs cannot substitute for it.
+
+Native `SessionStart` followed by same-session `UserPromptSubmit` captures the genuine
+operator request. The hook checks current HEAD, tool/manifest identity, unique incident
+identity, consulted learning context, registry-backed next PM and create-new scope. With
+no explicit PM path it derives the filename from the unique incident filename and next
+registry number. A separate hashed operator-intent record authorizes the binding; no
+question confirmation receipt or tool-use selection is fabricated.
+
+When the hook emits `POSTMORTEM_ROUTE_BOUND` and `OPERATIONS_LEARNING_SCOPE_ACTIVE`
+with `authorization=explicit-operator-intent`, use the emitted exact route and do not
+ask a confirmation question. Missing host/session, changed HEAD, ambiguous/absent intent,
+or invalid evidence does not authorize binding. Keep any diagnostic as an evidence gap;
+never reconstruct host JSON, internal tokens, or scope markers from a terminal.
+
+Activation is delivered through native `UserPromptSubmit` additional context. If a
+resumed conversation lost that context, use a successful read/search call: native
+`PostToolUse` revalidates the saved same-session gate and binding, then re-emits the
+exact incident, PM, receipt, authorization, and correlation. Do not refuse that trusted
+scope solely because the earlier initialization message is absent, or ask for repeated
+confirmation. A changed HEAD/tool identity, tampered evidence, different session, or
+suspended scope remains unauthorized; preserve the reported recovery diagnostic.
+
+For a tool/manifest upgrade in the same native session, a fresh affirmative operator
+prompt can authorize a new current-identity generation. The hook checks the old record
+chain and unchanged incident/HEAD/direction evidence, preserves every historical record,
+and appends hashed lineage. It derives a create-new PM from the current registry unless
+an explicit valid next-PM path was requested. The emitted `historicalPostmortem` and
+`historicalScopeAccepted=false` preserve prior numbering mistakes. Never migrate a
+historical IN023/PM060 reservation onto PM060 now owned by IN024, replace receipts, or
+overwrite that PM. New authorization is not acceptance of stale identity. Changed HEAD,
+tampering, suspended scope, and changed incident evidence remain rejected.
+
+An explicit repair-items request is captured for the existing trusted Stage 22 handoff.
+That continuation still requires the exact validated PM/RPI/rules/executable gate and
+immutable route; operator intent alone permits neither source edits nor completion.
+This distinction follows `RULE:readiness-is-a-gate` and `PM001/LEARN001-003`:
+authorization to analyze is not evidence that a repair or readiness check passed.
+
+When no explicit route was bound and the prompt lacks internal bindings, whether or not a hook emits
 `OPERATIONS_POSTMORTEM_CONTEXT_COLLECTION_ACTIVE`:
 
-1. Stay in collection mode. Use only `read`, `search`, and `vscode_askQuestions`; do not
-  edit source/evidence, invoke a subagent, or run commands. `PostToolUse` owns trusted
-  binding internally after confirmation; no terminal binder exception is needed.
+1. For this active Stage 21 collector's protected operations, use `read`, `search`, and `vscode_askQuestions`; do not
+  edit source/evidence, invoke a subagent, or run commands. Do not request
+  `run_in_terminal`, even for a read-only shell command; use the VS Code read/search
+  tools instead. `PostToolUse` owns trusted binding internally after confirmation; no
+  terminal binder exception is needed. If a tool is accidentally blocked, no action ran:
+  continue with an allowed read/search/question tool, do not retry the blocked call, and
+  do not ask the operator to run a binder or provide tokens.
 2. Inspect `.engloop/incidents/` and the `PM` row in
   `.engloop/numbering-registry.md`. Use an explicit incident ID when supplied. Otherwise,
   compare the user's words with incident titles/content and present candidates for human
   confirmation; never choose when more than one remains plausible.
-3. The trusted binder and completion validator require a stabilized,
-  learning-context-complete incident. If it is active, malformed, missing, or ambiguous,
-  explain the gap and clarify the selection. Continue read-only discussion and provisional
-  analysis; do not bind invalid evidence or claim stabilization/completion.
+3. The trusted binder permits analysis for an identity-valid incident with consulted
+  learning context even when stabilization status or health/watch checks remain open.
+  Carry each gap into the PM as an explicit limitation. Malformed identity/context or
+  deferred learning consultation remains a binding failure. Stabilization is required for
+  stabilization/closure claims and successful PM completion, never for starting requested
+  analysis.
 4. Propose the next registry-backed `PM<NNN>-<brief-kebab-description>.md` path without
-  reserving or creating it. Ask exactly one concise question with
+  reserving or creating it. Only for unresolved incident/path choice, ask one concise question with
   `vscode_askQuestions`: header `Confirm postmortem`; question
   `Use incidents <INxxx,...> and create <path>?`; `multiSelect: false`;
   `allowFreeformInput: false`; and exactly the ordered options `Confirm`,
@@ -143,14 +201,24 @@ When the prompt lacks internal bindings and the hook emits
   or flags. The internal `postmortem-route bind` / `--confirmation-receipt` interface
   is not a user prerequisite or an agent-executed recovery command.
   The binder independently requires exact collection/session/HEAD/tool identity,
-  stabilized incident validation, the next registry PM number, a create-new path, and
-  the confirmation receipt. On `POSTMORTEM_ROUTE_BIND_FAILED`, preserve the diagnostic,
-  correct the evidence, and reconfirm; do not invent scope or leave cancellation cleanup
-  to the operator.
+  incident identity and consulted learning context, the next registry PM number, a create-new path, and
+  the confirmation receipt. On `POSTMORTEM_ROUTE_BIND_FAILED`, preserve the diagnostic
+  and exact confirmed route. After correcting only the reported prerequisite, continue
+  with a successful read/search tool call so `PostToolUse` retries the saved receipt.
+  Never ask the operator to reconfirm an unchanged incident/PM pair; do not invent scope
+  or leave cancellation cleanup to the operator.
 6. Begin scope-authorized artifact writes only after `POSTMORTEM_ROUTE_BOUND` and
   `OPERATIONS_LEARNING_SCOPE_ACTIVE`. Increment the tracked `PM` registry row before
   creating the confirmed PM artifact. A proposal or confirmation is not analysis,
   routing, repair acceptance, or closure evidence.
+
+Do not infer that this definition is the active agent merely because it was read.
+Analysis and user-selected navigation are always available; evidence gates constrain
+specific protected writes and claims. Separately explicit user authorization to maintain
+ELK in its own repository does not require downstream repair-source scope. Perform that
+bounded maintenance only in the authorized ELK files and commands under the actual active
+agent's permissions. It creates no downstream PM, route, receipt, gate, live mutation, or
+completion authority, and is not an exception to an active hook denial.
 
 Protected postmortem operations require VS Code custom-agent hooks and the
 `OPERATIONS_LEARNING_GUARD_ACTIVE mode=postmortem` and
@@ -158,11 +226,13 @@ Protected postmortem operations require VS Code custom-agent hooks and the
 initial prompt may carry exact internal bindings or may enter the plain-language collector
 above. If `UserPromptSubmit` emits
 `OPERATIONS_LEARNING_CONTEXT_REQUIRED` with status `postmortem-context-required`, no scope
-or completion was accepted: follow the read-only collector and one-question confirmation
-flow; never ask the operator to reconstruct internal options. Local `read`, `search`,
+or completion was accepted: follow the read-only collector, preserving explicit intent
+and reported prerequisites without asking for repeated confirmation. Use a question only
+for an unresolved choice; never ask the operator to reconstruct internal options. Local `read`, `search`,
 and `vscode_askQuestions` remain available with missing, invalid, or stale scope. The
 `PreToolUse` hook denies specific writes, execution, and arbitrary delegation until
-bound; confirmation-controlled binding is performed internally by `PostToolUse`.
+bound; binding is performed internally by `UserPromptSubmit` for exact explicit intent
+or by `PostToolUse` for a genuine question selection.
 Known valid lifecycle failures return `continue=true`, `completionAccepted=false`.
 Stop and SubagentStop never block navigation or manufacture PASS. For a valid gate,
 the completion check runs:
@@ -204,9 +274,10 @@ Before root-cause analysis:
   reinforcement may mark retrieval `UNCHANGED` with a reason.
 7. Give every RPI a `### RPIxxx learning contract` containing concrete Rule IDs, one
   executable gate argument vector, and what that gate proves. A code diff is never the gate.
-8. Bind the exact nonempty `--incidents` set to the PM's Selected stabilized incidents
-  table using existing incident paths and SHA-256 values. Deferred Stage 20 learning
-  context must be resolved before Stage 21 can complete.
+8. Bind the exact nonempty `--incidents` set to the PM's Selected incidents table using
+  existing incident paths and SHA-256 values. Record open stabilization checks as
+  limitations; they prevent completion, not analysis initiation. Deferred Stage 20
+  learning context must be resolved before Stage 21 can complete.
 
 ## Mandatory SEK test-escape analysis
 
