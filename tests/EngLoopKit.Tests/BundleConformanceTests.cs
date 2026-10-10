@@ -252,9 +252,9 @@ public sealed class BundleConformanceTests
         Assert.Contains("Stage 21 as a user-invoked top-level agent", incidentContract, StringComparison.Ordinal);
 
         var postmortem = File.ReadAllText(Path.Combine(ExtensionRoot, "commands", "speckit.engloop.21-postmortem.md"));
-        Assert.Contains("disable-model-invocation: true", postmortem, StringComparison.Ordinal);
+        Assert.Contains("disable-model-invocation: false", postmortem, StringComparison.Ordinal);
         var postmortemAgent = File.ReadAllText(Path.Combine(Root, ".github", "agents", "speckit.engloop.21-postmortem.agent.md"));
-        Assert.Contains("disable-model-invocation: true", postmortemAgent, StringComparison.Ordinal);
+        Assert.Contains("disable-model-invocation: false", postmortemAgent, StringComparison.Ordinal);
         Assert.Contains("vscode_askQuestions", postmortem, StringComparison.Ordinal);
         Assert.Contains("SubagentStart:", postmortem, StringComparison.Ordinal);
         Assert.Contains("SubagentStop:", postmortem, StringComparison.Ordinal);

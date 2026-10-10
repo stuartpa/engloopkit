@@ -4,7 +4,7 @@ description: "Use when a user asks in plain language to start, complete, continu
 argument-hint: "Describe the incident postmortem to start or continue; exact incident IDs and PM path are optional internal bindings."
 target: vscode
 user-invocable: true
-disable-model-invocation: true
+disable-model-invocation: false
 tools: [read, search, edit, execute, agent, vscode_askQuestions]
 agents: [Explore]
 hooks:
@@ -111,8 +111,10 @@ incidents require a choice, not inference. Quoted, negated, planning, hypothetic
 question forms do not authorize routing. Only the native current operator prompt is input;
 history, unavailable-user text, and model-generated handoffs cannot substitute for it.
 
-Native `SessionStart` followed by same-session `UserPromptSubmit` captures the genuine
-operator request. The hook checks current HEAD, tool/manifest identity, unique incident
+The native `UserPromptSubmit` is authoritative even when Stage 21 is selected in an
+already-open chat without `SessionStart`; the hook initializes host identity only when
+no saved postmortem or repair scope exists. Never require a new chat or window. The hook
+checks current HEAD, tool/manifest identity, unique incident
 identity, consulted learning context, registry-backed next PM and create-new scope. With
 no explicit PM path it derives the filename from the unique incident filename and next
 registry number. A separate hashed operator-intent record authorizes the binding; no
@@ -120,7 +122,8 @@ question confirmation receipt or tool-use selection is fabricated.
 
 When the hook emits `POSTMORTEM_ROUTE_BOUND` and `OPERATIONS_LEARNING_SCOPE_ACTIVE`
 with `authorization=explicit-operator-intent`, use the emitted exact route and do not
-ask a confirmation question. Missing host/session, changed HEAD, ambiguous/absent intent,
+ask a confirmation question. Missing native session, stale host/manifest identity,
+changed HEAD, ambiguous/absent intent,
 or invalid evidence does not authorize binding. Keep any diagnostic as an evidence gap;
 never reconstruct host JSON, internal tokens, or scope markers from a terminal.
 
