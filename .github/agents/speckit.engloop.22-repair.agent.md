@@ -99,8 +99,9 @@ do not invent rule IDs, acceptance paths, or PASS evidence.
 
 1. Re-read current `NORTHSTAR.md`, `LEARNINGS.md`, each selected `RULE:<card-slug>` card,
   and cited `PMxxx/LEARNxxx` sources.
-2. Re-read the PM's SEK test-escape analysis. If `RELEVANT`, require native .NET 10
-  SEK v0.1.3, load its
+2. Re-read the PM's SEK test-escape analysis. If `RELEVANT`, preserve its historical
+  native .NET 10 SEK v0.1.3 contract; use that identity or the exact hash-bound numeric
+  SEK identity in the structured supplement below. Load its
   installed Cord/downstream skills, inspect the named model/Cord/generated paths, and keep
   the exact `SEK-SCENARIO:*` identity. If `NOT-RELEVANT`, preserve that explicit rationale.
 3. The native hook creates immutable `.engloop/repairs/PMxxx-RPIxxx.route.json` for
@@ -122,9 +123,11 @@ do not invent rule IDs, acceptance paths, or PASS evidence.
 ### Close phase
 
 1. Reinvoke Stage 22 with `--phase close` after Stage 04 and applicable 05–08 work.
-2. When SEK is relevant, update the named model/CORD source, regenerate from current model
-  and SUT binaries with v0.1.3, prove the incident scenario is now present with the right
-  oracle/rejection, and reject bound hits, stale generation, or hand-written substitute tests.
+2. When SEK is relevant, update the named model/CORD source and regenerate from current
+  model/SUT binaries under the bound native SEK identity. Follow SEK's authoritative skills
+  for strict `config.proof`, attested `sek build`, COMPLETE artifacts and explicit validated
+  checkpoint reuse. Prove the exact incident scenario and model-derived rejection contract;
+  reject bound hits, missing obligations, stale generation, or hand-written substitute tests.
 3. Run the exact JSON argument-vector gate through the versioned tool (no shell,
    bounded timeout, content-sensitive worktree receipt):
 
@@ -142,11 +145,38 @@ changed direction/pyramid, substituted gate, missing gate evidence, or stale rea
 Known valid lifecycle failures return `continue=true`, `completionAccepted=false`;
 Stop never blocks navigation or manufactures PASS. These are evidence gates, not exits.
 
+### Structured proof supplement
+
+Use `repair-gate execute --proof-contract .engloop/repairs/<PM>-<RPI>.proof-contract.json`
+with the exact primary gate above; see [the implemented descriptor contract](/docs/engineering-loop.md#structured-repair-proof-supplements).
+The supplement binds accepted PM/route hashes, exact RPI/Rule IDs, unchanged gate digest,
+declared inputs, native SEK reports and exact tool identity. For a different numeric `x.y.z`
+SEK version, require hash-bound `sekVersionSupplement` with `priorVersion: "0.1.3"` and
+the same PM/route hashes. Package metadata/bytes, manifest and installed assembly version/hash
+must agree. Keep the original v0.1.3 requirement historical; never rewrite the PM, route,
+scenario, or executable vector, and never infer permission for a global tool upgrade.
+
+Receipts without this option are `structuredAdequacy: LEGACY`; exit zero alone is not
+structured adequacy. Require fresh native reports with COMPLETE nonempty legal witnesses,
+all expected stable case/guard IDs, exact modeled errors, model-derived rejection replay,
+current build fingerprints and validated checkpoint/output hashes. Legal slices and direct
+scoped negative models prove distinct contracts; follow SEK's skills rather than duplicating
+its semantics here. Strict execution caps the primary gate at 300 seconds and supplemental
+phases at a separate shared 300 seconds; reports must meet 120-second exploration, 25 MiB
+graph and shared candidate ceilings. Close records and receipts carry `proofContractPath`
+and `proofContractSha256`, and closure revalidates them.
+
+Local structured proof does not waive immutable-release/live-target/conservation evidence
+or Stage 08's whole-product 95% line and branch bar. A missing module inventory or missing
+proof obligation fails readiness, even when a focused suite passes. Retain the blocker;
+do not loop reruns, raise budgets, weaken inventories, hand-edit generated tests, or use a
+physical print as proof. No deployment or print is authorized by this supplement.
+
 ## Done when
 
 - [ ] Repair route includes required downstream gates
 - [ ] Selected RPI acceptance carries exact PM Rule IDs and executable gate
-- [ ] Relevant repair changes the named model/CORD scenario and regenerates with SEK v0.1.3
+- [ ] Relevant repair changes the named model/CORD scenario and regenerates under the bound native SEK identity
 - [ ] Relevant executable gate is the PM's SEK verification gate and proves recurrence
 - [ ] Close phase proves that exact gate with durable evidence
 - [ ] Closure evidence is complete and current

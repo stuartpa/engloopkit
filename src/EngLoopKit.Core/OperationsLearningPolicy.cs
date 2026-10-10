@@ -319,6 +319,279 @@ public static class OperationsLearningPolicy
         return Result(failures, pmResult.Contract);
     }
 
+    public static JsonElement ValidateRepairProofContract(string root, string path, PostmortemLearningContract pm,
+        RepairLearningContract repair, string routeHash)
+    {
+        var full = ResolveGovernedPath(NormalizeRoot(root), path, ".engloop/repairs/", true).Full;
+        var descriptor = ReadRepairProofJson(full);
+        foreach (var (field, value) in new[] { ("schemaVersion", "1.0"), ("artifactType", "repair-proof-contract"),
+                     ("postmortemSha256", pm.Sha256), ("rpiId", repair.RpiId),
+                     ("executableGateDigest", repair.ExecutableGateDigest), ("routeSha256", routeHash) })
+            ProofRequire(ReadJsonString(descriptor, field) == value, "contract-" + field);
+        ProofRequire(ProofStrings(descriptor, "ruleIds").SequenceEqual(repair.RuleIds, StringComparer.Ordinal), "contract-rules");
+        ValidateRepairProofInputs(root, descriptor);
+        var tools = descriptor.GetProperty("toolIdentities");
+        ProofRequire(tools.ValueKind == JsonValueKind.Array && tools.GetArrayLength() > 0, "tool-identities-empty");
+        var commands = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var tool in tools.EnumerateArray())
+        {
+            var command = tool.GetProperty("command").GetString()!;
+            ProofRequire(!string.IsNullOrWhiteSpace(command) && commands.Add(command), "tool-command");
+            var version = tool.GetProperty("version").GetString()!;
+            ProofRequire(Regex.IsMatch(version, @"^\d+\.\d+\.\d+$") && Version.TryParse(version, out var numeric)
+                && numeric.Major <= 65534 && numeric.Minor <= 65534 && numeric.Build <= 65534, "tool-numeric-version");
+            var manifest = ResolveRepairProofFile(root, tool.GetProperty("manifestPath").GetString()!);
+            ProofRequire(Path.GetRelativePath(root, manifest).Replace('\\', '/') == ".config/dotnet-tools.json", "tool-native-manifest");
+            ProofRequire(Sha256(manifest) == tool.GetProperty("manifestSha256").GetString(), "tool-manifest-hash");
+            var packageId = tool.GetProperty("packageId").GetString()!;
+            var manifestTool = ReadRepairProofJson(manifest).GetProperty("tools").GetProperty(packageId);
+            ProofRequire(manifestTool.GetProperty("version").GetString() == version
+                && ProofStrings(manifestTool, "commands").Contains(command, StringComparer.Ordinal), "tool-manifest-version");
+            var package = ResolveRepairProofFile(root, tool.GetProperty("packagePath").GetString()!);
+            ProofRequire(Sha256(package) == tool.GetProperty("packageSha256").GetString(), "tool-package-hash");
+            var assembly = tool.GetProperty("assemblyPath").GetString()!;
+            ProofRequire(Path.IsPathFullyQualified(assembly), "tool-assembly-absolute");
+            var cache = Environment.GetEnvironmentVariable("NUGET_PACKAGES")
+                ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
+            var nativeTools = Path.GetFullPath(Path.Combine(cache, packageId.ToLowerInvariant(), version, "tools"));
+            assembly = Path.GetFullPath(assembly);
+            ProofRequire(assembly.StartsWith(nativeTools + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase), "tool-native-assembly-location");
+            for (var cursor = assembly; cursor is not null; cursor = Path.GetDirectoryName(cursor))
+                RejectReparse(cursor, "tool");
+            var assemblyHash = Sha256(assembly);
+            ProofRequire(assemblyHash == tool.GetProperty("assemblySha256").GetString()
+                && System.Reflection.AssemblyName.GetAssemblyName(assembly).Version?.ToString(3) == version, "tool-assembly-identity");
+            using var archive = System.IO.Compression.ZipFile.OpenRead(package);
+            var entryPath = Path.GetRelativePath(Path.GetFullPath(Path.Combine(cache, packageId.ToLowerInvariant(), version)), assembly).Replace('\\', '/');
+            var entry = archive.GetEntry(entryPath) ?? throw new InvalidOperationException("repair-proof-package-assembly-missing");
+            using var binary = entry.Open();
+            ProofRequire(Convert.ToHexString(SHA256.HashData(binary)).ToLowerInvariant() == assemblyHash, "tool-package-assembly-mismatch");
+            foreach (var toolFile in archive.Entries.Where(item => item.FullName.StartsWith("tools/", StringComparison.Ordinal) && item.Name.Length > 0))
+            {
+                var installed = Path.GetFullPath(Path.Combine(cache, packageId.ToLowerInvariant(), version, toolFile.FullName));
+                ProofRequire(installed.StartsWith(nativeTools + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase), "tool-package-traversal");
+                RejectReparse(installed, "tool");
+                using var content = toolFile.Open();
+                ProofRequire(Convert.ToHexString(SHA256.HashData(content)).ToLowerInvariant() == Sha256(installed), "tool-package-file-mismatch");
+            }
+            var spec = archive.Entries.Single(item => item.FullName.EndsWith(".nuspec", StringComparison.Ordinal));
+            using var specStream = spec.Open();
+            var metadata = System.Xml.Linq.XDocument.Load(specStream).Descendants().Single(item => item.Name.LocalName == "metadata");
+            ProofRequire(metadata.Elements().Single(item => item.Name.LocalName == "version").Value == version
+                && string.Equals(metadata.Elements().Single(item => item.Name.LocalName == "id").Value, packageId, StringComparison.OrdinalIgnoreCase), "tool-package-version");
+            if (command == "sek" && pm.SekEscape.Applicability == "RELEVANT" && version != pm.SekEscape.Version)
+            {
+                var supplement = descriptor.GetProperty("sekVersionSupplement");
+                ProofRequire(pm.SekEscape.Version == "0.1.3" && supplement.GetProperty("priorVersion").GetString() == "0.1.3"
+                    && supplement.GetProperty("version").GetString() == version
+                    && supplement.GetProperty("postmortemSha256").GetString() == pm.Sha256
+                    && supplement.GetProperty("routeSha256").GetString() == routeHash, "version-supplement-binding");
+            }
+        }
+        ProofRequire(commands.Contains("sek"), "sek-tool-identity-missing");
+        var phases = descriptor.GetProperty("phases");
+        ProofRequire(phases.ValueKind == JsonValueKind.Array && phases.GetArrayLength() > 0, "phases-empty");
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        var outputs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var reports = 0;
+        foreach (var phase in phases.EnumerateArray())
+        {
+            var id = phase.GetProperty("id").GetString()!;
+            ProofRequire(Regex.IsMatch(id, "^[a-zA-Z0-9-]+$") && ids.Add(id), "phase-id");
+            var vector = phase.GetProperty("executable").EnumerateArray().Select(item => item.GetString()!).ToArray();
+            ProofRequire(vector.Length > 0 && vector.All(item => !string.IsNullOrWhiteSpace(item)), "phase-vector");
+            foreach (var output in ProofStrings(phase, "outputPaths"))
+            {
+                ProofRequire(output.StartsWith(".engloop/out/", StringComparison.Ordinal) || output.Contains("/.specexplorerkit/out/", StringComparison.Ordinal)
+                    || output.StartsWith(".specexplorerkit/out/", StringComparison.Ordinal), "phase-output-governance");
+                ProofRequire(!Path.IsPathRooted(output) && !output.Replace('\\', '/').Split('/').Any(part => part is ".." or "." or ""), "phase-output-path");
+                ProofRequire(outputs.Add(output), "phase-output-duplicate");
+                ProofRequire(RunGit(root, "ls-files", "--error-unmatch", "--", output).ExitCode != 0, "phase-output-tracked");
+            }
+            foreach (var report in phase.GetProperty("reportPaths").EnumerateArray())
+            {
+                reports++;
+                var reportPath = report.GetProperty("path").GetString()!;
+                ProofRequire(ProofStrings(phase, "outputPaths").Contains(reportPath, StringComparer.Ordinal), "report-not-declared-output");
+                ProofRequire(!string.IsNullOrWhiteSpace(report.GetProperty("expectedMachine").GetString()), "machine-empty");
+                ProofStrings(report, "expectedPositiveIds");
+                ProofStrings(report, "expectedRejectionIds");
+                ProofRequire(Regex.IsMatch(report.GetProperty("inputFingerprint").GetString()!, "^[0-9a-f]{64}$"), "fingerprint-invalid");
+                ProofRequire(vector.Length >= 5 && vector[0] == "dotnet" && vector[1] == "tool" && vector[2] == "run" && vector[3] == "sek", "report-phase-not-native-sek");
+                var tool = tools.EnumerateArray().Single(item => item.GetProperty("command").GetString() == "sek");
+                ProofRequire(report.GetProperty("toolAssemblyPath").GetString() == tool.GetProperty("assemblyPath").GetString(), "report-tool-identity");
+            }
+        }
+        ProofRequire(reports > 0, "reports-empty");
+        var inputs = descriptor.GetProperty("declaredInputs").EnumerateObject().Select(item => item.Name).ToArray();
+        ProofRequire(!inputs.Any(outputs.Contains), "input-output-overlap");
+        return descriptor;
+    }
+
+    public static void ValidateRepairProofInputs(string root, JsonElement descriptor)
+    {
+        var inputs = descriptor.GetProperty("declaredInputs");
+        ProofRequire(inputs.ValueKind == JsonValueKind.Object && inputs.EnumerateObject().Any(), "inputs-empty");
+        foreach (var input in inputs.EnumerateObject())
+            ProofRequire(Sha256(ResolveRepairProofFile(root, input.Name)) == input.Value.GetString(), "input-hash:" + input.Name);
+    }
+
+    public static string ResolveRepairProofFile(string root, string path, bool absoluteArtifact = false)
+    {
+        if (absoluteArtifact)
+        {
+            if (!Path.IsPathRooted(path)) throw new InvalidOperationException("proof-artifact-must-be-absolute");
+            path = Path.GetRelativePath(root, path).Replace('\\', '/');
+        }
+        if (path.Replace('\\', '/').Split('/').Any(part => part is ".." or "." or ""))
+            throw new InvalidOperationException("proof-path-traversal-forbidden");
+        return ResolveGovernedPath(NormalizeRoot(root), path, string.Empty, true).Full;
+    }
+
+    public static JsonElement ReadRepairProofJson(string path)
+    {
+        if (new FileInfo(path).Length > 26214400) throw new InvalidOperationException("proof-json-too-large");
+        using var json = JsonDocument.Parse(File.ReadAllText(path));
+        void Check(JsonElement value)
+        {
+            if (value.ValueKind == JsonValueKind.Object)
+            {
+                var names = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var property in value.EnumerateObject())
+                {
+                    if (!names.Add(property.Name)) throw new InvalidOperationException("proof-duplicate-field:" + property.Name);
+                    Check(property.Value);
+                }
+            }
+            else if (value.ValueKind == JsonValueKind.Array)
+                foreach (var item in value.EnumerateArray()) Check(item);
+        }
+        Check(json.RootElement);
+        return json.RootElement.Clone();
+    }
+
+    private static void ProofRequire(bool condition, string reason)
+    {
+        if (!condition) throw new InvalidOperationException("repair-proof-" + reason);
+    }
+
+    private static string[] ProofStrings(JsonElement element, string field, bool allowEmpty = false)
+    {
+        var failures = new List<string>();
+        var values = ReadJsonStringArrayStrict(element, field, failures).ToArray();
+        ProofRequire(failures.Count == 0 && (allowEmpty || values.Length > 0), "invalid-set:" + field);
+        return values;
+    }
+
+    public static IReadOnlyDictionary<string, string> ValidateRepairProofReport(string root, JsonElement expectation)
+    {
+        var path = ResolveRepairProofFile(root, expectation.GetProperty("path").GetString()!);
+        var report = ReadRepairProofJson(path);
+        foreach (var (field, value) in new[] { ("schemaVersion", "1.0"), ("artifactType", "sek-proof-report"),
+                     ("verdict", "PASS"), ("completeness", "COMPLETE"),
+                     ("machine", expectation.GetProperty("expectedMachine").GetString()!) })
+            ProofRequire(!string.IsNullOrWhiteSpace(value) && ReadJsonString(report, field) == value, "report-" + field);
+        var fingerprint = expectation.GetProperty("inputFingerprint").GetString()!;
+        ProofRequire(Regex.IsMatch(fingerprint, "^[0-9a-f]{64}$") && ReadJsonString(report, "inputFingerprint") == fingerprint, "report-fingerprint");
+        var projectRelative = expectation.GetProperty("projectRoot").GetString()!;
+        ProofRequire(!Path.IsPathRooted(projectRelative) && !projectRelative.Replace('\\', '/').Split('/').Any(part => part is ".." or ""), "project-root");
+        var projectRoot = Path.GetFullPath(Path.Combine(root, projectRelative));
+        var attestationPath = ResolveRepairProofFile(root, expectation.GetProperty("buildAttestationPath").GetString()!);
+        var attestation = ReadRepairProofJson(attestationPath);
+        ProofRequire(ReadJsonString(attestation, "schemaVersion") == "1.0", "build-attestation-schema");
+        var sources = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        var binaries = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (field, target) in new[] { ("sources", sources), ("binaries", binaries) })
+        {
+            foreach (var entry in attestation.GetProperty(field).EnumerateObject())
+            {
+                var identity = entry.Value.GetString()!;
+                if (field == "sources" && entry.Name == "runtime")
+                    ProofRequire(identity == System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription, "runtime-stale");
+                else if (field == "sources" && entry.Name == "sdk")
+                {
+                    var start = new ProcessStartInfo("dotnet") { WorkingDirectory = projectRoot, UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
+                    start.ArgumentList.Add("--version");
+                    using var process = Process.Start(start) ?? throw new InvalidOperationException("repair-proof-sdk-start");
+                    var stdout = process.StandardOutput.ReadToEndAsync();
+                    var stderr = process.StandardError.ReadToEndAsync();
+                    if (!process.WaitForExit(30000)) { process.Kill(true); throw new InvalidOperationException("repair-proof-sdk-timeout"); }
+                    ProofRequire(process.ExitCode == 0 && stdout.GetAwaiter().GetResult().Trim() == identity && stderr.GetAwaiter().GetResult().Length == 0, "sdk-stale");
+                }
+                else
+                {
+                    var full = field == "sources" && entry.Name.StartsWith("tool/", StringComparison.Ordinal)
+                        ? Path.Combine(Path.GetDirectoryName(expectation.GetProperty("toolAssemblyPath").GetString()!)!, entry.Name[5..])
+                        : ResolveRepairProofFile(root, Path.GetRelativePath(root, Path.Combine(projectRoot, entry.Name)).Replace('\\', '/'));
+                    if (field == "sources" && entry.Name.StartsWith("tool/", StringComparison.Ordinal))
+                    {
+                        ProofRequire(Path.GetFileName(entry.Name[5..]) == entry.Name[5..], "tool-source-path");
+                        RejectReparse(full, "tool");
+                    }
+                    ProofRequire(Regex.IsMatch(identity, "^[0-9a-f]{64}$") && Sha256(full) == identity, "build-attestation-stale:" + entry.Name);
+                }
+                target.Add(entry.Name, identity);
+            }
+        }
+        ProofRequire(sources.Count > 0 && binaries.Count > 0 && sources.ContainsKey("sdk") && sources.ContainsKey("runtime")
+            && sources.Keys.Any(key => key.StartsWith("tool/", StringComparison.Ordinal)), "build-attestation-empty");
+        var calculated = Sha256Bytes(JsonSerializer.SerializeToUtf8Bytes(new { sources, binaries }, new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
+        ProofRequire(calculated == fingerprint, "build-fingerprint-mismatch");
+        var proofPath = expectation.GetProperty("proofPath").GetString()!;
+        var proofFull = ResolveRepairProofFile(root, proofPath);
+        ProofRequire(sources.GetValueOrDefault(Path.GetRelativePath(projectRoot, proofFull).Replace('\\', '/')) == Sha256(proofFull), "proof-contract-unattested");
+        var machineContract = ReadRepairProofJson(proofFull).GetProperty("machines").GetProperty(expectation.GetProperty("expectedMachine").GetString()!);
+        foreach (var (expected, covered, missing) in new[] {
+                     ("expectedPositiveIds", "coveredPositiveIds", "missingPositiveIds"),
+                     ("expectedRejectionIds", "coveredRejectionIds", "missingRejectionIds") })
+        {
+            var ids = ProofStrings(expectation, expected);
+            var cases = machineContract.GetProperty(expected == "expectedPositiveIds" ? "positiveCases" : "rejections");
+            ProofRequire(ids.ToHashSet(StringComparer.Ordinal).SetEquals(cases.EnumerateArray().Select(item => item.GetProperty("id").GetString()!)), "proof-contract-obligations");
+            ProofRequire(ids.ToHashSet(StringComparer.Ordinal).SetEquals(ProofStrings(report, covered)), "report-" + covered);
+            ProofRequire(ProofStrings(report, missing, allowEmpty: true).Length == 0, "report-" + missing);
+        }
+        var counters = report.GetProperty("budgetCounters");
+        foreach (var (field, ceiling) in new[] { ("states", 5000d), ("transitions", 20000d), ("negatives", 5000d), ("candidateEvaluations", 250000d) })
+        {
+            var value = counters.GetProperty(field).GetDouble();
+            ProofRequire(double.IsFinite(value) && value > 0 && value <= ceiling && value == Math.Truncate(value), "report-counter:" + field);
+        }
+        foreach (var (value, ceiling) in new[] { (counters.GetProperty("elapsedMilliseconds").GetDouble(), 120000d),
+                     (report.GetProperty("durationMilliseconds").GetDouble(), 300000d) })
+            ProofRequire(double.IsFinite(value) && value > 0 && value <= ceiling, "report-duration");
+        var replay = report.GetProperty("replayResults");
+        ProofRequire(replay.ValueKind == JsonValueKind.Object && replay.GetProperty("passed").ValueKind == JsonValueKind.True, "report-replay-not-pass");
+        var succeeded = replay.GetProperty("succeeded").GetInt64();
+        var negatives = replay.GetProperty("negativeReplayed").GetInt64();
+        ProofRequire(succeeded > 0 && replay.GetProperty("failed").GetInt64() == 0
+            && replay.GetProperty("transitionsReplayed").GetInt64() == succeeded
+            && negatives >= ProofStrings(expectation, "expectedRejectionIds").Length
+            && replay.GetProperty("negativeRejected").GetInt64() == negatives
+            && ProofStrings(replay, "failures", allowEmpty: true).Length == 0, "report-replay-counts");
+        ProofRequire(report.GetProperty("error").ValueKind == JsonValueKind.Null, "report-error");
+        var digests = new Dictionary<string, string>(StringComparer.Ordinal) {
+            [expectation.GetProperty("path").GetString()!] = Sha256(path),
+            [expectation.GetProperty("buildAttestationPath").GetString()!] = Sha256(attestationPath) };
+        var graphCount = 0;
+        var buildCount = 0;
+        foreach (var artifact in report.GetProperty("artifactDigests").EnumerateObject())
+        {
+            var build = artifact.Name.StartsWith("build:", StringComparison.Ordinal);
+            ProofRequire(!build || !artifact.Name[6..].Replace('\\', '/').Split('/').Any(part => part is ".." or "." or ""), "build-artifact-traversal");
+            var full = ResolveRepairProofFile(root, build ? Path.GetRelativePath(root, Path.Combine(projectRoot, artifact.Name[6..])).Replace('\\', '/') : artifact.Name, absoluteArtifact: !build);
+            ProofRequire(build || new FileInfo(full).Length is > 0 and <= 26214400, "graph-size");
+            ProofRequire(artifact.Value.GetString() == Sha256(full), "artifact-digest:" + artifact.Name);
+            digests[Path.GetRelativePath(root, full).Replace('\\', '/')] = artifact.Value.GetString()!;
+            if (build) buildCount++; else graphCount++;
+        }
+        ProofRequire(graphCount > 0 && buildCount > 0, "report-artifacts-empty");
+        ProofRequire(buildCount == binaries.Count, "report-build-count");
+        foreach (var binary in binaries)
+            ProofRequire(report.GetProperty("artifactDigests").TryGetProperty("build:" + binary.Key, out var hash) && hash.GetString() == binary.Value, "report-build-set");
+        return digests;
+    }
+
     public static string Sha256(string path)
         => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant();
 
@@ -715,7 +988,7 @@ public static class OperationsLearningPolicy
         var routeHash = ReadJsonString(element, "routeSha256");
         RecordFailure(failures, routePath == closePath, "repair-close-must-not-overwrite-route");
         ValidateRouteContinuity(root, routePath, routeHash, pm, repair, expectedRules, failures);
-        ValidateGateReceipt(root, ReadJsonString(element, "gateReceiptPath"), ReadJsonString(element, "gateReceiptSha256"), routePath, routeHash, closePath, pm, repair, expectedRules, failures);
+        ValidateGateReceipt(root, ReadJsonString(element, "gateReceiptPath"), ReadJsonString(element, "gateReceiptSha256"), routePath, routeHash, closePath, pm, repair, expectedRules, element, failures);
     }
 
     private static void ValidateRouteContinuity(string root, string routePath, string routeHash, PostmortemLearningContract pm, RepairLearningContract repair, IReadOnlyList<string> expectedRules, List<string> failures)
@@ -733,7 +1006,7 @@ public static class OperationsLearningPolicy
         catch (Exception ex) { failures.Add("route-reference-invalid:" + ex.Message); }
     }
 
-    private static void ValidateGateReceipt(string root, string receiptPath, string receiptHash, string routePath, string routeHash, string closePath, PostmortemLearningContract pm, RepairLearningContract repair, IReadOnlyList<string> expectedRules, List<string> failures)
+    private static void ValidateGateReceipt(string root, string receiptPath, string receiptHash, string routePath, string routeHash, string closePath, PostmortemLearningContract pm, RepairLearningContract repair, IReadOnlyList<string> expectedRules, JsonElement close, List<string> failures)
     {
         try
         {
@@ -766,7 +1039,57 @@ public static class OperationsLearningPolicy
             var stderrPath = ReadJsonString(element, "stderrPath");
             ValidateHashedOutput(root, stdoutPath, ReadJsonString(element, "stdoutSha256"), failures, "stdout", false);
             ValidateHashedOutput(root, stderrPath, ReadJsonString(element, "stderrSha256"), failures, "stderr", true);
-            var excluded = new[] { receiptPath, stdoutPath, stderrPath, closePath };
+            var excluded = new List<string> { receiptPath, stdoutPath, stderrPath, closePath };
+            var proofPath = ReadJsonString(element, "proofContractPath");
+            if (proofPath.Length == 0)
+            {
+                RecordFailure(failures, ReadJsonString(element, "structuredAdequacy") is not ("" or "LEGACY")
+                    || ReadJsonString(close, "proofContractPath").Length > 0 || ReadJsonString(close, "proofContractSha256").Length > 0
+                    || ReadJsonString(close, "structuredAdequacy") is not ("" or "LEGACY"), "legacy-receipt-cannot-assert-structured-adequacy");
+            }
+            else
+            {
+                RequireJsonString(element, "structuredAdequacy", "PASS", failures, "gate-receipt");
+                RequireJsonString(close, "proofContractPath", proofPath, failures, "repair-close");
+                var proofHash = Sha256(ResolveGovernedPath(root, proofPath, ".engloop/repairs/", true).Full);
+                RequireJsonString(element, "proofContractSha256", proofHash, failures, "gate-receipt");
+                RequireJsonString(close, "proofContractSha256", proofHash, failures, "repair-close");
+                var descriptor = ValidateRepairProofContract(root, proofPath, pm, repair, routeHash);
+                var identity = ComputeArgumentVectorDigest(new[] { ReadJsonString(element, "preGateHead"), ReadJsonString(element, "preGateIndexDigest"),
+                    ReadJsonString(element, "preGateStatusDigest"), proofHash, descriptor.GetProperty("declaredInputs").GetRawText(), descriptor.GetProperty("toolIdentities").GetRawText() });
+                var recorded = element.GetProperty("proofPhases");
+                var phases = descriptor.GetProperty("phases");
+                ProofRequire(recorded.GetArrayLength() == phases.GetArrayLength(), "receipt-phase-count");
+                for (var phaseIndex = 0; phaseIndex < phases.GetArrayLength(); phaseIndex++)
+                {
+                    var phase = phases[phaseIndex];
+                    var evidence = recorded[phaseIndex];
+                    ProofRequire(evidence.GetProperty("id").GetString() == phase.GetProperty("id").GetString()
+                        && JsonElement.DeepEquals(evidence.GetProperty("executable"), phase.GetProperty("executable"))
+                        && evidence.GetProperty("inputIdentity").GetString() == identity, "receipt-phase-identity");
+                    var checkpointRelative = evidence.GetProperty("checkpointPath").GetString()!;
+                    var checkpointPath = ResolveGovernedPath(root, checkpointRelative, ".engloop/out/repair-gates/", true).Full;
+                    ProofRequire(Sha256(checkpointPath) == evidence.GetProperty("checkpointSha256").GetString(), "receipt-checkpoint-hash");
+                    var checkpoint = ReadRepairProofJson(checkpointPath);
+                    ProofRequire(ReadJsonString(checkpoint, "schemaVersion") == "1.0" && ReadJsonString(checkpoint, "artifactType") == "repair-proof-phase-checkpoint"
+                        && ReadJsonString(checkpoint, "id") == ReadJsonString(phase, "id") && ReadJsonString(checkpoint, "inputIdentity") == identity
+                        && ReadJsonString(checkpoint, "executableDigest") == ComputeArgumentVectorDigest(phase.GetProperty("executable").EnumerateArray().Select(item => item.GetString()!).ToArray())
+                        && checkpoint.GetProperty("completed").ValueKind == JsonValueKind.True && checkpoint.GetProperty("exitCode").GetInt32() == 0
+                        && checkpoint.GetProperty("durationMilliseconds").GetDouble() is > 0 and <= 300000
+                        && JsonElement.DeepEquals(checkpoint.GetProperty("artifactDigests"), evidence.GetProperty("artifactDigests")), "receipt-checkpoint-identity");
+                    foreach (var artifact in checkpoint.GetProperty("artifactDigests").EnumerateObject())
+                        ProofRequire(Sha256(ResolveRepairProofFile(root, artifact.Name)) == artifact.Value.GetString(), "receipt-output-digest");
+                    foreach (var output in ProofStrings(phase, "outputPaths").Concat(new[] { ReadJsonString(evidence, "stdoutPath"), ReadJsonString(evidence, "stderrPath") }))
+                    {
+                        ProofRequire(checkpoint.GetProperty("artifactDigests").TryGetProperty(output, out _), "receipt-output-missing");
+                        excluded.Add(output);
+                    }
+                    foreach (var report in phase.GetProperty("reportPaths").EnumerateArray())
+                        foreach (var artifact in ValidateRepairProofReport(root, report))
+                            ProofRequire(checkpoint.GetProperty("artifactDigests").GetProperty(artifact.Key).GetString() == artifact.Value, "receipt-report-digest");
+                    excluded.Add(checkpointRelative);
+                }
+            }
             RecordFailure(failures, ReadJsonString(element, "sourceHead") != GitHead(root), "gate-receipt-head-stale");
             RecordFailure(failures, ReadJsonString(element, "sourceIndexDigest") != ComputeGitIndexDigest(root), "gate-receipt-index-stale");
             RecordFailure(failures, ReadJsonString(element, "sourceStatusDigest") != ComputeGitStatusDigest(root, excluded), "gate-receipt-status-stale");

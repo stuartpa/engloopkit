@@ -189,6 +189,8 @@ public static class ValidationCommands
         }
         EnsureValidation(element.TryGetProperty("failures", out var failures) & failures.ValueKind == JsonValueKind.Array & (failures.ValueKind != JsonValueKind.Array || failures.GetArrayLength() == 0), "readiness-evidence-failures-present");
         EnsureValidation(element.TryGetProperty("modules", out var modules) & modules.ValueKind == JsonValueKind.Array, "readiness-evidence-modules-missing");
+        var configured = Evidence.LoadConfiguration(root).ModuleInventory.Select(module => module.Id).OrderBy(id => id, StringComparer.Ordinal).ToArray();
+        EnsureValidation(configured.Length > 0 & modules.GetArrayLength() > 0, "missing-module-inventory");
         var coberturaRelative = element.TryGetProperty("coberturaReport", out var reportValue) && reportValue.ValueKind == JsonValueKind.String ? reportValue.GetString() ?? string.Empty : string.Empty;
         var coberturaFull = ResolveOperationsOutput(root, coberturaRelative, ".engloop/out/readiness-coverage/", requireExisting: true);
         var coberturaHash = element.TryGetProperty("coberturaSha256", out var hashValue) ? hashValue.GetString() ?? string.Empty : string.Empty;
@@ -196,7 +198,6 @@ public static class ValidationCommands
         var packages = XDocument.Load(coberturaFull).Descendants("package")
             .Where(node => node.Attribute("name") is not null)
             .ToDictionary(node => node.Attribute("name")!.Value, StringComparer.Ordinal);
-        var configured = Evidence.LoadConfiguration(root).ModuleInventory.Select(module => module.Id).OrderBy(id => id, StringComparer.Ordinal).ToArray();
         var observed = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
         foreach (var module in modules.EnumerateArray())
         {
@@ -238,7 +239,8 @@ public static class ValidationCommands
             var rules = RequireOption(args, "--rules").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             var routePath = RequireOption(args, "--route").Replace('\\', '/');
             var receiptPath = RequireOption(args, "--receipt").Replace('\\', '/');
-            EnsureValidation(int.TryParse(GetOption(args, "--timeout-seconds", "900"), out var timeoutSeconds) & timeoutSeconds is >= 1 and <= 3600, "repair-gate-timeout-invalid");
+            EnsureValidation(int.TryParse(GetOption(args, "--timeout-seconds", "300"), out var timeoutSeconds) & timeoutSeconds is >= 1 and <= 3600, "repair-gate-timeout-invalid");
+            EnsureValidation(int.TryParse(GetOption(args, "--log-limit-bytes", "2097152"), out var logLimitBytes) & logLimitBytes >= 1, "repair-gate-log-limit-invalid");
             var pm = OperationsLearningPolicy.ValidatePostmortem(root, postmortemPath, forRepairRouting: true);
             EnsureValidation(pm.Passed & pm.Contract is not null, "repair-gate-postmortem-invalid:" + string.Join(',', pm.Failures));
             if (!pm.Contract!.Repairs.TryGetValue(rpi, out var repair) || repair is null)
@@ -246,6 +248,17 @@ public static class ValidationCommands
             var route = OperationsLearningPolicy.ValidateRepairAcceptance(root, postmortemPath, rpi, rules, routePath, "route", currentReadinessPass: false);
             EnsureValidation(route.Passed, "repair-gate-route-invalid:" + string.Join(',', route.Failures));
             var fullRoute = ResolveOperationsOutput(root, routePath, ".engloop/repairs/", requireExisting: true);
+            var proofContractPath = GetOption(args, "--proof-contract", string.Empty).Replace('\\', '/');
+            var proofContractHash = string.Empty;
+            JsonElement? proofContract = null;
+            if (args.Contains("--proof-contract", StringComparer.Ordinal))
+            {
+                RequireOption(args, "--proof-contract");
+                var fullProof = ResolveOperationsOutput(root, proofContractPath, ".engloop/repairs/", true);
+                proofContractHash = OperationsLearningPolicy.Sha256(fullProof);
+                proofContract = OperationsLearningPolicy.ValidateRepairProofContract(root, proofContractPath, pm.Contract, repair, OperationsLearningPolicy.Sha256(fullRoute));
+                timeoutSeconds = Math.Min(timeoutSeconds, 300);
+            }
             var fullReceipt = ResolveOperationsOutput(root, receiptPath, ".engloop/out/repair-gates/", requireExisting: false);
             EnsureValidation(!File.Exists(fullReceipt), "repair-gate-receipt-exists");
             Directory.CreateDirectory(Path.GetDirectoryName(fullReceipt)!);
@@ -255,7 +268,14 @@ public static class ValidationCommands
             var stdoutPath = ResolveOperationsOutput(root, stdoutRelative, ".engloop/out/repair-gates/", false);
             var stderrPath = ResolveOperationsOutput(root, stderrRelative, ".engloop/out/repair-gates/", false);
             EnsureValidation(!File.Exists(stdoutPath) & !File.Exists(stderrPath), "repair-gate-output-exists");
-            var excluded = new[] { receiptPath, stdoutRelative, stderrRelative };
+            var excluded = new List<string> { receiptPath, stdoutRelative, stderrRelative };
+            if (proofContract is { } descriptor)
+                foreach (var phase in descriptor.GetProperty("phases").EnumerateArray())
+                {
+                    excluded.AddRange(phase.GetProperty("outputPaths").EnumerateArray().Select(item => item.GetString()!));
+                    var phaseBase = ".engloop/out/repair-gates/" + proofContractHash + "." + phase.GetProperty("id").GetString();
+                    excluded.AddRange(new[] { phaseBase + ".stdout.log", phaseBase + ".stderr.log", phaseBase + ".checkpoint.json" });
+                }
             var preGateStatusDigest = OperationsLearningPolicy.ComputeGitStatusDigest(root, excluded);
             var preGateHead = OperationsLearningPolicy.GitHead(root) ?? throw new InvalidOperationException("repair-gate-head-unavailable");
             var preGateIndexDigest = OperationsLearningPolicy.ComputeGitIndexDigest(root);
@@ -269,29 +289,131 @@ public static class ValidationCommands
                 CreateNoWindow = true,
             };
             foreach (var argument in repair.ExecutableGate.Skip(1)) start.ArgumentList.Add(argument);
+            var startedAtUtc = DateTimeOffset.UtcNow;
+            var duration = Stopwatch.StartNew();
             using var process = Process.Start(start) ?? throw new InvalidOperationException("repair-gate-process-start-failed");
-            var stdoutTask = process.StandardOutput.ReadToEndAsync();
-            var stderrTask = process.StandardError.ReadToEndAsync();
-            var completed = process.WaitForExit(timeoutSeconds * 1000);
-            if (!completed)
+            using var captureCancellation = new CancellationTokenSource();
+            var logLimitReached = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            async Task CaptureLog(Stream source, string path)
             {
-                try { process.Kill(entireProcessTree: true); } catch { }
-                process.WaitForExit();
+                await using var output = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read, 8192, useAsync: true);
+                var buffer = new byte[8192];
+                var remaining = logLimitBytes;
+                try
+                {
+                    while (remaining > 0)
+                    {
+                        var count = await source.ReadAsync(buffer.AsMemory(0, Math.Min(buffer.Length, remaining)), captureCancellation.Token);
+                        if (count == 0) return;
+                        await output.WriteAsync(buffer.AsMemory(0, count));
+                        remaining -= count;
+                    }
+                    logLimitReached.TrySetResult(true);
+                }
+                catch (OperationCanceledException) when (captureCancellation.IsCancellationRequested) { }
             }
-            var stdout = stdoutTask.GetAwaiter().GetResult();
-            var stderr = stderrTask.GetAwaiter().GetResult();
-            File.WriteAllText(stdoutPath, stdout);
-            File.WriteAllText(stderrPath, stderr);
+            var stdoutTask = CaptureLog(process.StandardOutput.BaseStream, stdoutPath);
+            var stderrTask = CaptureLog(process.StandardError.BaseStream, stderrPath);
+            var exitTask = process.WaitForExitAsync(captureCancellation.Token);
+            var finishedTask = Task.WhenAll(exitTask, stdoutTask, stderrTask);
+            using var timeoutCancellation = new CancellationTokenSource();
+            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(timeoutSeconds), timeoutCancellation.Token);
+            var outcome = Task.WhenAny(finishedTask, logLimitReached.Task, timeoutTask).GetAwaiter().GetResult();
+            var logOverflow = logLimitReached.Task.IsCompleted;
+            var completed = outcome == finishedTask && !logOverflow;
+            var processTerminationFailed = false;
+            void KillOwnedProcess()
+            {
+                try
+                {
+                    if (!process.HasExited) process.Kill(entireProcessTree: true);
+                }
+                catch (InvalidOperationException) { }
+                catch (System.ComponentModel.Win32Exception) { processTerminationFailed = true; }
+            }
+            try
+            {
+                if (!completed)
+                {
+                    KillOwnedProcess();
+                    process.WaitForExit(5000);
+                    captureCancellation.Cancel();
+                }
+                try { finishedTask.GetAwaiter().GetResult(); }
+                catch (OperationCanceledException) when (captureCancellation.IsCancellationRequested) { }
+            }
+            finally
+            {
+                timeoutCancellation.Cancel();
+                captureCancellation.Cancel();
+                KillOwnedProcess();
+            }
+            duration.Stop();
+            var primaryDurationMilliseconds = duration.Elapsed.TotalMilliseconds;
+            duration.Start();
+            var completedAtUtc = DateTimeOffset.UtcNow;
+            var failureReason = logOverflow ? "repair-gate-log-limit-reached" : !completed ? "repair-gate-timeout" : string.Empty;
+            var proofPhases = new List<JsonElement>();
+            var structuredAdequacy = "LEGACY";
+            if (proofContract is { } strict)
+            {
+                structuredAdequacy = "FAIL";
+                try
+                {
+                    EnsureValidation(completed && process.ExitCode == 0, "repair-proof-primary-gate-failed");
+                    var identity = OperationsLearningPolicy.ComputeArgumentVectorDigest(new[] {
+                        preGateHead, preGateIndexDigest, preGateStatusDigest, proofContractHash,
+                        strict.GetProperty("declaredInputs").GetRawText(), strict.GetProperty("toolIdentities").GetRawText() });
+                    var supplementDuration = Stopwatch.StartNew();
+                    foreach (var phase in strict.GetProperty("phases").EnumerateArray())
+                    {
+                        EnsureValidation(supplementDuration.Elapsed.TotalSeconds < 300, "repair-proof-phase-budget");
+                        EnsureValidation(preGateHead == OperationsLearningPolicy.GitHead(root)
+                            && preGateIndexDigest == OperationsLearningPolicy.ComputeGitIndexDigest(root)
+                            && preGateStatusDigest == OperationsLearningPolicy.ComputeGitStatusDigest(root, excluded), "repair-proof-source-mutated");
+                        OperationsLearningPolicy.ValidateRepairProofInputs(root, strict);
+                        proofPhases.Add(ExecuteRepairProofPhase(root, phase, proofContractHash, identity,
+                            TimeSpan.FromSeconds(300) - supplementDuration.Elapsed, logLimitBytes));
+                    }
+                    EnsureValidation(OperationsLearningPolicy.Sha256(ResolveOperationsOutput(root, proofContractPath, ".engloop/repairs/", true)) == proofContractHash, "repair-proof-contract-mutated");
+                    OperationsLearningPolicy.ValidateRepairProofContract(root, proofContractPath, pm.Contract, repair, OperationsLearningPolicy.Sha256(fullRoute));
+                    foreach (var evidence in proofPhases)
+                        foreach (var artifact in evidence.GetProperty("artifactDigests").EnumerateObject())
+                            EnsureValidation(OperationsLearningPolicy.Sha256(OperationsLearningPolicy.ResolveRepairProofFile(root, artifact.Name)) == artifact.Value.GetString(), "repair-proof-output-mutated:" + artifact.Name);
+                    foreach (var phase in strict.GetProperty("phases").EnumerateArray())
+                        foreach (var report in phase.GetProperty("reportPaths").EnumerateArray())
+                            OperationsLearningPolicy.ValidateRepairProofReport(root, report);
+                    EnsureValidation(supplementDuration.Elapsed.TotalSeconds <= 300, "repair-proof-phase-budget");
+                    structuredAdequacy = "PASS";
+                }
+                catch (Exception ex) { failureReason = ex.Message; }
+            }
+            duration.Stop();
+            completedAtUtc = DateTimeOffset.UtcNow;
             var postGateStatusDigest = OperationsLearningPolicy.ComputeGitStatusDigest(root, excluded);
             var postGateHead = OperationsLearningPolicy.GitHead(root) ?? string.Empty;
             var postGateIndexDigest = OperationsLearningPolicy.ComputeGitIndexDigest(root);
             var gatePassed = completed && process.ExitCode == 0 && preGateStatusDigest == postGateStatusDigest
-                && preGateHead == postGateHead && preGateIndexDigest == postGateIndexDigest;
+                && !processTerminationFailed && preGateHead == postGateHead && preGateIndexDigest == postGateIndexDigest
+                && structuredAdequacy != "FAIL";
             var receipt = new
             {
                 schemaVersion = "1.0",
                 artifactType = "repair-gate-receipt",
                 capturedAtUtc = DateTimeOffset.UtcNow,
+                startedAtUtc,
+                completedAtUtc,
+                durationMilliseconds = duration.Elapsed.TotalMilliseconds,
+                primaryDurationMilliseconds,
+                timeoutSeconds,
+                logLimitBytes,
+                logOverflow,
+                processTerminationFailed,
+                failureReason,
+                structuredAdequacy,
+                proofContractPath,
+                proofContractSha256 = proofContractHash,
+                proofPhases,
                 verdict = gatePassed ? "PASS" : "FAIL",
                 postmortemPath = pm.Contract.RelativePath,
                 postmortemSha256 = pm.Contract.Sha256,
@@ -320,7 +442,7 @@ public static class ValidationCommands
             File.WriteAllText(fullReceipt, JsonSerializer.Serialize(receipt, new JsonSerializerOptions { WriteIndented = true }));
             if (!gatePassed)
             {
-                Console.Error.WriteLine($"REPAIR_GATE_FAIL receipt={receiptPath} exit={(completed ? process.ExitCode : -1)} mutated={preGateStatusDigest != postGateStatusDigest || preGateHead != postGateHead || preGateIndexDigest != postGateIndexDigest}");
+                Console.Error.WriteLine($"REPAIR_GATE_FAIL receipt={receiptPath} exit={(completed ? process.ExitCode : -1)} reason={failureReason} mutated={preGateStatusDigest != postGateStatusDigest || preGateHead != postGateHead || preGateIndexDigest != postGateIndexDigest}");
                 return 1;
             }
             Console.WriteLine($"REPAIR_GATE_PASS receipt={receiptPath}");
@@ -333,6 +455,109 @@ public static class ValidationCommands
         }
     }
 
+    private static JsonElement ExecuteRepairProofPhase(string root, JsonElement phase, string contractHash,
+        string inputIdentity, TimeSpan budget, int logLimitBytes)
+    {
+        var id = phase.GetProperty("id").GetString()!;
+        var phaseBase = ".engloop/out/repair-gates/" + contractHash + "." + id;
+        var checkpointRelative = phaseBase + ".checkpoint.json";
+        var checkpointPath = ResolveOperationsOutput(root, checkpointRelative, ".engloop/out/repair-gates/", false);
+        var stdoutRelative = phaseBase + ".stdout.log";
+        var stderrRelative = phaseBase + ".stderr.log";
+        var outputs = phase.GetProperty("outputPaths").EnumerateArray().Select(item => item.GetString()!).ToArray();
+        var checkpointValid = false;
+        JsonElement checkpoint = default;
+        if (File.Exists(checkpointPath))
+        {
+            try
+            {
+                checkpoint = OperationsLearningPolicy.ReadRepairProofJson(checkpointPath);
+                checkpointValid = checkpoint.GetProperty("schemaVersion").GetString() == "1.0"
+                    && checkpoint.GetProperty("artifactType").GetString() == "repair-proof-phase-checkpoint"
+                    && checkpoint.GetProperty("inputIdentity").GetString() == inputIdentity
+                    && checkpoint.GetProperty("id").GetString() == id
+                    && checkpoint.GetProperty("executableDigest").GetString() == OperationsLearningPolicy.ComputeArgumentVectorDigest(phase.GetProperty("executable").EnumerateArray().Select(item => item.GetString()!).ToArray())
+                    && checkpoint.GetProperty("completed").ValueKind == JsonValueKind.True
+                    && checkpoint.GetProperty("exitCode").GetInt32() == 0;
+                foreach (var artifact in checkpoint.GetProperty("artifactDigests").EnumerateObject())
+                    checkpointValid &= OperationsLearningPolicy.Sha256(OperationsLearningPolicy.ResolveRepairProofFile(root, artifact.Name)) == artifact.Value.GetString();
+                foreach (var report in phase.GetProperty("reportPaths").EnumerateArray())
+                    foreach (var artifact in OperationsLearningPolicy.ValidateRepairProofReport(root, report))
+                        checkpointValid &= checkpoint.GetProperty("artifactDigests").GetProperty(artifact.Key).GetString() == artifact.Value;
+                foreach (var output in outputs.Concat(new[] { stdoutRelative, stderrRelative }))
+                    checkpointValid &= checkpoint.GetProperty("artifactDigests").TryGetProperty(output, out _);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or IOException or JsonException or KeyNotFoundException) { checkpointValid = false; }
+        }
+        if (!checkpointValid)
+        {
+            foreach (var report in phase.GetProperty("reportPaths").EnumerateArray())
+            {
+                var path = ResolveOperationsOutput(root, report.GetProperty("path").GetString()!, string.Empty, false);
+                if (File.Exists(path)) File.Delete(path);
+            }
+            var start = new ProcessStartInfo(phase.GetProperty("executable")[0].GetString()!)
+            {
+                WorkingDirectory = root, RedirectStandardOutput = true, RedirectStandardError = true,
+                UseShellExecute = false, CreateNoWindow = true,
+            };
+            foreach (var argument in phase.GetProperty("executable").EnumerateArray().Skip(1)) start.ArgumentList.Add(argument.GetString()!);
+            var duration = Stopwatch.StartNew();
+            using var process = Process.Start(start) ?? throw new InvalidOperationException("repair-proof-process-start");
+            using var cancellation = new CancellationTokenSource(budget);
+            var overflow = false;
+            async Task Capture(Stream source, string relative)
+            {
+                var path = ResolveOperationsOutput(root, relative, ".engloop/out/repair-gates/", false);
+                await using var output = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read, 8192, true);
+                var buffer = new byte[8192];
+                var remaining = logLimitBytes;
+                while (remaining > 0)
+                {
+                    var count = await source.ReadAsync(buffer.AsMemory(0, Math.Min(buffer.Length, remaining)), cancellation.Token);
+                    if (count == 0) return;
+                    await output.WriteAsync(buffer.AsMemory(0, count), cancellation.Token);
+                    remaining -= count;
+                }
+                overflow = true;
+                cancellation.Cancel();
+            }
+            var stdout = Capture(process.StandardOutput.BaseStream, stdoutRelative);
+            var stderr = Capture(process.StandardError.BaseStream, stderrRelative);
+            var tasks = Task.WhenAll(process.WaitForExitAsync(cancellation.Token), stdout, stderr);
+            try { tasks.GetAwaiter().GetResult(); }
+            catch (OperationCanceledException)
+            {
+                if (!process.HasExited) process.Kill(entireProcessTree: true);
+                process.WaitForExit(5000);
+                throw new InvalidOperationException(overflow ? "repair-proof-log-limit" : "repair-proof-phase-budget");
+            }
+            finally
+            {
+                cancellation.Cancel();
+                if (!process.HasExited) process.Kill(entireProcessTree: true);
+            }
+            EnsureValidation(process.ExitCode == 0 && !overflow, "repair-proof-phase-exit:" + id);
+            var artifacts = new SortedDictionary<string, string>(StringComparer.Ordinal);
+            foreach (var output in outputs.Concat(new[] { stdoutRelative, stderrRelative }))
+                artifacts[output] = OperationsLearningPolicy.Sha256(OperationsLearningPolicy.ResolveRepairProofFile(root, output));
+            foreach (var report in phase.GetProperty("reportPaths").EnumerateArray())
+                foreach (var artifact in OperationsLearningPolicy.ValidateRepairProofReport(root, report)) artifacts[artifact.Key] = artifact.Value;
+            duration.Stop();
+            EnsureValidation(duration.Elapsed <= budget, "repair-proof-phase-budget");
+            checkpoint = JsonSerializer.SerializeToElement(new {
+                schemaVersion = "1.0", artifactType = "repair-proof-phase-checkpoint", id, inputIdentity,
+                executableDigest = OperationsLearningPolicy.ComputeArgumentVectorDigest(phase.GetProperty("executable").EnumerateArray().Select(item => item.GetString()!).ToArray()),
+                completed = true, exitCode = process.ExitCode, durationMilliseconds = duration.Elapsed.TotalMilliseconds,
+                artifactDigests = artifacts });
+            File.WriteAllText(checkpointPath, checkpoint.GetRawText());
+        }
+        return JsonSerializer.SerializeToElement(new { id, executable = phase.GetProperty("executable"), inputIdentity,
+            checkpointPath = checkpointRelative, checkpointSha256 = OperationsLearningPolicy.Sha256(checkpointPath),
+            reused = checkpointValid, durationMilliseconds = checkpoint.GetProperty("durationMilliseconds").GetDouble(),
+            artifactDigests = checkpoint.GetProperty("artifactDigests"), stdoutPath = stdoutRelative, stderrPath = stderrRelative });
+    }
+
     private static string ResolveOperationsOutput(string root, string candidate, string requiredPrefix, bool requireExisting)
     {
         EnsureValidation(!string.IsNullOrWhiteSpace(candidate) & !Path.IsPathRooted(candidate), "operations-path-must-be-relative");
@@ -341,7 +566,7 @@ public static class ValidationCommands
         var normalized = Path.GetRelativePath(root, full).Replace('\\', '/');
         EnsureValidation(normalized != ".." & !normalized.StartsWith("../", StringComparison.Ordinal) & normalized.StartsWith(requiredPrefix, StringComparison.Ordinal), "operations-path-outside-governed-root");
         if (requireExisting && !File.Exists(full)) throw new FileNotFoundException("operations-file-missing", full);
-        var cursor = requireExisting ? full : Path.GetDirectoryName(full);
+        var cursor = requireExisting || File.Exists(full) || Directory.Exists(full) ? full : Path.GetDirectoryName(full);
         while (!string.IsNullOrWhiteSpace(cursor) && cursor.StartsWith(root, StringComparison.OrdinalIgnoreCase))
         {
             if (File.Exists(cursor) || Directory.Exists(cursor))
@@ -393,13 +618,15 @@ public static class ValidationCommands
         foreach (var module in config.ModuleInventory)
         {
             var modulePath = Path.GetFullPath(Path.Combine(rootResult.RepositoryRoot, module.Path));
-            if (!modulePath.StartsWith(rootResult.RepositoryRoot, StringComparison.OrdinalIgnoreCase))
+            var relativePath = Path.GetRelativePath(rootResult.RepositoryRoot, modulePath);
+            if (Path.IsPathRooted(relativePath) || relativePath == ".."
+                || relativePath.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal))
             {
                 errors.Add($"module-path-escapes-root:{module.Id}");
                 continue;
             }
 
-            if (!File.Exists(modulePath))
+            if (!File.Exists(modulePath) && !Directory.Exists(modulePath))
             {
                 errors.Add($"module-path-missing:{module.Id}");
             }
@@ -586,7 +813,7 @@ public static class ValidationCommands
                 return 1;
             }
 
-            const bool expectedModelInvocationDisabled = true;
+            var expectedModelInvocationDisabled = commandId != "speckit.engloop.21-postmortem";
             if (!map.TryGetValue("disable-model-invocation", out var disabledValue)
                 || !bool.TryParse(disabledValue?.ToString(), out var disabled)
                 || disabled != expectedModelInvocationDisabled)

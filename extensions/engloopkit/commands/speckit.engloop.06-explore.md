@@ -53,8 +53,11 @@ SEK owns its language, binding, and generation guidance. Load the installed
 `.specify/extensions/sek/skills/sek-cord-authoring/SKILL.md` and
 `.specify/extensions/sek/skills/using-sek-to-generate-tests/SKILL.md`; if either is absent, stop and require the SEK
 extension. Do not copy SEK documentation into ELK.
-Use the root-local `sek` v0.1.3 tool directly; it and generated test projects are
-native `net10.0` dependencies.
+Use the root-local native `net10.0` SEK tool and generated test projects.
+The baseline is v0.1.3; a relevant repair may instead use only the exact hash-bound
+numeric identity authorized by [Stage 22's structured supplement](/extensions/engloopkit/commands/speckit.engloop.22-repair.md#structured-proof-supplement).
+Follow SEK's skills for COMPLETE artifacts and explicit validated `test`/`generate`
+checkpoint reuse. Legal slices do not replace direct scoped model-derived rejection evidence.
 
 ## Overlay ownership
 

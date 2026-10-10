@@ -123,6 +123,72 @@ Operations is not created merely because a delivery lane completed.
    `NOT-PROVIDED`, and never blocks on provenance, cleanliness, readiness, or causal proof.
    Its optional review-first Stage 42 handoff may preserve reusable positive learnings.
 
+### Structured repair proof supplements
+
+`repair-gate execute --proof-contract .engloop/repairs/<PM>-<RPI>.proof-contract.json`
+adds required structured evidence without editing the accepted PM or route. Without
+this option receipts remain explicitly `structuredAdequacy: LEGACY`; an exit-zero
+legacy receipt cannot claim structured adequacy. The primary executable gate remains
+exactly the PM vector. Strict execution caps it at 300 seconds and gives all supplemental
+phases a separate shared 300-second budget. Every accepted report must prove complete,
+nonempty legal and model-derived rejection cases, replay success, a fresh full build
+fingerprint, exploration within 120 seconds, and graphs no larger than 25 MiB.
+This applies [PM004/LEARN001–003](../.engloop/postmortems/PM004_selfmodel-negative-conformance-and-richness.md#learnings)
+and [PM002/LEARN003](../.engloop/postmortems/PM002_gate-verification-method-by-class.md#learnings),
+via the adequate-models-prove-rejection and verification-follows-artifact-class cards.
+
+The descriptor's exact shape is:
+
+```json
+{
+   "schemaVersion": "1.0",
+   "artifactType": "repair-proof-contract",
+   "postmortemSha256": "<accepted PM hash>",
+   "routeSha256": "<original route hash>",
+   "rpiId": "RPI001",
+   "ruleIds": ["RULE:<exact ordered rule>"],
+   "executableGateDigest": "<unchanged primary vector digest>",
+   "declaredInputs": {"<repo-relative input file>": "<sha256>"},
+   "toolIdentities": [{
+      "command": "sek", "packageId": "specexplorerkit.tool", "version": "<numeric x.y.z>",
+      "manifestPath": ".config/dotnet-tools.json", "manifestSha256": "<sha256>",
+      "packagePath": "<repo-relative nupkg>", "packageSha256": "<sha256>",
+      "assemblyPath": "<absolute installed native-tool assembly>", "assemblySha256": "<sha256>"
+   }],
+   "sekVersionSupplement": {
+      "priorVersion": "0.1.3", "version": "<same numeric x.y.z>",
+      "postmortemSha256": "<accepted PM hash>", "routeSha256": "<original route hash>"
+   },
+   "phases": [{
+      "id": "conformance",
+      "executable": ["dotnet", "tool", "run", "sek", "test", "<machine>", "--project", "<project>", "--report", "<report>"],
+      "outputPaths": ["<report>"],
+      "reportPaths": [{
+         "path": "<repo-relative report>", "projectRoot": "<repo-relative project directory>",
+         "proofPath": "<repo-relative SEK proof contract>",
+         "buildAttestationPath": "<repo-relative SEK build-attestation.json>",
+         "toolAssemblyPath": "<same absolute installed native-tool assembly>",
+         "expectedMachine": "<exact machine>", "inputFingerprint": "<full SEK fingerprint>",
+         "expectedPositiveIds": ["<legal case id>"], "expectedRejectionIds": ["<rejection case id>"]
+      }]
+   }]
+}
+```
+
+`sekVersionSupplement` is required for a relevant repair using a different numeric
+local SEK version; it does not relax the historical PM/route `0.1.3` requirement.
+Package metadata, native manifest, assembly version/hash, and installed package bytes
+must agree. Passing a supplement authorizes this explicit version binding, not a PM
+rewrite or global tool upgrade. Phases without reports can carry bounded preparation
+checks, but the descriptor must contain at least one native SEK report phase.
+Outputs must be untracked files under `.engloop/out/` or a `.specexplorerkit/out/` root.
+Report files are removed before fresh execution, so stale PASS files cannot substitute
+for a command producing evidence. Reuse requires exact HEAD, content-sensitive status,
+index, descriptor, declared inputs, tool identities, and checkpoint/output/report hashes.
+Strict receipts and close records must both carry `proofContractPath` and
+`proofContractSha256`; closure revalidates all evidence. No readiness, release, rollout,
+or conservation gate is waived by structured local proof.
+
 ## Stewardship: 40–42
 
 - **40 Refactor Plan** requires explicit spare capacity. It works with the user to record

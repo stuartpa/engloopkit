@@ -202,12 +202,268 @@ public sealed class OperationsLearningPolicyTests : IDisposable
         WriteRoute(pm.Contract!);
         WriteReadiness();
         Assert.Equal(0, Program.Main(["repair-gate", "execute", "--root", _root, "--postmortem", pmPath, "--rpi", "RPI001", "--rules", "RULE:reliability", "--route", RoutePath, "--receipt", ReceiptPath]));
+        using var receipt = JsonDocument.Parse(File.ReadAllText(Full(ReceiptPath)));
+        var started = receipt.RootElement.GetProperty("startedAtUtc").GetDateTimeOffset();
+        var completed = receipt.RootElement.GetProperty("completedAtUtc").GetDateTimeOffset();
+        Assert.True(completed >= started);
+        Assert.True(receipt.RootElement.GetProperty("durationMilliseconds").GetDouble() > 0);
+        Assert.Equal(300, receipt.RootElement.GetProperty("timeoutSeconds").GetInt32());
+        Assert.Equal(2097152, receipt.RootElement.GetProperty("logLimitBytes").GetInt32());
+        Assert.False(receipt.RootElement.GetProperty("logOverflow").GetBoolean());
         WriteClose(pm.Contract!);
         Assert.Equal(0, ValidationCommands.ValidateRepairLearning(["--root", _root, "--phase", "close", "--postmortem", pmPath, "--rpi", "RPI001", "--rules", "RULE:reliability", "--acceptance", ClosePath]));
 
         var routeText = File.ReadAllText(Full(RoutePath));
         File.WriteAllText(Full(RoutePath), routeText + " ");
         Assert.NotEqual(0, ValidationCommands.ValidateRepairLearning(["--root", _root, "--phase", "close", "--postmortem", pmPath, "--rpi", "RPI001", "--rules", "RULE:reliability", "--acceptance", ClosePath]));
+    }
+
+    [Theory]
+    [InlineData("verdict", "FAIL")]
+    [InlineData("verdict", "INCOMPLETE")]
+    [InlineData("completeness", "INCOMPLETE")]
+    [InlineData("machine", "Other")]
+    [InlineData("inputFingerprint", "wrong")]
+    public void RepairProofReport_rejectsInvalidStructuredEvidence(string field, string value)
+    {
+        const string reportPath = ".engloop/out/proof.json";
+        var report = new JsonObject
+        {
+            ["schemaVersion"] = "1.0", ["artifactType"] = "sek-proof-report", ["verdict"] = "PASS",
+            ["completeness"] = "COMPLETE", ["machine"] = "Main", ["inputFingerprint"] = new string('a', 64)
+        };
+        report[field] = value;
+        File.WriteAllText(Full(reportPath), report.ToJsonString());
+        var expectation = JsonSerializer.SerializeToElement(new { path = reportPath, expectedMachine = "Main", inputFingerprint = new string('a', 64) });
+        Assert.Throws<InvalidOperationException>(() => OperationsLearningPolicy.ValidateRepairProofReport(_root, expectation));
+    }
+
+    [Theory]
+    [InlineData("none")]
+    [InlineData("missing-positive")]
+    [InlineData("missing-rejection")]
+    [InlineData("empty-obligations")]
+    [InlineData("empty-replay")]
+    [InlineData("negative-not-rejected")]
+    [InlineData("replay-failure")]
+    [InlineData("bound-hit")]
+    [InlineData("duration")]
+    [InlineData("stale-binary")]
+    [InlineData("stale-source")]
+    [InlineData("fingerprint")]
+    [InlineData("artifact-digest")]
+    [InlineData("outside-graph")]
+    [InlineData("traversal-build")]
+    [InlineData("empty-artifacts")]
+    [InlineData("oversize-graph")]
+    public void RepairProofReport_validatesFullFingerprintAndObligations(string mutation)
+    {
+        var expectation = WriteProofReportFixture();
+        var report = JsonNode.Parse(File.ReadAllText(Full(".engloop/out/proof.json")))!;
+        switch (mutation)
+        {
+            case "missing-positive": report["coveredPositiveIds"] = new JsonArray(); break;
+            case "missing-rejection": report["missingRejectionIds"] = new JsonArray("reject"); break;
+            case "empty-obligations": expectation["expectedRejectionIds"] = new JsonArray(); break;
+            case "empty-replay": report["replayResults"]!["succeeded"] = 0; break;
+            case "negative-not-rejected": report["replayResults"]!["negativeRejected"] = 0; break;
+            case "replay-failure": report["replayResults"]!["failures"] = new JsonArray("failed"); break;
+            case "bound-hit": report["budgetCounters"]!["states"] = 5001; break;
+            case "duration": report["budgetCounters"]!["elapsedMilliseconds"] = 120001; break;
+            case "stale-binary": File.AppendAllText(Full("model/Model.cs"), "changed"); break;
+            case "stale-source": File.AppendAllText(Full("model/proof.json"), " "); break;
+            case "fingerprint": expectation["inputFingerprint"] = new string('b', 64); report["inputFingerprint"] = new string('b', 64); break;
+            case "artifact-digest": report["artifactDigests"]![Full(".engloop/out/main.seexpl")] = new string('b', 64); break;
+            case "outside-graph": report["artifactDigests"]![Path.Combine(Path.GetTempPath(), "outside.seexpl")] = new string('b', 64); break;
+            case "traversal-build": report["artifactDigests"]!["build:../outside.dll"] = new string('b', 64); break;
+            case "empty-artifacts": report["artifactDigests"] = new JsonObject(); break;
+            case "oversize-graph": using (var graph = File.OpenWrite(Full(".engloop/out/main.seexpl"))) graph.SetLength(26214401); break;
+        }
+        File.WriteAllText(Full(".engloop/out/proof.json"), report.ToJsonString());
+        if (mutation == "none")
+            Assert.NotEmpty(OperationsLearningPolicy.ValidateRepairProofReport(_root, JsonSerializer.SerializeToElement(expectation)));
+        else
+            Assert.ThrowsAny<Exception>(() => OperationsLearningPolicy.ValidateRepairProofReport(_root, JsonSerializer.SerializeToElement(expectation)));
+    }
+
+    [Fact]
+    public void RepairProofContract_nativeExitZeroCannotForgeProof_andCompletedPhaseReusesOnlyExactInputs()
+    {
+        var pmPath = WritePostmortem(PyramidMode.NoChange, sekRelevant: true);
+        var pm = OperationsLearningPolicy.ValidatePostmortem(_root, pmPath, ["IN005"]).Contract!;
+        WriteRoute(pm);
+        var expectation = WriteProofReportFixture();
+        var descriptorPath = WriteNativeProofContract(pm, expectation);
+        var originalPm = Sha(Full(pmPath));
+        var originalRoute = Sha(Full(RoutePath));
+        var descriptor = OperationsLearningPolicy.ValidateRepairProofContract(_root, descriptorPath, pm, pm.Repairs["RPI001"], originalRoute);
+        Assert.Equal("repair-proof-contract", descriptor.GetProperty("artifactType").GetString());
+        int Execute(string receipt) => ValidationCommands.ExecuteRepairGate(["execute", "--root", _root, "--postmortem", pmPath,
+            "--rpi", "RPI001", "--rules", "RULE:reliability", "--route", RoutePath, "--receipt", receipt, "--proof-contract", descriptorPath]);
+        Assert.Equal(1, Execute(ReceiptPath));
+        using (var receipt = JsonDocument.Parse(File.ReadAllText(Full(ReceiptPath))))
+        {
+            Assert.Equal(0, receipt.RootElement.GetProperty("exitCode").GetInt32());
+            Assert.Equal("FAIL", receipt.RootElement.GetProperty("structuredAdequacy").GetString());
+            Assert.Equal(Sha(Full(descriptorPath)), receipt.RootElement.GetProperty("proofContractSha256").GetString());
+            Assert.False(receipt.RootElement.GetProperty("proofPhases")[0].GetProperty("reused").GetBoolean());
+        }
+        Assert.False(File.Exists(Full(".engloop/out/proof.json")));
+        const string secondReceipt = ".engloop/out/repair-gates/second.receipt.json";
+        Assert.Equal(1, Execute(secondReceipt));
+        using (var receipt = JsonDocument.Parse(File.ReadAllText(Full(secondReceipt))))
+            Assert.True(receipt.RootElement.GetProperty("proofPhases")[0].GetProperty("reused").GetBoolean());
+        File.AppendAllText(Full(".engloop/out/phase.txt"), "corrupted");
+        Assert.Equal(1, Execute(".engloop/out/repair-gates/third.receipt.json"));
+        using (var receipt = JsonDocument.Parse(File.ReadAllText(Full(".engloop/out/repair-gates/third.receipt.json"))))
+            Assert.False(receipt.RootElement.GetProperty("proofPhases")[0].GetProperty("reused").GetBoolean());
+        Assert.Equal(originalPm, Sha(Full(pmPath)));
+        Assert.Equal(originalRoute, Sha(Full(RoutePath)));
+    }
+
+    [Fact]
+    public void RepairClose_legacyReceiptCannotBeRelabelledStructured()
+    {
+        var pmPath = WritePostmortem(PyramidMode.NoChange);
+        var pm = OperationsLearningPolicy.ValidatePostmortem(_root, pmPath, ["IN005"]).Contract!;
+        WriteRoute(pm);
+        Assert.Equal(0, ValidationCommands.ExecuteRepairGate(["execute", "--root", _root, "--postmortem", pmPath,
+            "--rpi", "RPI001", "--rules", "RULE:reliability", "--route", RoutePath, "--receipt", ReceiptPath]));
+        var receipt = JsonNode.Parse(File.ReadAllText(Full(ReceiptPath)))!;
+        Assert.Equal("LEGACY", receipt["structuredAdequacy"]!.GetValue<string>());
+        receipt["structuredAdequacy"] = "PASS";
+        File.WriteAllText(Full(ReceiptPath), receipt.ToJsonString());
+        WriteClose(pm);
+        var result = OperationsLearningPolicy.ValidateRepairAcceptance(_root, pmPath, "RPI001", ["RULE:reliability"], ClosePath, "close", true);
+        Assert.Contains("legacy-receipt-cannot-assert-structured-adequacy", result.Failures);
+    }
+
+    [Fact]
+    public void RepairClose_strictSupplementRequiresDescriptorCheckpointAndReportContinuity()
+    {
+        var pmPath = WritePostmortem(PyramidMode.NoChange, sekRelevant: true);
+        var pm = OperationsLearningPolicy.ValidatePostmortem(_root, pmPath, ["IN005"]).Contract!;
+        WriteRoute(pm);
+        var cache = Environment.GetEnvironmentVariable("NUGET_PACKAGES") ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
+        var expectation = WriteProofReportFixture(Path.Combine(cache, "specexplorerkit.tool", "0.1.3", "tools", "net10.0", "any", "sek.dll"));
+        var descriptorPath = WriteNativeProofContract(pm, expectation);
+        Assert.Equal(0, ValidationCommands.ExecuteRepairGate(["execute", "--root", _root, "--postmortem", pmPath,
+            "--rpi", "RPI001", "--rules", "RULE:reliability", "--route", RoutePath, "--receipt", ReceiptPath]));
+        var receipt = JsonNode.Parse(File.ReadAllText(Full(ReceiptPath)))!;
+        var descriptor = OperationsLearningPolicy.ReadRepairProofJson(Full(descriptorPath));
+        var descriptorHash = Sha(Full(descriptorPath));
+        var identity = OperationsLearningPolicy.ComputeArgumentVectorDigest(new[] { receipt["preGateHead"]!.GetValue<string>(),
+            receipt["preGateIndexDigest"]!.GetValue<string>(), receipt["preGateStatusDigest"]!.GetValue<string>(), descriptorHash,
+            descriptor.GetProperty("declaredInputs").GetRawText(), descriptor.GetProperty("toolIdentities").GetRawText() });
+        var phases = new JsonArray();
+        File.WriteAllText(Full(".engloop/out/phase.txt"), "synthetic completed phase fixture");
+        foreach (var phase in descriptor.GetProperty("phases").EnumerateArray())
+        {
+            var id = phase.GetProperty("id").GetString()!;
+            var phaseBase = ".engloop/out/repair-gates/" + descriptorHash + "." + id;
+            var artifacts = new SortedDictionary<string, string>(StringComparer.Ordinal);
+            foreach (var suffix in new[] { ".stdout.log", ".stderr.log" })
+            {
+                File.WriteAllText(Full(phaseBase + suffix), "synthetic phase log");
+                artifacts[phaseBase + suffix] = Sha(Full(phaseBase + suffix));
+            }
+            foreach (var output in phase.GetProperty("outputPaths").EnumerateArray()) artifacts[output.GetString()!] = Sha(Full(output.GetString()!));
+            foreach (var report in phase.GetProperty("reportPaths").EnumerateArray())
+                foreach (var artifact in OperationsLearningPolicy.ValidateRepairProofReport(_root, report)) artifacts[artifact.Key] = artifact.Value;
+            var checkpoint = new { schemaVersion = "1.0", artifactType = "repair-proof-phase-checkpoint", id, inputIdentity = identity,
+                executableDigest = OperationsLearningPolicy.ComputeArgumentVectorDigest(phase.GetProperty("executable").EnumerateArray().Select(item => item.GetString()!).ToArray()),
+                completed = true, exitCode = 0, durationMilliseconds = 10, artifactDigests = artifacts };
+            var checkpointPath = phaseBase + ".checkpoint.json";
+            File.WriteAllText(Full(checkpointPath), JsonSerializer.Serialize(checkpoint));
+            phases.Add(JsonSerializer.SerializeToNode(new { id, executable = phase.GetProperty("executable"), inputIdentity = identity,
+                checkpointPath, checkpointSha256 = Sha(Full(checkpointPath)), reused = false, durationMilliseconds = 10,
+                artifactDigests = artifacts, stdoutPath = phaseBase + ".stdout.log", stderrPath = phaseBase + ".stderr.log" }));
+        }
+        receipt["structuredAdequacy"] = "PASS";
+        receipt["proofContractPath"] = descriptorPath;
+        receipt["proofContractSha256"] = descriptorHash;
+        receipt["proofPhases"] = phases;
+        File.WriteAllText(Full(ReceiptPath), receipt.ToJsonString());
+        WriteClose(pm);
+        var close = JsonNode.Parse(File.ReadAllText(Full(ClosePath)))!.AsObject();
+        close["proofContractPath"] = descriptorPath;
+        close["proofContractSha256"] = descriptorHash;
+        File.WriteAllText(Full(ClosePath), close.ToJsonString());
+        var originalClose = close.ToJsonString();
+        OperationsLearningValidationResult Validate() => OperationsLearningPolicy.ValidateRepairAcceptance(_root, pmPath, "RPI001", ["RULE:reliability"], ClosePath, "close", true);
+        Assert.True(Validate().Passed, string.Join(',', Validate().Failures));
+        close.Remove("proofContractSha256");
+        File.WriteAllText(Full(ClosePath), close.ToJsonString());
+        Assert.False(Validate().Passed);
+        File.WriteAllText(Full(ClosePath), originalClose);
+        var reportOriginal = File.ReadAllText(Full(".engloop/out/proof.json"));
+        File.AppendAllText(Full(".engloop/out/proof.json"), " ");
+        Assert.False(Validate().Passed);
+        File.WriteAllText(Full(".engloop/out/proof.json"), reportOriginal);
+        File.AppendAllText(Full(phases[0]!["checkpointPath"]!.GetValue<string>()), " ");
+        Assert.False(Validate().Passed);
+    }
+
+    private JsonObject WriteProofReportFixture(string? toolAssemblyPath = null)
+    {
+        File.WriteAllText(Full("model/proof.json"), """
+            {"schemaVersion":"1.0","machines":{"Main":{"positiveCases":[{"id":"legal"}],"rejections":[{"id":"reject"}]}}}
+            """);
+        File.WriteAllText(Full(".engloop/out/main.seexpl"), "synthetic graph fixture");
+        var toolAssembly = toolAssemblyPath ?? typeof(ValidationCommands).Assembly.Location;
+        var start = new ProcessStartInfo("dotnet") { WorkingDirectory = _root, UseShellExecute = false, RedirectStandardOutput = true };
+        start.ArgumentList.Add("--version");
+        using var process = Process.Start(start)!;
+        var sdk = process.StandardOutput.ReadToEnd().Trim();
+        process.WaitForExit();
+        Assert.Equal(0, process.ExitCode);
+        var sources = new SortedDictionary<string, string>(StringComparer.Ordinal) {
+            ["model/proof.json"] = Sha(Full("model/proof.json")),
+            ["tool/" + Path.GetFileName(toolAssembly)] = Sha(toolAssembly),
+            ["sdk"] = sdk, ["runtime"] = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription };
+        var binaries = new SortedDictionary<string, string>(StringComparer.Ordinal) { ["model/Model.cs"] = Sha(Full("model/Model.cs")) };
+        var options = new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+        var fingerprint = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new { sources, binaries }, options))).ToLowerInvariant();
+        File.WriteAllText(Full(".engloop/out/build-attestation.json"), JsonSerializer.Serialize(new { schemaVersion = "1.0", sources, binaries }, options));
+        var report = new {
+            schemaVersion = "1.0", artifactType = "sek-proof-report", verdict = "PASS", completeness = "COMPLETE", machine = "Main", inputFingerprint = fingerprint,
+            artifactDigests = new Dictionary<string, string> { [Full(".engloop/out/main.seexpl")] = Sha(Full(".engloop/out/main.seexpl")), ["build:model/Model.cs"] = Sha(Full("model/Model.cs")) },
+            budgetCounters = new { states = 2, transitions = 1, negatives = 1, candidateEvaluations = 3, elapsedMilliseconds = 10 }, durationMilliseconds = 20,
+            coveredPositiveIds = new[] { "legal" }, missingPositiveIds = Array.Empty<string>(), coveredRejectionIds = new[] { "reject" }, missingRejectionIds = Array.Empty<string>(),
+            replayResults = new { passed = true, transitionsReplayed = 1, succeeded = 1, failed = 0, negativeReplayed = 1, negativeRejected = 1, failures = Array.Empty<string>() },
+            error = (string?)null };
+        File.WriteAllText(Full(".engloop/out/proof.json"), JsonSerializer.Serialize(report));
+        return JsonSerializer.SerializeToNode(new { path = ".engloop/out/proof.json", projectRoot = ".", proofPath = "model/proof.json",
+            buildAttestationPath = ".engloop/out/build-attestation.json", toolAssemblyPath = toolAssembly,
+            expectedMachine = "Main", expectedPositiveIds = new[] { "legal" }, expectedRejectionIds = new[] { "reject" }, inputFingerprint = fingerprint })!.AsObject();
+    }
+
+    private string WriteNativeProofContract(PostmortemLearningContract pm, JsonObject expectation)
+    {
+        var cache = Environment.GetEnvironmentVariable("NUGET_PACKAGES") ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
+        var nativePackage = Path.Combine(cache, "specexplorerkit.tool", "0.1.3");
+        var assembly = Path.Combine(nativePackage, "tools", "net10.0", "any", "sek.dll");
+        Directory.CreateDirectory(Full(".config"));
+        Directory.CreateDirectory(Full("tools"));
+        File.WriteAllText(Full(".config/dotnet-tools.json"), """
+            {"version":1,"isRoot":true,"tools":{"specexplorerkit.tool":{"version":"0.1.3","commands":["sek"]}}}
+            """);
+        File.Copy(Path.Combine(nativePackage, "specexplorerkit.tool.0.1.3.nupkg"), Full("tools/sek.nupkg"));
+        expectation["toolAssemblyPath"] = assembly;
+        File.WriteAllText(Full("phase.ps1"), "Set-Content .engloop/out/phase.txt 'completed'; Write-Output 'phase pass'\n");
+        var descriptor = new {
+            schemaVersion = "1.0", artifactType = "repair-proof-contract", postmortemSha256 = pm.Sha256, rpiId = "RPI001",
+            ruleIds = pm.Repairs["RPI001"].RuleIds, executableGateDigest = pm.Repairs["RPI001"].ExecutableGateDigest, routeSha256 = Sha(Full(RoutePath)),
+            declaredInputs = new Dictionary<string, string> { ["phase.ps1"] = Sha(Full("phase.ps1")), ["model/proof.json"] = Sha(Full("model/proof.json")) },
+            toolIdentities = new[] { new { command = "sek", packageId = "specexplorerkit.tool", version = "0.1.3",
+                manifestPath = ".config/dotnet-tools.json", manifestSha256 = Sha(Full(".config/dotnet-tools.json")), packagePath = "tools/sek.nupkg", packageSha256 = Sha(Full("tools/sek.nupkg")),
+                assemblyPath = assembly, assemblySha256 = Sha(assembly) } },
+            phases = new object[] {
+                new { id = "prepare", executable = new[] { "pwsh", "-NoProfile", "-File", "phase.ps1" }, outputPaths = new[] { ".engloop/out/phase.txt" }, reportPaths = Array.Empty<object>() },
+                new { id = "prove", executable = new[] { "dotnet", "tool", "run", "sek", "version" }, outputPaths = new[] { ".engloop/out/proof.json" }, reportPaths = new[] { expectation } } } };
+        const string path = ".engloop/repairs/PM005-RPI001.proof-contract.json";
+        File.WriteAllText(Full(path), JsonSerializer.Serialize(descriptor, JsonOptions));
+        return path;
     }
 
     [Fact]
@@ -223,6 +479,75 @@ public sealed class OperationsLearningPolicyTests : IDisposable
         Assert.Equal("FAIL", receipt.RootElement.GetProperty("verdict").GetString());
     }
 
+    [Theory]
+    [InlineData(false, 1024)]
+    [InlineData(true, 1024)]
+    [InlineData(false, 4096)]
+    [InlineData(true, 4096)]
+    public void RepairGate_logCapFailsWithBoundedEvidence(bool stderr, int cap)
+    {
+        File.WriteAllText(Full("gate.ps1"), stderr
+            ? "[Console]::Error.Write(('x' * 4097)); [Threading.Thread]::Sleep(30000); exit 0\n"
+            : "[Console]::Out.Write(('x' * 4097)); [Threading.Thread]::Sleep(30000); exit 0\n");
+        var pmPath = WritePostmortem(PyramidMode.NoChange);
+        var pm = OperationsLearningPolicy.ValidatePostmortem(_root, pmPath, ["IN005"]);
+        Assert.True(pm.Passed, string.Join(',', pm.Failures));
+        WriteRoute(pm.Contract!);
+        var routeHash = Sha(Full(RoutePath));
+        Assert.Equal(1, ValidationCommands.ExecuteRepairGate(["execute", "--root", _root, "--postmortem", pmPath, "--rpi", "RPI001", "--rules", "RULE:reliability", "--route", RoutePath, "--receipt", ReceiptPath, "--log-limit-bytes", cap.ToString(System.Globalization.CultureInfo.InvariantCulture), "--timeout-seconds", "10"]));
+        using var receipt = JsonDocument.Parse(File.ReadAllText(Full(ReceiptPath)));
+        Assert.Equal("FAIL", receipt.RootElement.GetProperty("verdict").GetString());
+        Assert.False(receipt.RootElement.GetProperty("completed").GetBoolean());
+        Assert.True(receipt.RootElement.GetProperty("logOverflow").GetBoolean());
+        Assert.False(receipt.RootElement.GetProperty("processTerminationFailed").GetBoolean());
+        Assert.Equal("repair-gate-log-limit-reached", receipt.RootElement.GetProperty("failureReason").GetString());
+        Assert.InRange(receipt.RootElement.GetProperty("durationMilliseconds").GetDouble(), 0, 15000);
+        foreach (var property in new[] { "stdoutPath", "stderrPath" })
+            Assert.InRange(new FileInfo(Full(receipt.RootElement.GetProperty(property).GetString()!)).Length, 0L, (long)cap);
+        Assert.Equal((long)cap, new FileInfo(Full(receipt.RootElement.GetProperty(stderr ? "stderrPath" : "stdoutPath").GetString()!)).Length);
+        Assert.Equal(routeHash, Sha(Full(RoutePath)));
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void ReadinessEmit_rejectsEmptyConfiguredOrEvidenceInventory(bool emptyConfigured, bool emptyEvidence)
+    {
+        WriteReadiness();
+        File.Delete(Full(".engloop/readiness/current.json"));
+        if (emptyConfigured)
+        {
+            var configPath = Full(".engloop/config.json");
+            var config = JsonNode.Parse(File.ReadAllText(configPath))!;
+            config["moduleInventory"] = new JsonArray();
+            File.WriteAllText(configPath, config.ToJsonString());
+        }
+        const string evidence = ".engloop/coverage/COV999_fixture.json";
+        if (emptyEvidence)
+        {
+            var payload = JsonNode.Parse(File.ReadAllText(Full(evidence)))!;
+            payload["modules"] = new JsonArray();
+            File.WriteAllText(Full(evidence), payload.ToJsonString());
+        }
+        Assert.Equal(1, ValidationCommands.ExecuteReadiness(["emit", "--root", _root, "--evidence", evidence, "--verdict", "pass"]));
+        Assert.False(File.Exists(Full(".engloop/readiness/current.json")));
+    }
+
+    [Theory]
+    [InlineData("src", 0)]
+    [InlineData("src/fixture.csproj", 0)]
+    [InlineData("missing", 1)]
+    [InlineData("../outside", 1)]
+    public void ReadinessInventory_acceptsExistingDirectoriesAndFilesOnlyInsideRoot(string path, int expected)
+    {
+        var configPath = Full(".engloop/config.json");
+        var config = JsonNode.Parse(File.ReadAllText(configPath))!;
+        config["moduleInventory"]![0]!["path"] = path;
+        File.WriteAllText(configPath, config.ToJsonString());
+        Assert.Equal(expected, ValidationCommands.ValidateConfig(["--root", _root]));
+    }
+
     [Fact]
     public void RepairGate_rejectsTimeoutRpiAndExistingOutputMatrix()
     {
@@ -230,6 +555,11 @@ public sealed class OperationsLearningPolicyTests : IDisposable
         var pm = OperationsLearningPolicy.ValidatePostmortem(_root, pmPath, ["IN005"]).Contract!;
         WriteRoute(pm);
         Assert.Equal(1, ValidationCommands.ExecuteRepairGate(["execute", "--root", _root, "--postmortem", pmPath, "--rpi", "RPI001", "--rules", "RULE:reliability", "--route", RoutePath, "--receipt", ReceiptPath, "--timeout-seconds", "bad"]));
+        foreach (var limit in new[] { "bad", "0", "-1" })
+        {
+            Assert.Equal(1, ValidationCommands.ExecuteRepairGate(["execute", "--root", _root, "--postmortem", pmPath, "--rpi", "RPI001", "--rules", "RULE:reliability", "--route", RoutePath, "--receipt", ReceiptPath, "--log-limit-bytes", limit]));
+            Assert.False(File.Exists(Full(ReceiptPath)));
+        }
         Assert.Equal(1, ValidationCommands.ExecuteRepairGate(["execute", "--root", _root, "--postmortem", pmPath, "--rpi", "RPI999", "--rules", "RULE:reliability", "--route", RoutePath, "--receipt", ReceiptPath]));
 
         Directory.CreateDirectory(Path.GetDirectoryName(Full(ReceiptPath))!);

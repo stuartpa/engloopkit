@@ -110,7 +110,10 @@ public sealed class TokenEfficiencyToolchainTests : IDisposable
         start.ArgumentList.Add(repo);
         start.ArgumentList.Add("-PackageDirectory");
         start.ArgumentList.Add(package);
-        start.Environment["PATH"] = bin + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH");
+        var pathEntries = new List<string> { bin };
+        if (OperatingSystem.IsWindows())
+            pathEntries.Add(Environment.GetFolderPath(Environment.SpecialFolder.System));
+        start.Environment["PATH"] = string.Join(Path.PathSeparator, pathEntries);
         using var process = Process.Start(start)!;
         var output = process.StandardOutput.ReadToEnd().Trim();
         var error = process.StandardError.ReadToEnd().Trim();

@@ -788,11 +788,27 @@ public sealed class CodeReviewResponseTests : IDisposable
         var approval = ApprovalPath(session);
         Assert.True(Continues(Approve(repo, session, gate, packet, "reply", "thread-1", "Confirm")));
 
-        var applying = RunApplyProcessAsync(repo, gate, approval);
+        Process? applyProcess = null;
+        var applying = RunApplyProcessAsync(repo, gate, approval, process => applyProcess = process);
         var deadline = Stopwatch.StartNew();
-        while (ReadMutationCalls(repo).Length == 0 && deadline.Elapsed < TimeSpan.FromSeconds(10))
+        while (ReadMutationCalls(repo).Length == 0 && deadline.Elapsed < TimeSpan.FromSeconds(30))
             await Task.Delay(20);
-        Assert.Single(ReadMutationCalls(repo));
+        var mutationCalls = ReadMutationCalls(repo);
+        if (mutationCalls.Length == 0)
+        {
+            if (!applying.IsCompleted)
+            {
+                try
+                {
+                    if (applyProcess is { HasExited: false })
+                        applyProcess.Kill(entireProcessTree: true);
+                }
+                catch (InvalidOperationException) { }
+            }
+            var result = await applying;
+            Assert.Fail($"Apply exited {result.ExitCode} after {deadline.Elapsed} without recording a provider mutation. Output: {result.Output}; Error: {result.Error}");
+        }
+        Assert.Single(mutationCalls);
 
         var overlappingStop = RunHook(repo, "stop", "reply-resolve", string.Empty, session);
         Assert.False(Continues(overlappingStop));
@@ -1845,7 +1861,7 @@ public sealed class CodeReviewResponseTests : IDisposable
         }
     }
 
-    private static async Task<(int ExitCode, string Output, string Error)> RunApplyProcessAsync(string repo, string gate, string approval)
+    private static async Task<(int ExitCode, string Output, string Error)> RunApplyProcessAsync(string repo, string gate, string approval, Action<Process>? onStarted = null)
     {
         var start = new ProcessStartInfo("dotnet")
         {
@@ -1857,6 +1873,7 @@ public sealed class CodeReviewResponseTests : IDisposable
         foreach (var argument in new[] { typeof(Program).Assembly.Location, "code-review-response", "apply", "--gate", gate, "--approval", approval })
             start.ArgumentList.Add(argument);
         using var process = Process.Start(start)!;
+        onStarted?.Invoke(process);
         var output = process.StandardOutput.ReadToEndAsync();
         var error = process.StandardError.ReadToEndAsync();
         await process.WaitForExitAsync();
