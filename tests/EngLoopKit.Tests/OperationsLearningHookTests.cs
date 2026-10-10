@@ -1994,6 +1994,378 @@ public sealed class OperationsLearningHookTests : IDisposable
         AssertNativeActivation(RunGuard(repo, session, "read_file", new { }).Output, "PreToolUse");
     }
 
+    [Fact]
+    public void ExplicitOperatorPostmortem_todayRequestBindsAllDatedIncidentsWithoutQuestion()
+    {
+        var repo = CreateRepository();
+        var incidentDirectory = Path.Combine(repo, ".engloop", "incidents");
+        var templatePath = Path.Combine(incidentDirectory, "IN001_example.md");
+        var template = File.ReadAllText(templatePath);
+        File.Delete(templatePath);
+        var today = DateTime.Today.ToString("yyyyMMdd", System.Globalization.CultureInfo.InvariantCulture);
+        var incidents = new[] { "IN025", "IN026", "IN027" };
+        foreach (var incident in incidents)
+            File.WriteAllText(Path.Combine(incidentDirectory, $"{incident}-{today}-fixture.md"),
+                template.Replace("IN001", incident, StringComparison.Ordinal));
+
+        const string session = "today-postmortem-all-incidents";
+        const string prompt = "Complete post mortem for today's incidents.";
+        RunHostPostmortem(repo, session, "start", "SessionStart", "");
+        var initialized = RunHostPostmortem(repo, session, "initialize", "UserPromptSubmit", prompt);
+
+        Assert.Contains("POSTMORTEM_ROUTE_BOUND", initialized.Output);
+        Assert.Contains("OPERATIONS_LEARNING_SCOPE_ACTIVE mode=postmortem", initialized.Output);
+        Assert.Contains("incidents=IN025,IN026,IN027", initialized.Output);
+        Assert.Contains($"postmortem=.engloop/postmortems/PM005-{today}-incidents-in025-in026-in027.md", initialized.Output);
+        Assert.DoesNotContain("vscode_askQuestions", initialized.Output);
+    }
+
+    [Fact]
+    public void ExplicitOperatorPostmortem_todayScopeSurvivesToolIdentityUpgradeInSameChat()
+    {
+        var repo = CreateRepository();
+        var incidentDirectory = Path.Combine(repo, ".engloop", "incidents");
+        var templatePath = Path.Combine(incidentDirectory, "IN001_example.md");
+        var template = File.ReadAllText(templatePath);
+        File.Delete(templatePath);
+        var today = DateTime.Today.ToString("yyyyMMdd", System.Globalization.CultureInfo.InvariantCulture);
+        var incidents = new[] { "IN025", "IN026", "IN027" };
+        foreach (var incident in incidents)
+            File.WriteAllText(Path.Combine(incidentDirectory, $"{incident}-{today}-fixture.md"),
+                template.Replace("IN001", incident, StringComparison.Ordinal));
+
+        File.WriteAllText(Path.Combine(repo, ".engloop", "numbering-registry.md"),
+            "| Type | Next number |\n|---|---|\n| PM | 062 |\n");
+        const string session = "today-postmortem-identity-upgrade";
+        const string prompt = "Complete post mortem for today's incidents.";
+        var postmortem = today == "20261005"
+            ? ".engloop/postmortems/PM062-20261005-three-stencil-dispatch-incidents.md"
+            : $".engloop/postmortems/PM062-{today}-incidents-in025-in026-in027.md";
+        RunHostPostmortem(repo, session, "start", "SessionStart", "");
+        Assert.Contains("POSTMORTEM_ROUTE_BOUND", RunHostPostmortem(repo, session, "initialize", "UserPromptSubmit", prompt).Output);
+
+        File.AppendAllText(Path.Combine(repo, ".config", "dotnet-tools.json"), "\n");
+        var reauthorized = RunHostPostmortem(repo, session, "initialize", "UserPromptSubmit", prompt);
+        Assert.Contains("POSTMORTEM_ROUTE_BOUND", reauthorized.Output);
+        Assert.Contains("incidents=IN025,IN026,IN027", reauthorized.Output);
+        Assert.Contains("postmortem=" + postmortem, reauthorized.Output);
+        Assert.Contains("historicalPostmortem=" + postmortem, reauthorized.Output);
+        Assert.DoesNotContain("vscode_askQuestions", reauthorized.Output);
+
+        var lineagePath = Assert.Single(Directory.GetFiles(Path.Combine(repo, ".engloop", "out", "postmortem-context"), "*.reauthorization.*.json"));
+        var lineage = JsonNode.Parse(File.ReadAllText(lineagePath))!;
+        Assert.Equal(postmortem, lineage["Postmortem"]!.GetValue<string>());
+        Assert.Equal(today, lineage["IncidentDate"]!.GetValue<string>());
+        Assert.Equal(incidents, lineage["Incidents"]!.AsArray().Select(value => value!.GetValue<string>()).ToArray());
+
+        var resumed = RunHostPostmortem(repo, session, "initialize", "UserPromptSubmit", prompt);
+        Assert.Contains("POSTMORTEM_ROUTE_BOUND", resumed.Output);
+        Assert.Contains("postmortem=" + postmortem, resumed.Output);
+        Assert.Single(Directory.GetFiles(Path.Combine(repo, ".engloop", "out", "postmortem-context"), "*.reauthorization.*.json"));
+    }
+
+    [Fact]
+    public void ConfirmationPostmortem_todayScopeSurvivesToolIdentityUpgradeWithoutOldIntentFile()
+    {
+        var repo = CreateRepository();
+        var incidentDirectory = Path.Combine(repo, ".engloop", "incidents");
+        var templatePath = Path.Combine(incidentDirectory, "IN001_example.md");
+        var template = File.ReadAllText(templatePath);
+        File.Delete(templatePath);
+        var today = DateTime.Today.ToString("yyyyMMdd", System.Globalization.CultureInfo.InvariantCulture);
+        var incidents = new[] { "IN025", "IN026", "IN027" };
+        foreach (var incident in incidents)
+            File.WriteAllText(Path.Combine(incidentDirectory, $"{incident}-{today}-fixture.md"),
+                template.Replace("IN001", incident, StringComparison.Ordinal));
+
+        File.WriteAllText(Path.Combine(repo, ".engloop", "numbering-registry.md"),
+            "| Type | Next number |\n|---|---|\n| PM | 062 |\n");
+        const string session = "today-postmortem-confirmation-upgrade";
+        const string prompt = "Complete post mortem for today's incidents.";
+        var postmortem = today == "20261005"
+            ? ".engloop/postmortems/PM062-20261005-three-stencil-dispatch-incidents.md"
+            : $".engloop/postmortems/PM062-{today}-incidents-in025-in026-in027.md";
+        RunHostPostmortem(repo, session, "start", "SessionStart", "");
+        var collection = RunHook(repo, "postmortem", "initialize", "Complete the postmortem for the known stencil incident.", session);
+        Assert.True(Continues(collection), collection.Output + collection.Error);
+        var confirmation = AnswerCollection(repo, session, incidents, postmortem, "Confirm", answerByQuestion: true, autoBind: true);
+        AssertPostToolContext(confirmation.Result, "POSTMORTEM_ROUTE_BOUND", "OPERATIONS_LEARNING_SCOPE_ACTIVE");
+
+        File.AppendAllText(Path.Combine(repo, ".config", "dotnet-tools.json"), "\n");
+        var reauthorized = RunHostPostmortem(repo, session, "initialize", "UserPromptSubmit", prompt);
+        Assert.Contains("POSTMORTEM_ROUTE_BOUND", reauthorized.Output);
+        Assert.Contains("incidents=IN025,IN026,IN027", reauthorized.Output);
+        Assert.Contains("postmortem=" + postmortem, reauthorized.Output);
+
+        var lineagePath = Assert.Single(Directory.GetFiles(Path.Combine(repo, ".engloop", "out", "postmortem-context"), "*.reauthorization.*.json"));
+        var lineage = JsonNode.Parse(File.ReadAllText(lineagePath))!;
+        var previousSessionHash = lineage["PreviousSessionHash"]!.GetValue<string>();
+        var preservedArtifacts = lineage["PreservedArtifacts"]!.AsObject().Select(entry => entry.Key).ToArray();
+        Assert.DoesNotContain(preservedArtifacts, path => path.EndsWith(previousSessionHash + ".operator-intent.json", StringComparison.Ordinal));
+        var resumed = RunHostPostmortem(repo, session, "initialize", "UserPromptSubmit", prompt);
+        Assert.Contains("POSTMORTEM_ROUTE_BOUND", resumed.Output);
+        Assert.Contains("postmortem=" + postmortem, resumed.Output);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ConfirmationPostmortem_yesterdaysScopeSurvivesSameChatUpgradeOnlyWithUnchangedEvidence(bool changeEvidence)
+    {
+        var repo = CreateRepository();
+        var incidentDirectory = Path.Combine(repo, ".engloop", "incidents");
+        var templatePath = Path.Combine(incidentDirectory, "IN001_example.md");
+        var template = File.ReadAllText(templatePath);
+        File.Delete(templatePath);
+        var priorDate = DateTime.Today.AddDays(-1).ToString("yyyyMMdd", System.Globalization.CultureInfo.InvariantCulture);
+        var incidents = new[] { "IN025", "IN026", "IN027" };
+        foreach (var incident in incidents)
+            File.WriteAllText(Path.Combine(incidentDirectory, $"{incident}-{priorDate}-fixture.md"),
+                template.Replace("IN001", incident, StringComparison.Ordinal));
+
+        File.WriteAllText(Path.Combine(repo, ".engloop", "numbering-registry.md"),
+            "| Type | Next number |\n|---|---|\n| PM | 062 |\n");
+        const string session = "yesterday-postmortem-confirmation-upgrade";
+        var postmortem = priorDate == "20261005"
+            ? ".engloop/postmortems/PM062-20261005-three-stencil-dispatch-incidents.md"
+            : $".engloop/postmortems/PM062-{priorDate}-incidents-in025-in026-in027.md";
+        RunHostPostmortem(repo, session, "start", "SessionStart", "");
+        var collection = RunHook(repo, "postmortem", "initialize",
+            "Complete the postmortem for the known stencil incident.", session);
+        Assert.True(Continues(collection), collection.Output + collection.Error);
+        var confirmation = AnswerCollection(repo, session, incidents, postmortem, "Confirm",
+            answerByQuestion: true, autoBind: true);
+        AssertPostToolContext(confirmation.Result, "POSTMORTEM_ROUTE_BOUND", "OPERATIONS_LEARNING_SCOPE_ACTIVE");
+
+        if (changeEvidence)
+            File.AppendAllText(Path.Combine(incidentDirectory, $"IN026-{priorDate}-fixture.md"), "\nChanged evidence\n");
+        File.AppendAllText(Path.Combine(repo, ".config", "dotnet-tools.json"), "\n");
+
+        var reauthorized = RunHostPostmortem(repo, session, "initialize", "UserPromptSubmit",
+            "Complete post mortem for today's incidents.");
+        Assert.True(Continues(reauthorized), reauthorized.Output + reauthorized.Error);
+        if (changeEvidence)
+        {
+            Assert.DoesNotContain("POSTMORTEM_ROUTE_BOUND", reauthorized.Output);
+            Assert.DoesNotContain("OPERATIONS_LEARNING_SCOPE_ACTIVE mode=postmortem", reauthorized.Output);
+            return;
+        }
+
+        Assert.Contains("POSTMORTEM_ROUTE_BOUND", reauthorized.Output);
+        Assert.Contains("incidents=IN025,IN026,IN027", reauthorized.Output);
+        Assert.Contains("postmortem=" + postmortem, reauthorized.Output);
+        Assert.DoesNotContain("vscode_askQuestions", reauthorized.Output);
+
+        var lineagePath = Assert.Single(Directory.GetFiles(
+            Path.Combine(repo, ".engloop", "out", "postmortem-context"), "*.reauthorization.*.json"));
+        var lineage = JsonNode.Parse(File.ReadAllText(lineagePath))!;
+        Assert.Equal(priorDate, lineage["IncidentDate"]!.GetValue<string>());
+        Assert.Equal(incidents, lineage["Incidents"]!.AsArray().Select(value => value!.GetValue<string>()).ToArray());
+    }
+
+    [Theory]
+    [InlineData("wrong-session")]
+    [InlineData("changed-set")]
+    [InlineData("changed-evidence")]
+    public void ExplicitOperatorPostmortem_todayScopeRequestsKeepFreshAuthorizationDistinctFromChangedEvidence(string fault)
+    {
+        var repo = CreateRepository();
+        var incidentDirectory = Path.Combine(repo, ".engloop", "incidents");
+        var templatePath = Path.Combine(incidentDirectory, "IN001_example.md");
+        var template = File.ReadAllText(templatePath);
+        File.Delete(templatePath);
+        var today = DateTime.Today.ToString("yyyyMMdd", System.Globalization.CultureInfo.InvariantCulture);
+        var incidents = new[] { "IN025", "IN026", "IN027" };
+        foreach (var incident in incidents)
+            File.WriteAllText(Path.Combine(incidentDirectory, $"{incident}-{today}-fixture.md"),
+                template.Replace("IN001", incident, StringComparison.Ordinal));
+
+        const string session = "today-postmortem-invalid-reauthorization";
+        const string prompt = "Complete post mortem for today's incidents.";
+        RunHostPostmortem(repo, session, "start", "SessionStart", "");
+        Assert.Contains("POSTMORTEM_ROUTE_BOUND", RunHostPostmortem(repo, session, "initialize", "UserPromptSubmit", prompt).Output);
+
+        if (fault == "wrong-session")
+        {
+            var wrongSession = RunHostPostmortem(repo, session + "-other", "initialize", "UserPromptSubmit", prompt);
+            Assert.Contains("POSTMORTEM_ROUTE_BOUND", wrongSession.Output);
+            Assert.Contains("OPERATIONS_LEARNING_SCOPE_ACTIVE mode=postmortem", wrongSession.Output);
+            Assert.Contains("bindingReceipt=.engloop/out/postmortem-context/" + Sha256ForTest(session + "-other")
+                + ".binding.json", wrongSession.Output);
+            Assert.DoesNotContain("bindingReceipt=.engloop/out/postmortem-context/" + Sha256ForTest(session)
+                + ".binding.json", wrongSession.Output);
+            return;
+        }
+
+        if (fault == "changed-set")
+            File.WriteAllText(Path.Combine(incidentDirectory, $"IN028-{today}-fixture.md"),
+                template.Replace("IN001", "IN028", StringComparison.Ordinal));
+        if (fault == "changed-evidence")
+            File.AppendAllText(Path.Combine(incidentDirectory, $"IN026-{today}-fixture.md"), "\nChanged evidence\n");
+        File.AppendAllText(Path.Combine(repo, ".config", "dotnet-tools.json"), "\n");
+
+        var rejected = RunHostPostmortem(repo, session, "initialize", "UserPromptSubmit", prompt);
+        if (fault == "changed-set")
+        {
+            Assert.Contains("POSTMORTEM_ROUTE_BOUND", rejected.Output);
+            Assert.Contains("incidents=IN025,IN026,IN027,IN028", rejected.Output);
+            Assert.DoesNotContain("bindingReceipt=.engloop/out/postmortem-context/" + Sha256ForTest(session)
+                + ".binding.json", rejected.Output);
+            var lineagePath = Assert.Single(Directory.GetFiles(
+                Path.Combine(repo, ".engloop", "out", "postmortem-context"), "*.reauthorization.*.json"));
+            using var lineage = JsonDocument.Parse(File.ReadAllText(lineagePath));
+            Assert.True(lineage.RootElement.GetProperty("ScopeChange").GetBoolean());
+            return;
+        }
+        Assert.DoesNotContain("POSTMORTEM_ROUTE_BOUND", rejected.Output);
+        Assert.DoesNotContain("OPERATIONS_LEARNING_SCOPE_ACTIVE mode=postmortem", rejected.Output);
+    }
+
+    [Fact]
+    public void ExplicitOperatorPostmortem_tamperedDatedReauthorizationLineageCannotRestoreBinding()
+    {
+        var repo = CreateRepository();
+        var incidentDirectory = Path.Combine(repo, ".engloop", "incidents");
+        var templatePath = Path.Combine(incidentDirectory, "IN001_example.md");
+        var template = File.ReadAllText(templatePath);
+        File.Delete(templatePath);
+        var today = DateTime.Today.ToString("yyyyMMdd", System.Globalization.CultureInfo.InvariantCulture);
+        var incidents = new[] { "IN025", "IN026", "IN027" };
+        foreach (var incident in incidents)
+            File.WriteAllText(Path.Combine(incidentDirectory, $"{incident}-{today}-fixture.md"),
+                template.Replace("IN001", incident, StringComparison.Ordinal));
+
+        const string session = "today-postmortem-tampered-lineage";
+        const string prompt = "Complete post mortem for today's incidents.";
+        RunHostPostmortem(repo, session, "start", "SessionStart", "");
+        Assert.Contains("POSTMORTEM_ROUTE_BOUND", RunHostPostmortem(repo, session, "initialize", "UserPromptSubmit", prompt).Output);
+        File.AppendAllText(Path.Combine(repo, ".config", "dotnet-tools.json"), "\n");
+        Assert.Contains("POSTMORTEM_ROUTE_BOUND", RunHostPostmortem(repo, session, "initialize", "UserPromptSubmit", prompt).Output);
+
+        var lineagePath = Assert.Single(Directory.GetFiles(Path.Combine(repo, ".engloop", "out", "postmortem-context"), "*.reauthorization.*.json"));
+        var lineage = JsonNode.Parse(File.ReadAllText(lineagePath))!;
+        lineage["Incidents"]![0] = "IN028";
+        File.WriteAllText(lineagePath, lineage.ToJsonString());
+
+        var rejected = RunHostPostmortem(repo, session, "initialize", "UserPromptSubmit", prompt);
+        Assert.DoesNotContain("POSTMORTEM_ROUTE_BOUND", rejected.Output);
+        Assert.DoesNotContain("OPERATIONS_LEARNING_SCOPE_ACTIVE mode=postmortem", rejected.Output);
+    }
+
+    [Fact]
+    public void ExplicitOperatorPostmortem_repeatedSessionStartRefreshesUnboundHostAfterHeadChange()
+    {
+        var repo = CreateRepository();
+        const string session = "same-chat-stale-host";
+        RunHostPostmortem(repo, session, "start", "SessionStart", "");
+
+        File.WriteAllText(Path.Combine(repo, "new-head.txt"), "advance host head");
+        Git(repo, "add", "new-head.txt");
+        Git(repo, "commit", "-m", "advance host head");
+        RunHostPostmortem(repo, session, "start", "SessionStart", "");
+
+        var initialized = RunHostPostmortem(repo, session, "initialize", "UserPromptSubmit",
+            "Complete the postmortem for IN001.");
+        AssertNativeActivation(initialized.Output, "UserPromptSubmit");
+    }
+
+    [Fact]
+    public void ExplicitOperatorPostmortem_repeatedSessionStartPreservesBoundHostAfterHeadChange()
+    {
+        var repo = CreateRepository();
+        const string session = "same-chat-bound-host";
+        RunHostPostmortem(repo, session, "start", "SessionStart", "");
+        var initialized = RunHostPostmortem(repo, session, "initialize", "UserPromptSubmit",
+            "Complete the postmortem for IN001.");
+        AssertNativeActivation(initialized.Output, "UserPromptSubmit");
+
+        var hostPath = Path.Combine(repo, ".engloop", "out", "postmortem-context", Sha256ForTest(session) + ".host.json");
+        var boundHost = File.ReadAllBytes(hostPath);
+        File.WriteAllText(Path.Combine(repo, "new-head.txt"), "advance bound host head");
+        Git(repo, "add", "new-head.txt");
+        Git(repo, "commit", "-m", "advance bound host head");
+        RunHostPostmortem(repo, session, "start", "SessionStart", "");
+
+        Assert.Equal(boundHost, File.ReadAllBytes(hostPath));
+        var stale = RunHostPostmortem(repo, session, "initialize", "UserPromptSubmit",
+            "Complete the postmortem for IN001.");
+        AssertLifecycleDeferred(stale, "postmortem", "initialize");
+        Assert.DoesNotContain("POSTMORTEM_ROUTE_BOUND", stale.Output);
+    }
+
+    [Theory]
+    [InlineData("Complete the postmortem for IN001.")]
+    [InlineData("Please complete PM005 for IN001.")]
+    public void ExplicitOperatorPostmortem_existingChatWithoutSessionStartBindsCurrentPrompt(string prompt)
+    {
+        var repo = CreateRepository();
+        const string session = "existing-chat-postmortem";
+        var result = RunHostPostmortem(repo, session, "initialize", "UserPromptSubmit", prompt);
+
+        AssertNativeActivation(result.Output, "UserPromptSubmit");
+        var sessionHash = Sha256ForTest(session);
+        Assert.True(File.Exists(Path.Combine(repo, ".engloop", "out", "postmortem-context", sessionHash + ".host.json")));
+        Assert.True(File.Exists(Path.Combine(repo, ".engloop", "out", "postmortem-context", sessionHash + ".binding.json")));
+    }
+
+    [Fact]
+    public void ExplicitOperatorPostmortem_missingHostWithExistingScopeIsNotRecreated()
+    {
+        var repo = CreateRepository();
+        const string session = "missing-postmortem-host-with-scope";
+        RunHostPostmortem(repo, session, "start", "SessionStart", "");
+        Assert.Contains("POSTMORTEM_ROUTE_BOUND", RunHostPostmortem(repo, session, "initialize", "UserPromptSubmit",
+            "Complete the postmortem for IN001.").Output);
+
+        var hostPath = Path.Combine(repo, ".engloop", "out", "postmortem-context", Sha256ForTest(session) + ".host.json");
+        File.Delete(hostPath);
+        var resumed = RunHostPostmortem(repo, session, "initialize", "UserPromptSubmit", "Complete the postmortem for IN001.");
+
+        AssertLifecycleDeferred(resumed, "postmortem", "initialize");
+        Assert.DoesNotContain("POSTMORTEM_ROUTE_BOUND", resumed.Output);
+        Assert.False(File.Exists(hostPath));
+    }
+
+    [Fact]
+    public void ExplicitOperatorPostmortem_newIncidentInLegacyChatPreservesHistoryAndBindsFreshScope()
+    {
+        var repo = CreateRepository();
+        const string session = "legacy-chat-new-incident";
+        const string oldPostmortem = ".engloop/postmortems/PM005-example.md";
+        RunHostPostmortem(repo, session, "initialize", "UserPromptSubmit", "Complete the postmortem for IN001.");
+        var sessionHash = Sha256ForTest(session);
+        var oldGatePath = Path.Combine(repo, ".engloop", "out", "operations-learning-gates", sessionHash + ".postmortem.json");
+        var oldBindingPath = Path.Combine(repo, ".engloop", "out", "postmortem-context", sessionHash + ".binding.json");
+        var oldGate = File.ReadAllBytes(oldGatePath);
+        var oldBinding = File.ReadAllBytes(oldBindingPath);
+        File.Delete(Path.Combine(repo, ".engloop", "out", "postmortem-context", sessionHash + ".host.json"));
+        var incidentPath = Path.Combine(repo, ".engloop", "incidents", "IN001_example.md");
+        File.WriteAllText(Path.Combine(repo, ".engloop", "incidents", "IN002-next.md"),
+            File.ReadAllText(incidentPath).Replace("IN001", "IN002", StringComparison.Ordinal));
+        File.WriteAllText(Path.Combine(repo, oldPostmortem.Replace('/', Path.DirectorySeparatorChar)), "# PM005: Earlier analysis\n");
+        var registryPath = Path.Combine(repo, ".engloop", "numbering-registry.md");
+        File.WriteAllText(registryPath, File.ReadAllText(registryPath).Replace("`PM004`", "`PM005`", StringComparison.Ordinal));
+        Git(repo, "add", ".");
+        Git(repo, "commit", "-m", "next incident");
+
+        var result = RunHostPostmortem(repo, session, "initialize", "UserPromptSubmit",
+            "Complete PM006 for IN002 at `.engloop/postmortems/PM006-next.md`.");
+
+        Assert.True(result.Output.Contains("POSTMORTEM_ROUTE_BOUND", StringComparison.Ordinal), result.Output);
+        Assert.Contains("incidents=IN002", result.Output);
+        Assert.Contains("postmortem=.engloop/postmortems/PM006-next.md", result.Output);
+        Assert.Equal(oldGate, File.ReadAllBytes(oldGatePath));
+        Assert.Equal(oldBinding, File.ReadAllBytes(oldBindingPath));
+        File.WriteAllText(registryPath, File.ReadAllText(registryPath).Replace("`PM005`", "`PM006`", StringComparison.Ordinal));
+        var resumed = RunHookRaw(repo, ["post-tool", "postmortem"], JsonSerializer.Serialize(new
+        {
+            cwd = repo, session_id = session, hookEventName = "PostToolUse",
+            tool_name = "read_file", tool_response = new { content = "read succeeded" },
+        }));
+        Assert.Contains("POSTMORTEM_ROUTE_BOUND", resumed.Output);
+        Assert.Contains("incidents=IN002", resumed.Output);
+    }
+
     private static void AssertBoundGuardContext(string output, string postmortem)
     {
         using var json = JsonDocument.Parse(output);
@@ -2120,6 +2492,22 @@ public sealed class OperationsLearningHookTests : IDisposable
     }
 
     [Theory]
+    [InlineData("Please complete PM005 for IN001.", ".engloop/postmortems/PM005-example.md")]
+    [InlineData("Please complete PM005 for IN001 at .engloop/postmortems/PM005-explicit-route.md.", ".engloop/postmortems/PM005-explicit-route.md")]
+    public void ExplicitOperatorPostmortem_pmFirstRequestUsesCurrentRegistryAndPreservesPath(string prompt, string expectedPostmortem)
+    {
+        var repo = CreateRepository();
+        const string session = "explicit-postmortem-pm-first";
+        RunHostPostmortem(repo, session, "start", "SessionStart", "");
+
+        var result = RunHostPostmortem(repo, session, "initialize", "UserPromptSubmit", prompt);
+
+        Assert.Contains("POSTMORTEM_ROUTE_BOUND", result.Output);
+        Assert.Contains("authorization=explicit-operator-intent", result.Output);
+        Assert.Contains("postmortem=" + expectedPostmortem, result.Output);
+    }
+
+    [Theory]
     [InlineData("complete the plan...today FB first then fix live", "")]
     [InlineData("Complete the plan, today Facebook first then fix live.", "")]
     [InlineData("complete the plan...today FB first then fix live", "missing-history")]
@@ -2184,6 +2572,8 @@ public sealed class OperationsLearningHookTests : IDisposable
     [Theory]
     [InlineData("Complete the postmortem for IN001 or IN002.")]
     [InlineData("Complete the postmortem for the Facebook incident.")]
+    [InlineData("Please complete PM006 for IN001.")]
+    [InlineData("Please complete PM005 for IN001 at .engloop/postmortems/PM006-wrong.md.")]
     [InlineData("Do not complete the postmortem for IN001.")]
     [InlineData("Could we complete the postmortem for IN001?")]
     [InlineData("The operator said: Complete the postmortem for IN001.")]
@@ -2205,8 +2595,6 @@ public sealed class OperationsLearningHookTests : IDisposable
     }
 
     [Theory]
-    [InlineData("missing-start")]
-    [InlineData("wrong-session")]
     [InlineData("missing-session")]
     [InlineData("missing-event")]
     [InlineData("missing-root")]
@@ -2215,11 +2603,11 @@ public sealed class OperationsLearningHookTests : IDisposable
     [InlineData("changed-manifest")]
     [InlineData("ambiguous-artifact")]
     [InlineData("missing-learning")]
-    public void ExplicitOperatorPostmortem_refusesMissingHostSessionStaleIdentityOrInvalidEvidence(string fault)
+    public void ExplicitOperatorPostmortem_refusesMissingSessionStaleIdentityOrInvalidEvidence(string fault)
     {
         var repo = CreateRepository();
         const string session = "explicit-operator-host-negative";
-        if (fault != "missing-start") RunHostPostmortem(repo, session, "start", "SessionStart", "");
+        RunHostPostmortem(repo, session, "start", "SessionStart", "");
         if (fault == "changed-head")
         {
             File.WriteAllText(Path.Combine(repo, "new-head.txt"), "new head");
