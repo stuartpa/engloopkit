@@ -112,6 +112,17 @@ Direct user selection is distinct from tool delegation and does not expand `agen
 
 ### Plain-language routing and context collection
 
+When this explicitly requested workflow is being completed outside a native
+Stage 21 host, use the separately audited operator-command path:
+`dotnet tool run engloopkit -- operations-hook authorize postmortem --root . --request "Create the postmortem for INnnn."`
+The request must faithfully represent the user's affirmative request and name the
+exact incident. The command validates incident analysis context and the next
+create-new PM scope and records `authorization=explicit-operator-command` with
+`nativeSession=false`. This is not a native session binding, stabilization,
+completion, or permission to overwrite an existing PM. Keep the command's exact
+receipt and scope, validate the resulting PM, and use separate repair authorization
+before product changes. Never feed reconstructed host JSON into a hook.
+
 This agent must run as a user-invoked top-level agent for route collection and
 binding. VS Code Local subagents cannot supply the top-level operator prompt or interactive
 selection required for route authorization. Stage 20 exposes this agent through a user-visible handoff; use that handoff or
@@ -120,10 +131,23 @@ session's selection.
 
 ### Explicit operator intent without repeated confirmation
 
+The Stage 20 handoff carries `ELK_TRUSTED_AUTOPILOT_POSTMORTEM_CONTINUATION`.
+The native hook may bind without another question only when the exact incident gate
+and explicit repair intent remain valid in this same session, at the same HEAD and
+tool/manifest identity. It derives the next create-new PM from the existing registry
+and validates incident analysis context. `authorization=trusted-incident-continuation`
+is sufficient scope; no selected-option receipt is invented. Missing, stale, ambiguous,
+or cross-session context remains a resumable blocker. The marker alone is not authority.
+
 Ordinary unambiguous affirmative directives authorize routing without another question.
 The recognizer accepts `postmortem`, `post mortem`, and `post-mortem`, polite prefixes,
 start/create/write/continue/complete requests, and `and` or `then` implement/complete/execute
 all repair items. An exact incident ID binds directly; an optional PM path remains exact.
+`PM and RPIs` is also an affirmative completion request. `The last incident` selects
+the highest recorded `INnnn` identity, never file modification time; duplicate identity
+or invalid incident evidence still requires resolution. A leading `Ive moved you to
+agent 21,` does not invalidate the directive. Do not ask another confirmation for a
+native bound directive or interpret an unavailable question response as a decline.
 The operator's affirmative `complete the plan...today FB first then fix live` continuation
 also resolves a unique Facebook incident from current incident filenames. Multiple matching
 incidents require a choice, not inference. Quoted, negated, planning, hypothetical, or
@@ -138,6 +162,12 @@ identity, consulted learning context, registry-backed next PM and create-new sco
 no explicit PM path it derives the filename from the unique incident filename and next
 registry number. A separate hashed operator-intent record authorizes the binding; no
 question confirmation receipt or tool-use selection is fabricated.
+
+If an earlier tool installation left only an unbound host and repair intent, a fresh
+native affirmative PM request at the same HEAD can renew that host after validating
+its historical identity. The hook archives the old host, intent, and collection
+byte-for-byte before capturing current authorization. This does not migrate a bound PM,
+accept an old intent as new authorization, or require a new chat or internal flags.
 
 When the hook emits `POSTMORTEM_ROUTE_BOUND` and `OPERATIONS_LEARNING_SCOPE_ACTIVE`
 with `authorization=explicit-operator-intent`, use the emitted exact route and do not

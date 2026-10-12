@@ -1284,7 +1284,9 @@ public static class ValidationCommands
                 }
                 totalHandoffs++;
                 actualTargets.Add(target!.ToString()!);
-                var trustedRepairContinuation = id == "speckit.engloop.21-postmortem"
+                var trustedRepairContinuation = id == "speckit.engloop.20-incident"
+                    && string.Equals(target.ToString(), "speckit.engloop.21-postmortem", StringComparison.Ordinal)
+                    || id == "speckit.engloop.21-postmortem"
                     && string.Equals(target.ToString(), "speckit.engloop.22-repair", StringComparison.Ordinal);
                 var expectedSend = trustedRepairContinuation ? "true" : "false";
                 if (!handoff.TryGetValue("send", out var send) || !string.Equals(send?.ToString(), expectedSend, StringComparison.OrdinalIgnoreCase))

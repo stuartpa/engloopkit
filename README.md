@@ -17,7 +17,18 @@ explicit trigger, goal, actions, verification, and durable memory.
 The v1.8 workflow separates delivery/readiness, operations, stewardship, and local
 overlay utility work into
 ordered command lanes. A command number is a picker identity—not an automatic scheduler.
-A handoff is review-first (`send: false`), not a state transition.
+Ordinary handoffs are review-first (`send: false`). Incident → Postmortem → Repair
+handoffs auto-send (`send: true`) to preserve the requested operations continuation.
+Auto-send is not an editor scheduler or evidence acceptance: native binding must still
+resolve the incident, and Stage 22 requires captured same-session repair intent and a
+validated PM contract. Missing evidence remains a resumable blocker, never PASS.
+
+Stage 20 captures the exact successfully written incident through its native
+`PostToolUse` hook when current same-session repair intent exists. Outside a native
+Stage 21 host, `operations-hook authorize postmortem --root . --request "Create the
+postmortem for INnnn."` provides separate audited operator-command authority,
+validates the incident analysis context, and derives the next create-new PM scope.
+It does not impersonate a native session or accept stabilization or completion.
 
 ## Core principles
 
@@ -82,6 +93,13 @@ PM/repair acceptance to current `NORTHSTAR.md`, `LEARNINGS.md`, living rule card
 historical `PMxxx/LEARNxxx` provenance, and the selected RPI's executable gate. Stage 42
 still handles broader backlog condensation; it is not a fallback for skipping pyramid
 consideration during the dominant incident/postmortem/repair loop.
+
+An affirmative `complete the PM and RPIs for the last incident` request binds the
+highest recorded incident identity through the native Stage 21 hook without a question.
+A stale unbound host/repair-intent pair can recover after a local tool upgrade from a
+fresh affirmative request at the same HEAD, preserving historical bytes. Bound contracts,
+recurrence gates, and readiness still require verification; autopilot is not permission
+to fabricate PASS or physical completion.
 
 CRB owns reviewer-side findings/comment publication; ELK Stages 11–13 own the author
 response. Stage 11 uses one explicit tracked v2 adapter to prove complete paginated

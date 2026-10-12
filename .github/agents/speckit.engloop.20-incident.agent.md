@@ -29,11 +29,15 @@ hooks:
   - type: command
     command: dotnet tool run engloopkit -- operations-hook stop incident
     timeout: 30
+  PostToolUse:
+    - type: command
+      command: dotnet tool run engloopkit -- operations-hook post-tool incident
+      timeout: 30
 handoffs:
 - label: Analyze incidents for postmortem
   agent: speckit.engloop.21-postmortem
-  prompt: Analyze the selected incident set above, including unresolved stabilization evidence, with --incidents <INxxx,...> --postmortem <.engloop/postmortems/PMxxx_title.md>; replace both placeholders with exact values, consult current NORTHSTAR.md and the relevant LEARNINGS.md card/source path, classify rule effects, and produce validated learning-bound repair items. Analysis does not claim stabilization or authorize completion while stabilization evidence remains open.
-  send: false
+  prompt: ELK_TRUSTED_AUTOPILOT_POSTMORTEM_CONTINUATION Continue the requested incident postmortem in this native session, retaining the incident evidence and explicit operator repair intent above. Use the trusted context collection and binding path; do not ask the user to reconstruct internal flags. Consult current NORTHSTAR.md and the relevant LEARNINGS.md card/source path, classify rule effects, and produce validated learning-bound repair items. Carry unresolved stabilization evidence without claiming completion. After producing or updating the requested postmortem, continue the trusted Stage 22 handoff with ELK_TRUSTED_AUTOPILOT_REPAIR_CONTINUATION when same-session repair intent was captured.
+  send: true
 ---
 
 

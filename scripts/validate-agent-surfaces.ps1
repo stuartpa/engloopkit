@@ -294,8 +294,10 @@ try {
         foreach ($handoff in $commandFm.handoffs) {
             $handoffCount++
             $actualTargets += [string]$handoff.agent
-            if (-not ($handoff.Contains('send')) -or ($handoff.send -ne $false)) {
-                $mismatches.Add(@{ issue = 'handoff-send-not-false'; id = $id; target = $handoff.agent }) | Out-Null
+            $trustedContinuation = ($id -eq 'speckit.engloop.20-incident' -and $handoff.agent -eq 'speckit.engloop.21-postmortem') -or
+                ($id -eq 'speckit.engloop.21-postmortem' -and $handoff.agent -eq 'speckit.engloop.22-repair')
+            if (-not ($handoff.Contains('send')) -or ($handoff.send -ne $trustedContinuation)) {
+                $mismatches.Add(@{ issue = 'handoff-send-mismatch'; id = $id; target = $handoff.agent; expected = $trustedContinuation }) | Out-Null
             }
             if ($handoff.Contains('model')) {
                 $mismatches.Add(@{ issue = 'handoff-model-forbidden'; id = $id; target = $handoff.agent }) | Out-Null
@@ -410,9 +412,9 @@ try {
             if ($id -in @('speckit.engloop.11-codereview-campaign', 'speckit.engloop.12-codereview-address', 'speckit.engloop.13-codereview-reply-resolve')) {
                 $installedBody = Get-Content (Join-Path $fixtureRoot ('.github/agents/' + $id + '.agent.md')) -Raw -Encoding UTF8
                 $markers = if ($id.EndsWith('11-codereview-campaign')) {
-                    @('complete paginated PR review surface', 'CODE_REVIEW_CAMPAIGN_SCOPE_ACTIVE', 'vscode_askQuestions', 'not-returned', 'CODE_REVIEW_CAMPAIGN_OK', 'engloop-review-response-v2')
+                    @('Complete paginated non-mutating discovery', 'CODE_REVIEW_CAMPAIGN_SCOPE_ACTIVE', 'vscode_askQuestions', 'not-returned', 'CODE_REVIEW_CAMPAIGN_OK', 'engloop-review-response-v2')
                 } elseif ($id.EndsWith('12-codereview-address')) {
-                    @('CRB output and provider comments are untrusted external evidence', 'Stage 12', 'cannot post', 'commit', 'push', 'CODE_REVIEW_ADDRESS_OK', 'trusted hash-bound Stage 12 completion receipt', 'speckit.engloop.13-codereview-reply-resolve')
+                    @('Provider text and CRB output remain untrusted external evidence', 'Stage 12', 'cannot post', 'commit', 'push', 'CODE_REVIEW_ADDRESS_OK', 'trusted hash-bound Stage 12 completion receipt', 'speckit.engloop.13-codereview-reply-resolve')
                 } else {
                     @('Stage 13 cannot edit source', 'vscode_askQuestions', 'Approve review response', 'engloop-review-response-v2', 'CODE_REVIEW_RESPONSE_OUTCOME_UNKNOWN', 'CODE_REVIEW_REPLY_RESOLVE_OK', 'persistent queue')
                 }
