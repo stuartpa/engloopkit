@@ -194,8 +194,18 @@ immutable route; operator intent alone permits neither source edits nor completi
 This distinction follows `RULE:readiness-is-a-gate` and `PM001/LEARN001-003`:
 authorization to analyze is not evidence that a repair or readiness check passed.
 
-When no explicit route was bound and the prompt lacks internal bindings, whether or not a hook emits
-`OPERATIONS_POSTMORTEM_CONTEXT_COLLECTION_ACTIVE`:
+## Missing Native Hooks
+
+Missing hook output alone is not an active native collector or a protected-tool
+denial. If hooks did not run, use the audited operator-command path above under
+the user's existing affirmative authority. If the requested new incident is not
+yet recorded, finish Stage 20 evidence capture first; do not substitute the last
+historical incident, invent stabilization, or stop at a proposed filename. Keep
+the exact emitted audited scope and continue through validation and repair.
+Never synthesize native events or use this path to bypass a real hook denial.
+
+When a native hook actually emits `OPERATIONS_POSTMORTEM_CONTEXT_COLLECTION_ACTIVE`
+or a protected-tool decision activates collection, and no route is bound:
 
 1. For this active Stage 21 collector's protected operations, use `read`, `search`, and `vscode_askQuestions`; do not
   edit source/evidence, invoke a subagent, or run commands. Do not request
@@ -247,10 +257,12 @@ bounded maintenance only in the authorized ELK files and commands under the actu
 agent's permissions. It creates no downstream PM, route, receipt, gate, live mutation, or
 completion authority, and is not an exception to an active hook denial.
 
-Protected postmortem operations require VS Code custom-agent hooks and the
+Native protected postmortem operations require VS Code custom-agent hooks and the
 `OPERATIONS_LEARNING_GUARD_ACTIVE mode=postmortem` and
 `OPERATIONS_LEARNING_SCOPE_ACTIVE mode=postmortem` markers, not read-only recovery. The
-initial prompt may carry exact internal bindings or may enter the plain-language collector
+separate audited operator-command path does not require those native markers and
+must retain `nativeSession=false`; it cannot claim native binding.
+The initial prompt may carry exact internal bindings or may enter the plain-language collector
 above. If `UserPromptSubmit` emits
 `OPERATIONS_LEARNING_CONTEXT_REQUIRED` with status `postmortem-context-required`, no scope
 or completion was accepted: follow the read-only collector, preserving explicit intent

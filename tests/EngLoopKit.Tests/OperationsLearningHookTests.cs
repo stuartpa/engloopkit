@@ -1607,6 +1607,12 @@ public sealed class OperationsLearningHookTests : IDisposable
     [InlineData("Please implement repair items after the postmortem.", true, true, "")]
     [InlineData("Please deploy a fix to livesite. This is a new incident.", true, true, "")]
     [InlineData("Yes, please do 21 now, and go straight into 22 and deploy the fix to livesite.", true, true, "")]
+    [InlineData("Please do the PM and get the RPIs deployed to livesite.", true, true, "")]
+    [InlineData("Please get RPI001 deployed to livesite.", true, false, "RPI001")]
+    [InlineData("Please get all the repair items deployed to livesite.", true, true, "")]
+    [InlineData("If needed, get the RPIs deployed to livesite.", false, false, "")]
+    [InlineData("Please do not get the RPIs deployed to livesite.", false, false, "")]
+    [InlineData("Operator said \"get the RPIs deployed to livesite\".", false, false, "")]
     [InlineData("If needed, deploy a fix to livesite.", false, false, "")]
     [InlineData("Please do not deploy a fix to livesite.", false, false, "")]
     [InlineData("Operator said \"deploy a fix to livesite\".", false, false, "")]
@@ -1698,6 +1704,11 @@ public sealed class OperationsLearningHookTests : IDisposable
     [Theory]
     [InlineData("valid")]
     [InlineData("valid-object")]
+    [InlineData("valid-create")]
+    [InlineData("valid-create-object")]
+    [InlineData("valid-create-deploy-intent")]
+    [InlineData("failed-create-object")]
+    [InlineData("unrelated-create")]
     [InlineData("failed-object")]
     [InlineData("failed-write")]
     [InlineData("multiple-incidents")]
@@ -1709,24 +1720,30 @@ public sealed class OperationsLearningHookTests : IDisposable
     {
         var repo = CreateRepository();
         const string session = "plain-language-incident-autopilot";
-        RunHook(repo, "incident", "initialize", fault == "no-intent" ? "This is a new incident." : "This is a new incident. Please deploy a fix to livesite.", session);
+        var prompt = fault == "no-intent" ? "This is a new incident."
+            : fault == "valid-create-deploy-intent" ? "This is a new incident. Please do the PM and get the RPIs deployed to livesite."
+            : "This is a new incident. Please deploy a fix to livesite.";
+        RunHook(repo, "incident", "initialize", prompt, session);
         const string incident = ".engloop/incidents/IN001_example.md";
         var patch = "*** Begin Patch\n*** Update File: " + incident + "\n*** End Patch";
         if (fault == "multiple-incidents") patch += "\n*** Update File: .engloop/incidents/IN002_other.md\n";
         if (fault == "unrelated-file") patch = "*** Begin Patch\n*** Update File: README.md\n*** End Patch";
+        var createsFile = fault.Contains("create", StringComparison.Ordinal);
         var captured = RunHookRaw(repo, ["post-tool", "incident"], JsonSerializer.Serialize(new
         {
             cwd = repo, session_id = fault == "other-session" ? "unrelated-session" : session,
             hookEventName = fault == "wrong-event" ? "PreToolUse" : "PostToolUse",
-            tool_name = "apply_patch", tool_use_id = "incident-evidence-write",
-            tool_input = new { input = patch },
-            tool_response = fault == "valid-object"
+            tool_name = createsFile ? "create_file" : "apply_patch", tool_use_id = "incident-evidence-write",
+            tool_input = createsFile
+                ? (object)new { filePath = Path.Combine(repo, fault == "unrelated-create" ? "README.md" : incident), content = "incident evidence" }
+                : new { input = patch },
+            tool_response = fault is "valid-object" or "valid-create-object"
                 ? (object)new { content = "The following files were successfully edited: " + incident, isError = false }
-                : fault == "failed-object"
+                : fault is "failed-object" or "failed-create-object"
                     ? new { content = "The following files were successfully edited: " + incident, isError = true }
                 : fault == "failed-write" ? "Failed to edit files" : "The following files were successfully edited: " + incident,
         }));
-        if (fault is not ("valid" or "valid-object"))
+        if (fault is not ("valid" or "valid-object" or "valid-create" or "valid-create-object" or "valid-create-deploy-intent"))
         {
             Assert.DoesNotContain("OPERATIONS_LEARNING_SCOPE_ACTIVE mode=incident", captured.Output);
             Assert.False(File.Exists(Path.Combine(repo, ".engloop", "out", "operations-learning-gates", Sha256ForTest(session) + ".incident.json")));
@@ -1740,6 +1757,10 @@ public sealed class OperationsLearningHookTests : IDisposable
         }));
         Assert.Contains("POSTMORTEM_ROUTE_BOUND", continued.Output);
         Assert.Contains("authorization=trusted-incident-continuation", continued.Output);
+        const string postmortem = ".engloop/postmortems/PM005-example.md";
+        WriteValidRepairContinuationPostmortem(repo, postmortem);
+        Assert.Contains("OPERATIONS_LEARNING_SCOPE_ACTIVE mode=repair",
+            RunHook(repo, "repair", "initialize", "ELK_TRUSTED_AUTOPILOT_REPAIR_CONTINUATION", session).Output);
     }
 
     [Theory]

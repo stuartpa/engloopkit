@@ -93,6 +93,14 @@ of attempting arbitrary delegation or demanding missing internal flags.
 
 ## Continuous Requested Work
 
+Persist the new incident evidence before handing off to Stage 21. For an
+unambiguous new incident, derive its identity from the current IN registry row,
+record the operator demand and observed evidence, and retain unknown causes and
+open stabilization checks. Do not merely propose a filename and wait for a gate
+whose creation depends on that write. A successful native `apply_patch` or
+`create_file` evidence write is captured by PostToolUse when same-session repair
+intent exists; neither tool result proves stabilization.
+
 When the user requests incident analysis, the PM, and repair implementation, carry
 that request through Stages 20, 21, and 22 in this session. Handoffs are navigation
 options, not mandatory pauses or requests for another confirmation. Missing hooks,
@@ -102,6 +110,17 @@ Use Stage 21's audited operator-command authorization when outside a bound nativ
 host; never manufacture host events or reuse stale gates. Preserve every unresolved
 stability/readiness check. Stop only on a concrete unresolved incident, PM, repair,
 authorization, or safety blocker, recording its evidence and exact remaining work.
+
+## Missing Native Hooks
+
+Reading this definition does not activate its hooks. If no native hook ran and no
+protected operation was denied, complete the authorized incident evidence capture
+with the available tools, validate it, and continue through Stage 21's audited
+operator-command authorization. Do not ask the operator to change agents, open a
+new chat, reconstruct flags, or repeat unambiguous intent because hook records are
+absent. An actual protected-tool denial still must not be bypassed. This distinction
+follows `RULE:readiness-is-a-gate`, PM001/LEARN001-003, and the 2026-09-06 owner
+navigation directive; evidence gaps constrain claims, not user navigation.
 
 ## Direction and learning context during stabilization
 

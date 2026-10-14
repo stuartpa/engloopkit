@@ -65,6 +65,18 @@ maintenance authority, repair workflow faults and resume, preserving historical
 records. Never bypass an actual safety/authorization denial or invent PASS. Keep
 readiness and stabilization gaps open while implementing the authorized repairs.
 
+## Missing Native Hooks
+
+If no native hook ran and no protected operation was denied, continue from the
+exact validated PM through the audited operator-command path above. Missing native
+receipts are an installation or host-integration diagnostic, not a request for the
+user to change agents or repeat intent. Finish missing incident/PM prerequisites
+under their existing authority before routing; never borrow a historical route.
+Do not construct native phase, RPI, rule, or acceptance arguments: the trusted
+marker or audited authorizer derives them from the actual validated contract.
+Keep `nativeSession=false` for audited authorization, preserve all unresolved
+evidence, and never bypass a real denial or claim closure from authorization.
+
 ## Rule-bound repair acceptance
 
 An explicit operator request to implement repair items is authorization to begin
@@ -89,7 +101,7 @@ time. Missing flags, readiness, PM/RPI evidence, or failed hooks never veto navi
 or read-only discussion. Carry unresolved evidence and diagnostics forward. Direct
 user selection does not authorize arbitrary delegation or a protected mutation.
 
-Accepted repair routing/closure requires the `OPERATIONS_LEARNING_GUARD_ACTIVE mode=repair`
+Native accepted repair routing/closure requires the `OPERATIONS_LEARNING_GUARD_ACTIVE mode=repair`
 and `OPERATIONS_LEARNING_SCOPE_ACTIVE mode=repair` hook markers. Collect missing context
 without requiring the user to reconstruct internal options. Before protected operations,
 bind explicit inputs matching the selected PM's `RPIxxx learning contract` exactly;

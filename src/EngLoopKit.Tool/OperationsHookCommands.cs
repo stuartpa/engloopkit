@@ -586,8 +586,9 @@ public static class OperationsHookCommands
 
     private static int CaptureWrittenIncident(string root, string sessionHash, JsonElement input)
     {
+        var toolName = ReadString(input, "tool_name", "toolName");
         if (ReadString(input, "hookEventName", "hook_event_name") != "PostToolUse"
-            || ReadString(input, "tool_name", "toolName") != "apply_patch"
+            || toolName is not ("apply_patch" or "create_file")
             || !TryReadToolElement(input, "tool_input", "toolInput", out var toolInput)
             || !(input.TryGetProperty("tool_response", out var response) || input.TryGetProperty("toolResponse", out response))
             || response.ValueKind is not (JsonValueKind.String or JsonValueKind.Object)
@@ -602,8 +603,12 @@ public static class OperationsHookCommands
             return 0;
         }
         var patch = ReadString(toolInput, "input", "patch", "text");
-        var paths = Regex.Matches(patch, @"(?m)^\*\*\* (?:Add|Update) File: (?<path>.+?)\s*$")
-            .Select(match => Path.GetRelativePath(root, Path.GetFullPath(match.Groups["path"].Value.Trim(), root)).Replace('\\', '/'))
+        var writtenPaths = toolName == "create_file"
+            ? new[] { ReadString(toolInput, "filePath", "file_path", "path") }
+            : Regex.Matches(patch, @"(?m)^\*\*\* (?:Add|Update) File: (?<path>.+?)\s*$")
+                .Select(match => match.Groups["path"].Value.Trim()).ToArray();
+        var paths = writtenPaths.Where(path => !string.IsNullOrWhiteSpace(path))
+            .Select(path => Path.GetRelativePath(root, Path.GetFullPath(path, root)).Replace('\\', '/'))
             .Where(path => Regex.IsMatch(path, @"^\.engloop/incidents/IN\d{3}[-_][A-Za-z0-9._-]+\.md$", RegexOptions.CultureInvariant))
             .Distinct(StringComparer.Ordinal).ToArray();
         if (paths.Length != 1)
@@ -1527,7 +1532,7 @@ public static class OperationsHookCommands
     private static bool HasAffirmativeRepairRequest(string prompt)
     {
         var request = Regex.Match(prompt,
-            @"\b(?:(?:implement(?:ed)?|impl|apply|execute|complete)\b(?!\s+(?:not|never))[^\r\n.]{0,120}(?:\brepair\s+items?\b|\bRPI(?:\d{3}|s\b))|deploy\s+(?:(?:a|the)\s+)?fix\b)",
+            @"\b(?:(?:implement(?:ed)?|impl|apply|execute|complete)\b(?!\s+(?:not|never))[^\r\n.]{0,120}(?:\brepair\s+items?\b|\bRPI(?:\d{3}|s\b))|deploy\s+(?:(?:a|the)\s+)?fix\b|get\s+(?:(?:all|the)\s+){0,2}(?:repair\s+items?|RPI(?:\d{3}|s\b))\s+deployed\b)",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
         if (!request.Success) return false;
         var prefix = prompt[..request.Index];

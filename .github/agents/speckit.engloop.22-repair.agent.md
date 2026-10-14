@@ -40,9 +40,8 @@ handoffs:
   send: false
 ---
 
-<!-- Extension: engloop -->
-<!-- Config: .specify/extensions/engloop/ -->
 
+<!-- Source: engloop -->
 ## User Input
 
 ```text
@@ -64,6 +63,31 @@ Use exactly `.engloop/` with config at `.engloop/config.json`.
 Run the entry diagnostic; a failure is unresolved context, not a navigation veto:
 
 `dotnet tool run engloopkit validate agent-entry --stage speckit.engloop.22-repair --root .`
+
+## Continuous Requested Work
+
+Implement and verify every selected repair in this session, including authorized
+push and deployment; routing alone is not task completion. Missing hooks or an ELK
+identity fault are workflow defects, not reasons to ask the user to repeat intent.
+Outside a bound native host, use the separately audited command:
+`dotnet tool run engloopkit -- operations-hook authorize repair --root . --request "Implement all repair items for PMnnn."`
+Use the exact selected PM identity and retain the emitted routes and authorization;
+this path is not a native binding or completion evidence. Under explicit ELK
+maintenance authority, repair workflow faults and resume, preserving historical
+records. Never bypass an actual safety/authorization denial or invent PASS. Keep
+readiness and stabilization gaps open while implementing the authorized repairs.
+
+## Missing Native Hooks
+
+If no native hook ran and no protected operation was denied, continue from the
+exact validated PM through the audited operator-command path above. Missing native
+receipts are an installation or host-integration diagnostic, not a request for the
+user to change agents or repeat intent. Finish missing incident/PM prerequisites
+under their existing authority before routing; never borrow a historical route.
+Do not construct native phase, RPI, rule, or acceptance arguments: the trusted
+marker or audited authorizer derives them from the actual validated contract.
+Keep `nativeSession=false` for audited authorization, preserve all unresolved
+evidence, and never bypass a real denial or claim closure from authorization.
 
 ## Rule-bound repair acceptance
 
@@ -89,7 +113,7 @@ time. Missing flags, readiness, PM/RPI evidence, or failed hooks never veto navi
 or read-only discussion. Carry unresolved evidence and diagnostics forward. Direct
 user selection does not authorize arbitrary delegation or a protected mutation.
 
-Accepted repair routing/closure requires the `OPERATIONS_LEARNING_GUARD_ACTIVE mode=repair`
+Native accepted repair routing/closure requires the `OPERATIONS_LEARNING_GUARD_ACTIVE mode=repair`
 and `OPERATIONS_LEARNING_SCOPE_ACTIVE mode=repair` hook markers. Collect missing context
 without requiring the user to reconstruct internal options. Before protected operations,
 bind explicit inputs matching the selected PM's `RPIxxx learning contract` exactly;

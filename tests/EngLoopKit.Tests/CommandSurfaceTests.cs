@@ -115,6 +115,26 @@ public sealed class CommandSurfaceTests
     }
 
     [Fact]
+    public void OperationsCommands_distinguishMissingHooksFromActiveCollectorAndContinueEvidenceCapture()
+    {
+        var incident = File.ReadAllText(Path.Combine(CommandsDir, "speckit.engloop.20-incident.md"));
+        var postmortem = File.ReadAllText(Path.Combine(CommandsDir, "speckit.engloop.21-postmortem.md"));
+        var repair = File.ReadAllText(Path.Combine(CommandsDir, "speckit.engloop.22-repair.md"));
+        foreach (var command in new[] { incident, postmortem, repair })
+        {
+            Assert.Contains("## Missing Native Hooks", command, StringComparison.Ordinal);
+            Assert.Contains("audited operator-command", command, StringComparison.Ordinal);
+        }
+        Assert.Contains("Persist the new incident evidence before handing off", incident, StringComparison.Ordinal);
+        Assert.Contains("`create_file`", incident, StringComparison.Ordinal);
+        Assert.Contains("When a native hook actually emits", postmortem, StringComparison.Ordinal);
+        Assert.DoesNotContain("whether or not a hook emits", postmortem, StringComparison.Ordinal);
+        Assert.Contains("nativeSession=false", postmortem, StringComparison.Ordinal);
+        Assert.Contains("nativeSession=false", repair, StringComparison.Ordinal);
+        Assert.Contains("never borrow a historical route", repair, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void NorthStar_authoringSurface_usesTimelessDirectionAndStagePrerequisites()
     {
         var command = File.ReadAllText(Path.Combine(CommandsDir, "speckit.engloop.01-northstar.md"));

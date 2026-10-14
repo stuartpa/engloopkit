@@ -1,7 +1,10 @@
 ---
 name: speckit.engloop.21-postmortem
-description: "Use when a user asks in plain language to start, complete, continue, or analyze an incident postmortem; collect and confirm incident/PM context, then produce validated PM/LEARN/RPI outputs."
-argument-hint: "Describe the incident postmortem to start or continue; exact incident IDs and PM path are optional internal bindings."
+description: Use when a user asks in plain language to start, complete, continue,
+  or analyze an incident postmortem; collect and confirm incident/PM context, then
+  produce validated PM/LEARN/RPI outputs.
+argument-hint: Describe the incident postmortem to start or continue; exact incident
+  IDs and PM path are optional internal bindings.
 target: vscode
 user-invocable: true
 disable-model-invocation: false
@@ -57,10 +60,10 @@ handoffs:
   prompt: After producing or updating the requested postmortem, automatically continue
     to Stage 22 with the exact marker ELK_TRUSTED_AUTOPILOT_REPAIR_CONTINUATION when
     same-session repair intent was explicitly captured. Do not construct or substitute
-    phase, postmortem, RPI, rule, or acceptance arguments; Stage 22 derives scope only
-    from the confirmed binding and validated postmortem contract. Carry any resumable
-    evidence blocker unchanged, without claiming PASS or closure or asking the user to
-    reconstruct internal flags.
+    phase, postmortem, RPI, rule, or acceptance arguments; Stage 22 derives scope
+    only from the confirmed binding and validated postmortem contract. Carry any resumable
+    evidence blocker unchanged, without claiming PASS or closure or asking the user
+    to reconstruct internal flags.
   send: true
 - label: Condense learnings when capacity exists
   agent: speckit.engloop.42-learnings-pyramid
@@ -70,8 +73,7 @@ handoffs:
 ---
 
 
-<!-- Extension: engloop -->
-<!-- Config: .specify/extensions/engloop/ -->
+<!-- Source: engloop -->
 ## User Input
 
 ```text
@@ -109,6 +111,19 @@ time. Missing readiness, active incidents, missing internal flags, or failed hoo
 not block entering, leaving, discussing, or drafting analysis in the conversation.
 Carry unresolved evidence and diagnostics forward; do not label them PASS or closed.
 Direct user selection is distinct from tool delegation and does not expand `agents`.
+
+### Continuous Requested Work
+
+Complete the requested analysis, PM contracts, and authorized repair continuation in
+this session; do not stop at route selection or require a second request to implement
+RPIs. Missing hooks or lost activation context do not create incident/path ambiguity.
+When outside a bound native host and the user's affirmative request uniquely selects
+the incident, use the audited operator-command path below, retain its emitted scope,
+and continue without another confirmation. The read/search/question-only collector
+restriction below applies to an active native collector, not this separate audited
+path. Never fake native input or bypass an actual protected-tool denial. Under
+explicit ELK maintenance authorization, repair the workflow defect and resume the
+same requested work; retain all historical scopes and unresolved evidence checks.
 
 ### Plain-language routing and context collection
 
@@ -200,8 +215,18 @@ immutable route; operator intent alone permits neither source edits nor completi
 This distinction follows `RULE:readiness-is-a-gate` and `PM001/LEARN001-003`:
 authorization to analyze is not evidence that a repair or readiness check passed.
 
-When no explicit route was bound and the prompt lacks internal bindings, whether or not a hook emits
-`OPERATIONS_POSTMORTEM_CONTEXT_COLLECTION_ACTIVE`:
+## Missing Native Hooks
+
+Missing hook output alone is not an active native collector or a protected-tool
+denial. If hooks did not run, use the audited operator-command path above under
+the user's existing affirmative authority. If the requested new incident is not
+yet recorded, finish Stage 20 evidence capture first; do not substitute the last
+historical incident, invent stabilization, or stop at a proposed filename. Keep
+the exact emitted audited scope and continue through validation and repair.
+Never synthesize native events or use this path to bypass a real hook denial.
+
+When a native hook actually emits `OPERATIONS_POSTMORTEM_CONTEXT_COLLECTION_ACTIVE`
+or a protected-tool decision activates collection, and no route is bound:
 
 1. For this active Stage 21 collector's protected operations, use `read`, `search`, and `vscode_askQuestions`; do not
   edit source/evidence, invoke a subagent, or run commands. Do not request
@@ -253,10 +278,12 @@ bounded maintenance only in the authorized ELK files and commands under the actu
 agent's permissions. It creates no downstream PM, route, receipt, gate, live mutation, or
 completion authority, and is not an exception to an active hook denial.
 
-Protected postmortem operations require VS Code custom-agent hooks and the
+Native protected postmortem operations require VS Code custom-agent hooks and the
 `OPERATIONS_LEARNING_GUARD_ACTIVE mode=postmortem` and
 `OPERATIONS_LEARNING_SCOPE_ACTIVE mode=postmortem` markers, not read-only recovery. The
-initial prompt may carry exact internal bindings or may enter the plain-language collector
+separate audited operator-command path does not require those native markers and
+must retain `nativeSession=false`; it cannot claim native binding.
+The initial prompt may carry exact internal bindings or may enter the plain-language collector
 above. If `UserPromptSubmit` emits
 `OPERATIONS_LEARNING_CONTEXT_REQUIRED` with status `postmortem-context-required`, no scope
 or completion was accepted: follow the read-only collector, preserving explicit intent
