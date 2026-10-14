@@ -91,6 +91,18 @@ The declared handoff is a validated-evidence workflow, not the user's only exit.
 requested destination is not an allowed subagent, honor direct user selection instead
 of attempting arbitrary delegation or demanding missing internal flags.
 
+## Continuous Requested Work
+
+When the user requests incident analysis, the PM, and repair implementation, carry
+that request through Stages 20, 21, and 22 in this session. Handoffs are navigation
+options, not mandatory pauses or requests for another confirmation. Missing hooks,
+lost context, and ELK installation or identity faults are workflow defects to repair
+under explicit maintenance authority, not reasons to abandon the requested work.
+Use Stage 21's audited operator-command authorization when outside a bound native
+host; never manufacture host events or reuse stale gates. Preserve every unresolved
+stability/readiness check. Stop only on a concrete unresolved incident, PM, repair,
+authorization, or safety blocker, recording its evidence and exact remaining work.
+
 ## Direction and learning context during stabilization
 
 1. Read root `NORTHSTAR.md` before choosing a mitigation so emergency action does not

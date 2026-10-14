@@ -1527,7 +1527,7 @@ public static class OperationsHookCommands
     private static bool HasAffirmativeRepairRequest(string prompt)
     {
         var request = Regex.Match(prompt,
-            @"\b(?:(?:implement|apply|execute|complete)\b(?!\s+(?:not|never))[^\r\n.]{0,120}(?:\brepair\s+items?\b|\bRPI(?:\d{3}|s\b))|deploy\s+(?:(?:a|the)\s+)?fix\b)",
+            @"\b(?:(?:implement(?:ed)?|impl|apply|execute|complete)\b(?!\s+(?:not|never))[^\r\n.]{0,120}(?:\brepair\s+items?\b|\bRPI(?:\d{3}|s\b))|deploy\s+(?:(?:a|the)\s+)?fix\b)",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
         if (!request.Success) return false;
         var prefix = prompt[..request.Index];
@@ -1537,6 +1537,8 @@ public static class OperationsHookCommands
         if (Regex.IsMatch(request.Value, @"\b(?:not|never|don't|do\s+not|mustn't|cannot|can't|if|might|whether)\b",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)) return false;
         var sentenceStart = Math.Max(prompt.LastIndexOf('.', Math.Max(0, request.Index - 1)), prompt.LastIndexOf('\n', Math.Max(0, request.Index - 1))) + 1;
+        if (request.Value.StartsWith("implemented", StringComparison.OrdinalIgnoreCase)
+            && !Regex.IsMatch(prompt[sentenceStart..request.Index], @"\bplease\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)) return false;
         return !Regex.IsMatch(prompt[sentenceStart..request.Index], @"\b(?:not|never|don't|do\s+not|mustn't|cannot|can't|if|might|whether)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
     }
 

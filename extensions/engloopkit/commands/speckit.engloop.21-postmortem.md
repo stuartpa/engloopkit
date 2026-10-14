@@ -91,6 +91,19 @@ not block entering, leaving, discussing, or drafting analysis in the conversatio
 Carry unresolved evidence and diagnostics forward; do not label them PASS or closed.
 Direct user selection is distinct from tool delegation and does not expand `agents`.
 
+### Continuous Requested Work
+
+Complete the requested analysis, PM contracts, and authorized repair continuation in
+this session; do not stop at route selection or require a second request to implement
+RPIs. Missing hooks or lost activation context do not create incident/path ambiguity.
+When outside a bound native host and the user's affirmative request uniquely selects
+the incident, use the audited operator-command path below, retain its emitted scope,
+and continue without another confirmation. The read/search/question-only collector
+restriction below applies to an active native collector, not this separate audited
+path. Never fake native input or bypass an actual protected-tool denial. Under
+explicit ELK maintenance authorization, repair the workflow defect and resume the
+same requested work; retain all historical scopes and unresolved evidence checks.
+
 ### Plain-language routing and context collection
 
 When this explicitly requested workflow is being completed outside a native

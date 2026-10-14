@@ -1616,6 +1616,10 @@ public sealed class OperationsLearningHookTests : IDisposable
     [InlineData("Please implement repair items. Do not print twice.", true, true, "")]
     [InlineData("Please implement not repair items.", false, false, "")]
     [InlineData("If needed, implement repair items.", false, false, "")]
+    [InlineData("we don't neeed to mitigate by printing teh stencils, we just need to mitigate this incident by understand why it has failed so badly. then perform the PM and impl all RPIs", true, true, "")]
+    [InlineData("so now it is up to to work out why a bunch of the stencils failed, and why the alerts were raised, please then do the PM, and implemented the RPIs", true, true, "")]
+    [InlineData("Do not impl the RPIs", false, false, "")]
+    [InlineData("We implemented all RPIs yesterday", false, false, "")]
     public void RepairIntentCapture_requiresExplicitAffirmativeRequest(string prompt, bool expected, bool allRepairs, string rpi)
     {
         var repo = CreateRepository();

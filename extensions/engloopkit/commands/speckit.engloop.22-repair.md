@@ -52,6 +52,19 @@ Run the entry diagnostic; a failure is unresolved context, not a navigation veto
 
 `dotnet tool run engloopkit validate agent-entry --stage speckit.engloop.22-repair --root .`
 
+## Continuous Requested Work
+
+Implement and verify every selected repair in this session, including authorized
+push and deployment; routing alone is not task completion. Missing hooks or an ELK
+identity fault are workflow defects, not reasons to ask the user to repeat intent.
+Outside a bound native host, use the separately audited command:
+`dotnet tool run engloopkit -- operations-hook authorize repair --root . --request "Implement all repair items for PMnnn."`
+Use the exact selected PM identity and retain the emitted routes and authorization;
+this path is not a native binding or completion evidence. Under explicit ELK
+maintenance authority, repair workflow faults and resume, preserving historical
+records. Never bypass an actual safety/authorization denial or invent PASS. Keep
+readiness and stabilization gaps open while implementing the authorized repairs.
+
 ## Rule-bound repair acceptance
 
 An explicit operator request to implement repair items is authorization to begin
