@@ -1638,6 +1638,28 @@ public sealed class OperationsLearningHookTests : IDisposable
     }
 
     [Fact]
+    public void RepairIntentCapture_freshRequestAfterHeadChangePreservesHistoricalIntent()
+    {
+        var repo = CreateRepository();
+        const string session = "repair-intent-next-incident";
+        RunHook(repo, "incident", "initialize", "Please implement RPI001 after the postmortem.", session);
+        var intentPath = Path.Combine(repo, ".engloop", "out", "operations-learning-gates", Sha256ForTest(session) + ".repair-intent.json");
+        var historicalBytes = File.ReadAllBytes(intentPath);
+        File.WriteAllText(Path.Combine(repo, "next-incident.txt"), "next incident");
+        Git(repo, "add", "next-incident.txt");
+        Git(repo, "commit", "-m", "next incident");
+
+        var result = RunHook(repo, "incident", "initialize", "Please deploy the fix to livesite.", session);
+
+        AssertNoLifecycleWarning(result);
+        using var intent = JsonDocument.Parse(File.ReadAllBytes(intentPath));
+        Assert.True(intent.RootElement.GetProperty("AllRepairs").GetBoolean());
+        Assert.Equal(OperationsLearningPolicy.GitHead(repo), intent.RootElement.GetProperty("Head").GetString());
+        var history = Assert.Single(Directory.GetFiles(Path.GetDirectoryName(intentPath)!, Path.GetFileName(intentPath) + ".history.*.json"));
+        Assert.Equal(historicalBytes, File.ReadAllBytes(history));
+    }
+
+    [Fact]
     public void TrustedRepairContinuation_invalidPostmortemReturnsResumableBlockerWithoutRouteOrScope()
     {
         var repo = CreateRepository();
@@ -1671,6 +1693,8 @@ public sealed class OperationsLearningHookTests : IDisposable
 
     [Theory]
     [InlineData("valid")]
+    [InlineData("valid-object")]
+    [InlineData("failed-object")]
     [InlineData("failed-write")]
     [InlineData("multiple-incidents")]
     [InlineData("unrelated-file")]
@@ -1692,9 +1716,13 @@ public sealed class OperationsLearningHookTests : IDisposable
             hookEventName = fault == "wrong-event" ? "PreToolUse" : "PostToolUse",
             tool_name = "apply_patch", tool_use_id = "incident-evidence-write",
             tool_input = new { input = patch },
-            tool_response = fault == "failed-write" ? "Failed to edit files" : "The following files were successfully edited: " + incident,
+            tool_response = fault == "valid-object"
+                ? (object)new { content = "The following files were successfully edited: " + incident, isError = false }
+                : fault == "failed-object"
+                    ? new { content = "The following files were successfully edited: " + incident, isError = true }
+                : fault == "failed-write" ? "Failed to edit files" : "The following files were successfully edited: " + incident,
         }));
-        if (fault != "valid")
+        if (fault is not ("valid" or "valid-object"))
         {
             Assert.DoesNotContain("OPERATIONS_LEARNING_SCOPE_ACTIVE mode=incident", captured.Output);
             Assert.False(File.Exists(Path.Combine(repo, ".engloop", "out", "operations-learning-gates", Sha256ForTest(session) + ".incident.json")));
@@ -1717,6 +1745,7 @@ public sealed class OperationsLearningHookTests : IDisposable
     [InlineData("no-intent")]
     [InlineData("changed-head")]
     [InlineData("changed-tool")]
+    [InlineData("handoff-prompt")]
     public void TrustedPostmortemContinuation_requiresSameSessionIncidentAndRepairIntent(string fault)
     {
         var repo = CreateRepository();
@@ -1741,10 +1770,12 @@ public sealed class OperationsLearningHookTests : IDisposable
         var result = RunHookRaw(repo, ["initialize", "postmortem"], JsonSerializer.Serialize(new
         {
             cwd = repo, session_id = fault == "other-session" ? "other-session" : session,
-            hookEventName = "UserPromptSubmit", prompt = "ELK_TRUSTED_AUTOPILOT_POSTMORTEM_CONTINUATION",
+            hookEventName = "UserPromptSubmit", prompt = fault == "handoff-prompt"
+                ? "ELK_TRUSTED_AUTOPILOT_POSTMORTEM_CONTINUATION Continue the requested incident postmortem in this native session, retaining the incident evidence and explicit operator repair intent above. Use the trusted context collection and binding path; do not ask the user to reconstruct internal flags."
+                : "ELK_TRUSTED_AUTOPILOT_POSTMORTEM_CONTINUATION",
         }));
         Assert.True(Continues(result), result.Output + result.Error);
-        if (fault is not ("valid" or "active"))
+        if (fault is not ("valid" or "active" or "handoff-prompt"))
         {
             Assert.DoesNotContain("POSTMORTEM_ROUTE_BOUND", result.Output);
             Assert.Empty(Directory.GetFiles(Path.Combine(repo, ".engloop", "out", "operations-learning-gates"), "*.postmortem.json"));
@@ -1888,6 +1919,41 @@ public sealed class OperationsLearningHookTests : IDisposable
         Assert.Equal("UserPromptSubmit", response.RootElement.GetProperty("hookSpecificOutput").GetProperty("hookEventName").GetString());
         Assert.Contains("OPERATIONS_LEARNING_SCOPE_ACTIVE mode=repair", response.RootElement.GetProperty("hookSpecificOutput").GetProperty("additionalContext").GetString());
         Assert.Equal(multipleItems ? 2 : 1, Directory.GetFiles(Path.Combine(repo, ".engloop", "repairs"), "*.route.json").Length);
+        Assert.Contains("REPAIR_LEARNING_OK", RunHook(repo, "repair", "stop", string.Empty, session).Output);
+    }
+
+    [Fact]
+    public void ExplicitRepairRequest_sameSessionCanSelectAnotherPostmortemWithoutChangingPriorRoute()
+    {
+        var repo = CreateRepository();
+        const string session = "direct-repair-scope-change";
+        const string firstPostmortem = ".engloop/postmortems/PM005-example.md";
+        const string secondPostmortem = ".engloop/postmortems/PM006-example.md";
+        WriteValidRepairContinuationPostmortem(repo, firstPostmortem);
+        var firstPath = Path.Combine(repo, firstPostmortem.Replace('/', Path.DirectorySeparatorChar));
+        var secondPath = Path.Combine(repo, secondPostmortem.Replace('/', Path.DirectorySeparatorChar));
+        var firstDigest = OperationsLearningPolicy.ComputePyramidDigest(repo, "PM005");
+        var firstResult = RunHookRaw(repo, ["initialize", "repair"], JsonSerializer.Serialize(new
+        {
+            cwd = repo, session_id = session, hookEventName = "UserPromptSubmit",
+            prompt = "Implement all repair items for PM005.",
+        }));
+        Assert.True(firstResult.Output.Contains("OPERATIONS_LEARNING_SCOPE_ACTIVE mode=repair", StringComparison.Ordinal), firstResult.Output + firstResult.Error);
+        var routePath = Path.Combine(repo, ".engloop", "repairs", "PM005-RPI001.route.json");
+        var originalRoute = File.ReadAllBytes(routePath);
+        File.WriteAllText(secondPath, File.ReadAllText(firstPath)
+            .Replace("PM005", "PM006", StringComparison.Ordinal)
+            .Replace(firstDigest, OperationsLearningPolicy.ComputePyramidDigest(repo, "PM006"), StringComparison.Ordinal));
+
+        var result = RunHookRaw(repo, ["initialize", "repair"], JsonSerializer.Serialize(new
+        {
+            cwd = repo, session_id = session, hookEventName = "UserPromptSubmit",
+            prompt = "Implement all repair items for PM006.",
+        }));
+
+        Assert.True(result.Output.Contains("OPERATIONS_LEARNING_SCOPE_ACTIVE mode=repair", StringComparison.Ordinal), result.Output + result.Error);
+        Assert.Contains(secondPostmortem, result.Output);
+        Assert.Equal(originalRoute, File.ReadAllBytes(routePath));
         Assert.Contains("REPAIR_LEARNING_OK", RunHook(repo, "repair", "stop", string.Empty, session).Output);
     }
 

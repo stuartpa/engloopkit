@@ -392,7 +392,7 @@ public static class OperationsHookCommands
             CaptureRepairIntent(root, sessionHash, prompt);
             var repairIntent = ReadRepairIntent(root, sessionHash)
                 ?? throw new InvalidOperationException("repair-continuation-intent-missing");
-            return BindRequestedRepairs(root, sessionHash, gatePath, repairPostmortem, repairIntent);
+            return BindRequestedRepairs(root, sessionHash, gatePath, repairPostmortem, repairIntent, explicitScopeSelection: true);
         }
         if (mode is "incident" or "postmortem") CaptureRepairIntent(root, sessionHash, prompt);
         if (mode == "repair" && prompt.Contains(RepairContinuationMarker, StringComparison.Ordinal))
@@ -590,8 +590,12 @@ public static class OperationsHookCommands
             || ReadString(input, "tool_name", "toolName") != "apply_patch"
             || !TryReadToolElement(input, "tool_input", "toolInput", out var toolInput)
             || !(input.TryGetProperty("tool_response", out var response) || input.TryGetProperty("toolResponse", out response))
-            || response.ValueKind != JsonValueKind.String
-            || !response.GetString()!.Contains("successfully edited", StringComparison.OrdinalIgnoreCase)
+            || response.ValueKind is not (JsonValueKind.String or JsonValueKind.Object)
+            || response.ValueKind == JsonValueKind.Object
+                && (response.TryGetProperty("isError", out var isError) && isError.ValueKind == JsonValueKind.True
+                    || response.TryGetProperty("error", out var error) && error.ValueKind is not JsonValueKind.Null and not JsonValueKind.Undefined)
+            || !(response.ValueKind == JsonValueKind.String ? response.GetString()! : response.GetRawText())
+                .Contains("successfully edited", StringComparison.OrdinalIgnoreCase)
             || ReadRepairIntent(root, sessionHash) is null)
         {
             WriteResult(true);
@@ -1482,8 +1486,26 @@ public static class OperationsHookCommands
         var path = RepairIntentPath(root, sessionHash);
         if (File.Exists(path))
         {
-            _ = ReadRepairIntent(root, sessionHash);
-            return;
+            var previous = JsonSerializer.Deserialize<RepairIntentRecord>(File.ReadAllText(path))
+                ?? throw new InvalidOperationException("repair-continuation-intent-json-invalid");
+            Ensure(previous.SchemaVersion == "1.0" && previous.SessionHash == sessionHash
+                && Regex.IsMatch(previous.Head, "^[a-f0-9]{40}$", RegexOptions.CultureInvariant)
+                && Regex.IsMatch(previous.PromptSha256, "^[a-f0-9]{64}$", RegexOptions.CultureInvariant)
+                && previous.AllRepairs == (previous.Rpis.Length == 0)
+                && previous.Rpis.All(rpi => Regex.IsMatch(rpi, @"^RPI\d{3}$", RegexOptions.CultureInvariant))
+                && previous.Rpis.Distinct(StringComparer.Ordinal).Count() == previous.Rpis.Length
+                && previous.ManifestPath == CurrentToolIdentity(root).ManifestPath
+                && File.Exists(previous.AssemblyPath) && FileSha256(previous.AssemblyPath) == previous.AssemblySha256,
+                "repair-continuation-intent-identity-invalid");
+            var current = CurrentToolIdentity(root);
+            if (previous.Head == OperationsLearningPolicy.GitHead(root)
+                && previous.AssemblyPath == current.AssemblyPath && previous.AssemblySha256 == current.AssemblySha256
+                && previous.ToolVersion == current.ToolVersion && previous.ManifestSha256 == current.ManifestSha256
+                && previous.PromptSha256 == Sha256(Encoding.UTF8.GetBytes(prompt))) return;
+            var historyPath = path + ".history." + FileSha256(path) + ".json";
+            if (!File.Exists(historyPath)) File.Copy(path, historyPath);
+            Ensure(FileSha256(historyPath) == FileSha256(path), "repair-intent-history-changed");
+            File.Delete(path);
         }
 
         var identity = CurrentToolIdentity(root);
@@ -1879,7 +1901,7 @@ public static class OperationsHookCommands
     }
 
     private static int BindRequestedRepairs(string root, string sessionHash, string repairGatePath,
-        string postmortem, RepairIntentRecord intent, bool nativeContext = true)
+        string postmortem, RepairIntentRecord intent, bool nativeContext = true, bool explicitScopeSelection = false)
     {
         string[] requestedRpis = [];
         var createdRoutes = new List<string>();
@@ -1925,10 +1947,17 @@ public static class OperationsHookCommands
                 var existing = ReadGate(repairGatePath);
                 Ensure(existing.SchemaVersion == "1.0" && existing.Mode == "repair"
                     && existing.SessionHash == sessionHash && existing.Head == OperationsLearningPolicy.GitHead(root)
-                    && HashArguments(existing) == existing.ArgumentsHash
-                    && HashArguments(existing) == HashArguments(arguments),
+                    && HashArguments(existing) == existing.ArgumentsHash,
                     "repair-continuation-existing-gate-mismatch");
                 ValidateToolIdentity(root, existing);
+                if (HashArguments(existing) != HashArguments(arguments))
+                {
+                    Ensure(explicitScopeSelection, "repair-continuation-existing-gate-mismatch");
+                    var historicalPath = repairGatePath + ".history." + FileSha256(repairGatePath) + ".json";
+                    if (!File.Exists(historicalPath)) File.Copy(repairGatePath, historicalPath);
+                    Ensure(FileSha256(historicalPath) == FileSha256(repairGatePath), "repair-route-history-changed");
+                    WriteGate(root, "repair", sessionHash, repairGatePath, arguments);
+                }
             }
             else WriteGate(root, "repair", sessionHash, repairGatePath, arguments);
 
