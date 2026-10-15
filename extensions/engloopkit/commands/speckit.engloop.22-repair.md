@@ -65,6 +65,12 @@ maintenance authority, repair workflow faults and resume, preserving historical
 records. Never bypass an actual safety/authorization denial or invent PASS. Keep
 readiness and stabilization gaps open while implementing the authorized repairs.
 
+An unrelated dirty worktree is not a deployment blocker. When publication and live
+deployment are explicitly authorized, isolate the selected repair in a clean worktree,
+preserve unrelated edits, run its required gates, publish that exact revision, and use
+the target repository's governed deployment procedure. Do not stop at local tests or
+routing, and do not stage unrelated work or infer physical-effect authorization.
+
 ## Missing Native Hooks
 
 If no native hook ran and no protected operation was denied, continue from the

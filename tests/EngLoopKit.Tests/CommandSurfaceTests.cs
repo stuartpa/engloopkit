@@ -132,6 +132,8 @@ public sealed class CommandSurfaceTests
         Assert.Contains("nativeSession=false", postmortem, StringComparison.Ordinal);
         Assert.Contains("nativeSession=false", repair, StringComparison.Ordinal);
         Assert.Contains("never borrow a historical route", repair, StringComparison.Ordinal);
+        Assert.Contains("An unrelated dirty worktree is not a deployment blocker", repair, StringComparison.Ordinal);
+        Assert.Contains("The allocator treats the registry as a lower bound", postmortem, StringComparison.Ordinal);
     }
 
     [Fact]

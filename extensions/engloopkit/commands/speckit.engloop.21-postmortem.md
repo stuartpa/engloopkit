@@ -157,6 +157,11 @@ no explicit PM path it derives the filename from the unique incident filename an
 registry number. A separate hashed operator-intent record authorizes the binding; no
 question confirmation receipt or tool-use selection is fabricated.
 
+The allocator treats the registry as a lower bound and skips all existing PM
+identities in the active postmortem directory. A stale counter alone is not a reason
+to stop or ask the operator for flags. Preserve the registry during binding, advance
+its PM row only after scope activation, and never overwrite an existing PM.
+
 If an earlier tool installation left only an unbound host and repair intent, a fresh
 native affirmative PM request at the same HEAD can renew that host after validating
 its historical identity. The hook archives the old host, intent, and collection

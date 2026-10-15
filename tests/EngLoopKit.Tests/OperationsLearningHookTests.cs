@@ -2268,6 +2268,27 @@ public sealed class OperationsLearningHookTests : IDisposable
         Assert.DoesNotContain("vscode_askQuestions", initialized.Output);
     }
 
+    [Theory]
+    [InlineData("| Type | Next number |\n|---|---|\n| PM | 065 |\n")]
+    [InlineData("| Prefix | Last used |\n|---|---|\n| PM | PM064 |\n")]
+    public void ExplicitOperatorPostmortem_staleRegistrySkipsExistingIdentitiesWithoutMutatingHistory(string registry)
+    {
+        var repo = CreateRepository();
+        var registryPath = Path.Combine(repo, ".engloop", "numbering-registry.md");
+        File.WriteAllText(registryPath, registry);
+        var existingPath = Path.Combine(repo, ".engloop", "postmortems", "PM071-existing.md");
+        const string existing = "# Historical PM071\n";
+        File.WriteAllText(existingPath, existing);
+
+        var result = RunHostPostmortem(repo, "stale-registry", "initialize", "UserPromptSubmit", "Create the postmortem for IN001.");
+
+        Assert.Contains("POSTMORTEM_ROUTE_BOUND", result.Output);
+        Assert.Contains("postmortem=.engloop/postmortems/PM072-example.md", result.Output);
+        Assert.Equal(registry, File.ReadAllText(registryPath));
+        Assert.Equal(existing, File.ReadAllText(existingPath));
+        Assert.False(File.Exists(Path.Combine(repo, ".engloop", "postmortems", "PM072-example.md")));
+    }
+
     [Fact]
     public void ExplicitOperatorPostmortem_todayScopeSurvivesToolIdentityUpgradeInSameChat()
     {

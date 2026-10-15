@@ -2429,7 +2429,22 @@ public static class OperationsHookCommands
         Ensure(int.TryParse(numericText, out var number) && number > 0
             && (nextNumberSchema ? number <= 999 : number < 999),
             "postmortem-route-numbering-value-invalid:" + prefix);
-        return NumberingRegistry.Format(prefix, nextNumberSchema ? number : number + 1);
+        var next = nextNumberSchema ? number : number + 1;
+        if (prefix == "PM")
+        {
+            var directory = Path.Combine(root, ".engloop", "postmortems");
+            if (Directory.Exists(directory))
+            {
+                foreach (var path in Directory.EnumerateFiles(directory, "PM*.md"))
+                {
+                    var match = Regex.Match(Path.GetFileName(path), @"^PM(?<number>\d{3})(?:[-_.]|$)", RegexOptions.CultureInvariant);
+                    if (match.Success)
+                        next = Math.Max(next, int.Parse(match.Groups["number"].Value, System.Globalization.CultureInfo.InvariantCulture) + 1);
+                }
+            }
+        }
+        Ensure(next <= 999, "postmortem-route-numbering-exhausted:" + prefix);
+        return NumberingRegistry.Format(prefix, next);
     }
 
     private static string[] MarkdownCells(string line)
