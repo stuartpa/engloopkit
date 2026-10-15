@@ -20,6 +20,39 @@ public sealed class OperationsLearningHookTests : IDisposable
 
     public OperationsLearningHookTests() => Directory.CreateDirectory(_work);
 
+    [Theory]
+    [InlineData("read_file")]
+    [InlineData("run_in_terminal")]
+    [InlineData("apply_patch")]
+    [InlineData("vscode_askQuestions")]
+    public void IncidentPostTool_staleHostCallbacksContinueWithoutGrantingAuthority(string toolName)
+    {
+        var repo = CreateRepository();
+        var incident = Path.Combine(repo, ".engloop", "incidents", "IN001_example.md");
+        var before = File.ReadAllBytes(incident);
+        for (var callback = 0; callback < 3; callback++)
+        {
+            var result = RunHookRaw(repo, ["post-tool", "incident"], JsonSerializer.Serialize(new
+            {
+                cwd = repo,
+                session_id = "incident-post-tool-compatibility",
+                hook_event_name = "PostToolUse",
+                tool_name = toolName,
+                tool_input = "...",
+                tool_response = callback == 0 ? "AGENT_ENTRY_OK" : "",
+                tool_use_id = "incident-callback-" + callback,
+            }));
+            Assert.Equal(0, result.ExitCode);
+            using var output = JsonDocument.Parse(result.Output);
+            Assert.True(output.RootElement.GetProperty("continue").GetBoolean(), result.Output);
+            Assert.Equal(JsonValueKind.Null, output.RootElement.GetProperty("stopReason").ValueKind);
+            Assert.False(output.RootElement.TryGetProperty("hookSpecificOutput", out _));
+            Assert.DoesNotContain("SCOPE_ACTIVE", result.Output);
+        }
+        Assert.Equal(before, File.ReadAllBytes(incident));
+        Assert.False(Directory.Exists(Path.Combine(repo, ".engloop", "out", "operations-learning-gates")));
+    }
+
     [Fact]
     public void Hook_requiresSessionIdentity_andExplicitPostmortemPath()
     {
